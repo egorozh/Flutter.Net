@@ -10,17 +10,17 @@ public interface IBuildContext
     bool Mounted { get; }
 }
 
-internal abstract class Element(Widget widget) : IBuildContext
+public abstract class Element(Widget widget) : IBuildContext
 {
     private Element? _parent;
 
-    private Widget? _widget = widget;
+    protected Widget? _widget = widget;
 
     public Widget Widget => _widget!;
 
     public bool Mounted => _widget != null;
 
-    internal Control RenderObject { get; }
+    internal virtual Control RenderObject { get; }
 
     // internal List<Element> Children { get; set; } = new List<Element>();
 
@@ -29,12 +29,12 @@ internal abstract class Element(Widget widget) : IBuildContext
         _parent = parent;
     }
 
-    internal void Unmount()
+    internal virtual void Unmount()
     {
         _widget = null;
     }
 
-    internal void Update(Widget newWidget)
+    protected internal virtual void Update(Widget newWidget)
     {
         _widget = newWidget;
 
@@ -94,10 +94,18 @@ internal abstract class Element(Widget widget) : IBuildContext
         _dirty = false;
     }
 
-    protected virtual void Update(StatelessWidget newWidget)
+    protected Element? UpdateChild(Element? child, Widget? newWidget)
     {
-        throw new NotImplementedException();
+        if (newWidget == null)
+        {
+            // if (child != null) DeactivateChild(child);
+            //
+            // return null;
+        }
+
+        return null;
     }
+
 
     // internal override bool CanUpdate(Widget newWidget) =>
     //     newWidget.GetType() == Widget.GetType() && Equals(newWidget.Key, Widget.Key);
@@ -109,33 +117,36 @@ internal abstract class Element(Widget widget) : IBuildContext
     // }
 }
 
-internal abstract class ComponentElement(Widget widget) : Element(widget)
+public abstract class ComponentElement(Widget widget) : Element(widget)
 {
-    Element? _child;
+    private Element? _child;
 
     internal override void Mount(Element? parent)
     {
         base.Mount(parent);
-        _firstBuild();
+        FirstBuild();
     }
 
-    void _firstBuild()
+    protected virtual void FirstBuild()
     {
         Rebuild();
     }
 
     protected override void PerformRebuild()
     {
+        var built = Build();
+        _child = UpdateChild(_child, built);
     }
+
 
     protected abstract Widget Build();
 }
 
-internal class StatelessElement(StatelessWidget widget) : ComponentElement(widget)
+public class StatelessElement(StatelessWidget widget) : ComponentElement(widget)
 {
     protected override Widget Build() => ((StatelessWidget)Widget).Build(this);
 
-    protected override void Update(StatelessWidget newWidget)
+    protected internal override void Update(Widget newWidget)
     {
         base.Update(newWidget);
 
@@ -143,35 +154,65 @@ internal class StatelessElement(StatelessWidget widget) : ComponentElement(widge
     }
 }
 
-internal class StatefulElement : ComponentElement
+public class StatefulElement : ComponentElement
 {
-    private readonly StatefulWidget _widget;
-    private readonly State _state;
+    private State _state;
 
-    public StatefulElement(StatefulWidget widget)
+    public State State => _state;
+
+    public StatefulElement(StatefulWidget widget) : base(widget)
     {
-        Widget = widget;
-        _widget = widget;
         _state = widget.CreateState();
-        _state.Widget = widget;
-        _state.Context = this;
+        _state._element = this;
+        _state._widget = widget;
+    }
+
+    protected override Widget Build() => _state.Build(this);
+
+    protected override void FirstBuild()
+    {
         _state.InitState();
+
+        _state.DidChangeDependencies();
+
+        base.FirstBuild();
     }
 
-    internal override bool CanUpdate(Widget newWidget) =>
-        newWidget.GetType() == Widget.GetType() && Equals(newWidget.Key, Widget.Key);
-
-    protected override void OnWidgetUpdated(Widget oldWidget)
+    protected internal override void Update(Widget newWidget)
     {
-        _state.Context = this;
-        _state.DidUpdateWidget((StatefulWidget)oldWidget);
+        base.Update(newWidget);
+
+        var oldWidget = _state._widget!;
+
+        _state._widget = _widget as StatefulWidget;
+
+        _state.DidUpdateWidget(oldWidget);
+
+        Rebuild(force: true);
     }
 
-    internal override void PerformRebuild()
+    internal override void Unmount()
     {
-        RenderObject = _state.Build(this);
-        Children.Clear();
+        base.Unmount();
+        _state.Dispose();
+        _state._element = null;
+        _state = null!;
     }
+    // internal override bool CanUpdate(Widget newWidget) =>
+    //     newWidget.GetType() == Widget.GetType() && Equals(newWidget.Key, Widget.Key);
+    //
+    // protected override void OnWidgetUpdated(Widget oldWidget)
+    // {
+    //     _state.Context = this;
+    //     _state.DidUpdateWidget((StatefulWidget)oldWidget);
+    // }
+    //
+    // internal override void PerformRebuild()
+    // {
+    //     RenderObject = _state.Build(this);
+    //     Children.Clear();
+    // }
 
-    protected override void Dispose() => _state.Dispose();
+    //
+    // protected override void Dispose() => _state.Dispose();
 }

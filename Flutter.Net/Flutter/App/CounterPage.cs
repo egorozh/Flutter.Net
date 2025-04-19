@@ -4,21 +4,22 @@ namespace Flutter.Net.Flutter.App;
 
 public class CounterPage : StatefulWidget
 {
-    protected override State CreateState() => new CounterPageState();
+    public override State CreateState() => new CounterPageState();
 }
 
 public class CounterPageState : State
 {
-    private int _count = 0;
+    private int _count;
 
     internal override Widget Build(IBuildContext context)
     {
-        return new Column(children:
-        [
-            new Text($"Count: {_count}"),
-            new ElevatedButton(
-                () => SetState(() => _count++),
-                new Text("Increment"))
-        ]);
+        return new Text("Count");
+        // return new Column(children:
+        // [
+        //     new Text($"Count: {_count}"),
+        //     new ElevatedButton(
+        //         () => SetState(() => _count++),
+        //         new Text("Increment"))
+        // ]);
     }
 }

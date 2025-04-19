@@ -27,7 +27,7 @@ public partial class App : Application
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
-            var rootElem = new CounterPage().CreateElement();
+            var rootElem = new Text("Count").CreateElement();
             rootElem.Mount(null);
             singleViewPlatform.MainView = new UserControl
             {
