@@ -1,104 +1,283 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Avalonia.Controls;
+using Avalonia.Layout;
 
 namespace Flutter.Net.Flutter.Framework;
 
-public class Key
+public abstract class Widget
 {
-    public string Value { get; }
-    public Key(string value) => Value = value;
-    public override bool Equals(object obj) => obj is Key k && k.Value == Value;
-    public override int GetHashCode() => Value?.GetHashCode() ?? 0;
+    public abstract Element CreateElement();
 }
 
-// Утилита для замены в списке Avalonia Panel.Children
-internal static class Extensions
+public abstract class Element(Widget widget)
 {
-    public static IList<T> MutateReplace<T>(this IList<T> list, int index, T newItem)
+    public Widget Widget { get; protected set; } = widget;
+    public Control? RenderObject { get; protected set; }
+
+    public abstract void Mount(Control parent);
+    public abstract void Update(Widget newWidget);
+
+    public virtual void Dispose()
     {
-        list[index] = newItem;
-        return list;
     }
 }
 
-// public class Column : StatelessWidget
-// {
-//     public List<Widget> Children { get; }
-//     public Column(List<Widget> children, Key key = null) : base(key) => Children = children;
-//
-//     protected override Widget Build(IBuildContext context)
-//     {
-//         var panel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Vertical };
-//         var element = (Element)context;
-//         var old = element.Children;
-//         var next = new List<Element>();
-//         for (int i = 0; i < Children.Count; i++)
-//         {
-//             var childWidget = Children[i];
-//             Element childElem;
-//             if (i < old.Count && old[i].CanUpdate(childWidget))
-//             {
-//                 childElem = old[i];
-//                 childElem.Update(childWidget);
-//             }
-//             else
-//             {
-//                 childElem = childWidget.CreateElement();
-//                 childElem.Mount(element);
-//             }
-//
-//             next.Add(childElem);
-//             panel.Children.Add(childElem.RenderObject);
-//         }
-//
-//         element.Children = next;
-//         return panel;
-//     }
-// }
-
-public class Text : SingleChildRenderObjectWidget
+public class BuildContext(Element element)
 {
-    public Text(string data, Key? key = null) : base(key) => Data = data;
+    public Element Element { get; } = element;
+}
 
-    public string Data { get; }
+// StatelessWidget
+public abstract class StatelessWidget : Widget
+{
+    public abstract Widget Build(BuildContext context);
 
-    protected internal override Control CreateRenderObject(IBuildContext context)
+    public override Element CreateElement() => new StatelessElement(this);
+}
+
+public class StatelessElement(StatelessWidget widget) : Element(widget)
+{
+    private Element? _child;
+
+    public new StatelessWidget Widget
     {
-        return new TextBlock
+        get => (StatelessWidget) base.Widget;
+        set => base.Widget = value;
+    }
+
+    public override void Mount(Control parent)
+    {
+        var built = Widget.Build(new BuildContext(this));
+        _child = built.CreateElement();
+        _child.Mount(parent);
+        RenderObject = _child.RenderObject;
+    }
+
+    public override void Update(Widget newWidget)
+    {
+        if (newWidget is StatelessWidget newStateless)
         {
-            Text = Data
-        };
-    }
-
-    protected internal override void UpdateRenderObject(IBuildContext context, Control renderObject)
-    {
-        base.UpdateRenderObject(context, renderObject);
-
-        var textBlock = (TextBlock)renderObject;
-        textBlock.Text = Data;
+            Widget = newStateless;
+            var newChild = newStateless.Build(new BuildContext(this)).CreateElement();
+            _child?.Update(newChild.Widget);
+        }
     }
 }
 
-// public class ElevatedButton : StatelessWidget
-// {
-//     public Action OnPressed { get; }
-//     public Widget Child { get; }
-//
-//     public ElevatedButton(Action onPressed, Widget child, Key? key = null) : base(key)
-//     {
-//         OnPressed = onPressed;
-//         Child = child;
-//     }
-//
-//     protected override Widget Build(IBuildContext context)
-//     {
-//         var button = new Button();
-//         var element = (Element)context;
-//         var childElem = Child.CreateElement();
-//         childElem.Mount(element);
-//         button.Content = childElem.RenderObject;
-//         button.Click += (_, __) => OnPressed();
-//         return button;
-//     }
-// }
+// StatefulWidget
+public abstract class StatefulWidget : Widget
+{
+    public abstract IState CreateState();
+
+    public override Element CreateElement() => new StatefulElement(this);
+}
+
+public interface IState
+{
+    void _Attach(StatefulWidget widget, StatefulElement element);
+    void InitState();
+    void Dispose();
+    void DidUpdateWidget(StatefulWidget oldWidget);
+    Widget Build(BuildContext context);
+    void SetState(Action update);
+}
+
+public abstract class State : IState
+{
+    public StatefulWidget Widget { get; private set; } = null!;
+    public StatefulElement Element { get; internal set; } = null!;
+
+    protected BuildContext Context => new(Element);
+
+    public void _Attach(StatefulWidget widget, StatefulElement element)
+    {
+        Widget = widget;
+        Element = element;
+    }
+
+    public virtual void InitState()
+    {
+    }
+
+    public virtual void Dispose()
+    {
+    }
+
+    public virtual void DidUpdateWidget(StatefulWidget oldWidget)
+    {
+    }
+
+    public abstract Widget Build(BuildContext context);
+
+    public void SetState(Action update)
+    {
+        update();
+        Element.Rebuild();
+    }
+}
+
+public class StatefulElement : Element
+{
+    private Element? _child;
+    private IState _state;
+
+    public new StatefulWidget Widget
+    {
+        get => (StatefulWidget) base.Widget;
+        set => base.Widget = value;
+    }
+
+    public StatefulElement(StatefulWidget widget) : base(widget)
+    {
+        _state = widget.CreateState();
+        _state._Attach(widget, this);
+        _state.InitState();
+    }
+
+    public override void Mount(Control parent)
+    {
+        var built = _state.Build(new BuildContext(this));
+        _child = built.CreateElement();
+        _child.Mount(parent);
+        RenderObject = _child.RenderObject;
+    }
+
+    public override void Update(Widget newWidget)
+    {
+        if (newWidget is StatefulWidget newStateful)
+        {
+            var oldWidget = Widget;
+            Widget = newStateful;
+            _state._Attach(newStateful, this);
+            _state.DidUpdateWidget(oldWidget);
+            Rebuild();
+        }
+    }
+
+    public void Rebuild()
+    {
+        if (_child != null && _child.RenderObject?.Parent is Panel parent)
+        {
+            parent.Children.Remove(_child.RenderObject);
+            var newChild = _state.Build(new BuildContext(this)).CreateElement();
+            newChild.Mount(parent);
+            _child = newChild;
+            RenderObject = newChild.RenderObject;
+        }
+    }
+
+    public override void Dispose()
+    {
+        _state.Dispose();
+    }
+}
+
+// Примитивные виджеты
+public class Text(string value) : Widget
+{
+    public string Value { get; } = value;
+
+    public override Element CreateElement() => new TextElement(this);
+}
+
+public class TextElement(Text widget) : Element(widget)
+{
+    public new Text Widget
+    {
+        get => (Text) base.Widget;
+        set => base.Widget = value;
+    }
+
+    public override void Mount(Control parent)
+    {
+        RenderObject = new TextBlock {Text = Widget.Value};
+        if (parent is Panel panel)
+            panel.Children.Add(RenderObject);
+    }
+
+    public override void Update(Widget newWidget)
+    {
+        if (newWidget is Text newText)
+        {
+            Widget = newText;
+            ((TextBlock) RenderObject).Text = newText.Value;
+        }
+    }
+}
+
+public class Column(IEnumerable<Widget> children) : Widget
+{
+    public IReadOnlyList<Widget> Children { get; } = children.ToList();
+
+    public override Element CreateElement() => new ColumnElement(this);
+}
+
+public class ColumnElement(Column widget) : Element(widget)
+{
+    private readonly List<Element> _children = new();
+
+    public new Column Widget => (Column) base.Widget;
+
+    public override void Mount(Control parent)
+    {
+        var panel = new StackPanel {Orientation = Orientation.Vertical};
+        foreach (var childWidget in Widget.Children)
+        {
+            var childElement = childWidget.CreateElement();
+            childElement.Mount(panel);
+            _children.Add(childElement);
+        }
+
+        RenderObject = panel;
+        if (parent is Panel parentPanel)
+            parentPanel.Children.Add(panel);
+    }
+
+    public override void Update(Widget newWidget)
+    {
+        // На этом этапе без диффинга
+    }
+}
+
+public class Button(string text, Action onPressed) : Widget
+{
+    public string Text { get; } = text;
+    public Action OnPressed { get; } = onPressed;
+
+    public override Element CreateElement() => new ButtonElement(this);
+}
+
+public class ButtonElement(Button widget) : Element(widget)
+{
+    public new Button Widget
+    {
+        get => (Button) base.Widget;
+        set => base.Widget = value;
+    }
+
+
+    public override void Mount(Control parent)
+    {
+        var button = new Avalonia.Controls.Button {Content = Widget.Text};
+        button.Click += (_, _) => Widget.OnPressed();
+        RenderObject = button;
+
+        if (parent is Panel panel)
+            panel.Children.Add(button);
+    }
+
+    public override void Update(Widget newWidget)
+    {
+        if (newWidget is Button newButton)
+        {
+            Widget = newButton;
+            if (RenderObject is Avalonia.Controls.Button btn)
+            {
+                btn.Content = newButton.Text;
+                btn.Click += (_, _) => newButton.OnPressed();
+            }
+        }
+    }
+}

@@ -27,11 +27,17 @@ public partial class App : Application
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
-            var rootElem = new Text("Count").CreateElement();
-            rootElem.Mount(null);
+            var rootPanel = new StackPanel();
+
+            var appWidget = new MyApp();
+            
+            var appElement = appWidget.CreateElement();
+            
+            appElement.Mount(rootPanel);
+
             singleViewPlatform.MainView = new UserControl
             {
-                Content = rootElem.RenderObject
+                Content = rootPanel
             };
         }
 
