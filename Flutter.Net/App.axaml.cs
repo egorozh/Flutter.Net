@@ -5,7 +5,6 @@ using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using Flutter.Net.Flutter.App;
-using Flutter.Net.Flutter.Framework;
 
 namespace Flutter.Net;
 
@@ -18,23 +17,23 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        var rootPanel = new StackPanel();
+
+        var appWidget = new MyApp();
+
+        var appElement = appWidget.CreateElement();
+
+        appElement.Mount(rootPanel);
+
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            // desktop.MainWindow = new MainWindow
-            // {
-            //     DataContext = new MainViewModel()
-            // };
+            desktop.MainWindow = new Window
+            {
+                Content = rootPanel
+            };
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
-            var rootPanel = new StackPanel();
-
-            var appWidget = new MyApp();
-            
-            var appElement = appWidget.CreateElement();
-            
-            appElement.Mount(rootPanel);
-
             singleViewPlatform.MainView = new UserControl
             {
                 Content = rootPanel
