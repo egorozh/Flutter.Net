@@ -5,6 +5,7 @@ using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using Flutter.Net.Flutter.App;
+using Flutter.Net.Flutter.Framework;
 
 namespace Flutter.Net;
 
@@ -21,7 +22,7 @@ public partial class App : Application
 
         var appWidget = new MyApp();
 
-        var appElement = appWidget.CreateElement();
+        var appElement = ((IWidget)appWidget).CreateElement();
 
         appElement.Mount(rootPanel);
 

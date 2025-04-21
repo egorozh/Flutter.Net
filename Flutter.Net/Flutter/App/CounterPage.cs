@@ -2,9 +2,9 @@
 
 namespace Flutter.Net.Flutter.App;
 
-public class MyApp : StatelessWidget
+public readonly record struct MyApp : IStatelessWidget
 {
-    public override Widget Build(IBuildContext context)
+    public IWidget Build(IBuildContext context)
     {
         return new Column([
             new Text("Hello, Avalonia!"),
@@ -13,16 +13,16 @@ public class MyApp : StatelessWidget
     }
 }
 
-public class CounterWidget : StatefulWidget
+public readonly record struct CounterWidget : IStatefulWidget
 {
-    public override IState CreateState() => new CounterState();
+    public State CreateState() => new CounterState();
 }
 
 public class CounterState : State
 {
     private int _count;
 
-    public override Widget Build(IBuildContext context)
+    public override IWidget Build(IBuildContext context)
     {
         return new Column([
             new Text($"Counter: {_count}"),
