@@ -4,7 +4,7 @@ namespace Flutter.Net.Flutter.App;
 
 public class MyApp : StatelessWidget
 {
-    public override Widget Build(BuildContext context)
+    public override Widget Build(IBuildContext context)
     {
         return new Column([
             new Text("Hello, Avalonia!"),
@@ -22,7 +22,7 @@ public class CounterState : State
 {
     private int _count;
 
-    public override Widget Build(BuildContext context)
+    public override Widget Build(IBuildContext context)
     {
         return new Column([
             new Text($"Counter: {_count}"),

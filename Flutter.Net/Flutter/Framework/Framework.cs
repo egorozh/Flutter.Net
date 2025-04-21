@@ -11,12 +11,13 @@ public abstract class Widget
     public abstract Element CreateElement();
 }
 
-public abstract class Element(Widget widget)
+public abstract class Element(Widget widget) : IBuildContext
 {
     public Widget Widget { get; protected set; } = widget;
     public Control? RenderObject { get; protected set; }
 
     public abstract void Mount(Control parent);
+    
     public abstract void Update(Widget newWidget);
 
     public virtual void Dispose()
@@ -24,15 +25,14 @@ public abstract class Element(Widget widget)
     }
 }
 
-public class BuildContext(Element element)
+public interface IBuildContext
 {
-    public Element Element { get; } = element;
 }
 
 // StatelessWidget
 public abstract class StatelessWidget : Widget
 {
-    public abstract Widget Build(BuildContext context);
+    public abstract Widget Build(IBuildContext context);
 
     public override Element CreateElement() => new StatelessElement(this);
 }
@@ -43,13 +43,13 @@ public class StatelessElement(StatelessWidget widget) : Element(widget)
 
     public new StatelessWidget Widget
     {
-        get => (StatelessWidget) base.Widget;
+        get => (StatelessWidget)base.Widget;
         set => base.Widget = value;
     }
 
     public override void Mount(Control parent)
     {
-        var built = Widget.Build(new BuildContext(this));
+        var built = Widget.Build(this);
         _child = built.CreateElement();
         _child.Mount(parent);
         RenderObject = _child.RenderObject;
@@ -60,7 +60,7 @@ public class StatelessElement(StatelessWidget widget) : Element(widget)
         if (newWidget is StatelessWidget newStateless)
         {
             Widget = newStateless;
-            var newChild = newStateless.Build(new BuildContext(this)).CreateElement();
+            var newChild = newStateless.Build(this).CreateElement();
             _child?.Update(newChild.Widget);
         }
     }
@@ -80,7 +80,7 @@ public interface IState
     void InitState();
     void Dispose();
     void DidUpdateWidget(StatefulWidget oldWidget);
-    Widget Build(BuildContext context);
+    Widget Build(IBuildContext context);
     void SetState(Action update);
 }
 
@@ -89,7 +89,7 @@ public abstract class State : IState
     public StatefulWidget Widget { get; private set; } = null!;
     public StatefulElement Element { get; internal set; } = null!;
 
-    protected BuildContext Context => new(Element);
+    protected IBuildContext Context => Element;
 
     public void _Attach(StatefulWidget widget, StatefulElement element)
     {
@@ -109,7 +109,7 @@ public abstract class State : IState
     {
     }
 
-    public abstract Widget Build(BuildContext context);
+    public abstract Widget Build(IBuildContext context);
 
     public void SetState(Action update)
     {
@@ -125,7 +125,7 @@ public class StatefulElement : Element
 
     public new StatefulWidget Widget
     {
-        get => (StatefulWidget) base.Widget;
+        get => (StatefulWidget)base.Widget;
         set => base.Widget = value;
     }
 
@@ -138,7 +138,7 @@ public class StatefulElement : Element
 
     public override void Mount(Control parent)
     {
-        var built = _state.Build(new BuildContext(this));
+        var built = _state.Build(this);
         _child = built.CreateElement();
         _child.Mount(parent);
         RenderObject = _child.RenderObject;
@@ -161,7 +161,7 @@ public class StatefulElement : Element
         if (_child != null && _child.RenderObject?.Parent is Panel parent)
         {
             parent.Children.Remove(_child.RenderObject);
-            var newChild = _state.Build(new BuildContext(this)).CreateElement();
+            var newChild = _state.Build(this).CreateElement();
             newChild.Mount(parent);
             _child = newChild;
             RenderObject = newChild.RenderObject;
@@ -186,13 +186,13 @@ public class TextElement(Text widget) : Element(widget)
 {
     public new Text Widget
     {
-        get => (Text) base.Widget;
+        get => (Text)base.Widget;
         set => base.Widget = value;
     }
 
     public override void Mount(Control parent)
     {
-        RenderObject = new TextBlock {Text = Widget.Value};
+        RenderObject = new TextBlock { Text = Widget.Value };
         if (parent is Panel panel)
             panel.Children.Add(RenderObject);
     }
@@ -202,7 +202,7 @@ public class TextElement(Text widget) : Element(widget)
         if (newWidget is Text newText)
         {
             Widget = newText;
-            ((TextBlock) RenderObject).Text = newText.Value;
+            ((TextBlock)RenderObject).Text = newText.Value;
         }
     }
 }
@@ -218,11 +218,11 @@ public class ColumnElement(Column widget) : Element(widget)
 {
     private readonly List<Element> _children = new();
 
-    public new Column Widget => (Column) base.Widget;
+    public new Column Widget => (Column)base.Widget;
 
     public override void Mount(Control parent)
     {
-        var panel = new StackPanel {Orientation = Orientation.Vertical};
+        var panel = new StackPanel { Orientation = Orientation.Vertical };
         foreach (var childWidget in Widget.Children)
         {
             var childElement = childWidget.CreateElement();
@@ -253,14 +253,14 @@ public class ButtonElement(Button widget) : Element(widget)
 {
     public new Button Widget
     {
-        get => (Button) base.Widget;
+        get => (Button)base.Widget;
         set => base.Widget = value;
     }
 
 
     public override void Mount(Control parent)
     {
-        var button = new Avalonia.Controls.Button {Content = Widget.Text};
+        var button = new Avalonia.Controls.Button { Content = Widget.Text };
         button.Click += (_, _) => Widget.OnPressed();
         RenderObject = button;
 
