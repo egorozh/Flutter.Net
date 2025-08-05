@@ -1,19 +1,9 @@
-﻿using Flutter.Net.Flutter.Framework;
+﻿using Flutter.Material;
+using Flutter.Widgets;
 
-namespace Flutter.Net.Flutter.App;
+namespace Flutter.Net;
 
-public readonly record struct MyApp : IStatelessWidget
-{
-    public IWidget Build(IBuildContext context)
-    {
-        return new Column([
-            new Text("Hello, Avalonia!"),
-            new CounterWidget()
-        ]);
-    }
-}
-
-public readonly record struct CounterWidget : IStatefulWidget
+public readonly record struct CounterPage : IStatefulWidget
 {
     public State CreateState() => new CounterState();
 }

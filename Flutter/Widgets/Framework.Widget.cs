@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Flutter.Net.Flutter.Framework;
+﻿namespace Flutter.Widgets;
 
 public interface IWidget
 {

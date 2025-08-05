@@ -19,4 +19,8 @@
             <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
         </PackageReference>
     </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Flutter\Flutter.csproj" />
+    </ItemGroup>
 </Project>
