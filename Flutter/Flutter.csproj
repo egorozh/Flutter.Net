@@ -9,5 +9,14 @@
     <ItemGroup>
         <PackageReference Include="Avalonia" />
     </ItemGroup>
+    
+    <ItemGroup>
+      <Compile Update="Widgets\Framework.Widget.cs">
+        <DependentUpon>Framework.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Widgets\Framework.Element.cs">
+        <DependentUpon>Framework.cs</DependentUpon>
+      </Compile>
+    </ItemGroup>
 
 </Project>
