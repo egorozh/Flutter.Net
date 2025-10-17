@@ -75,8 +75,11 @@ internal sealed class SizedBoxElement : ControlElement<Border>
 
     private void ApplySize()
     {
-        HostControl.Width = _def.Width ?? 0;
-        HostControl.Height = _def.Height ?? 0;
+        if (_def.Width.HasValue)
+            HostControl.Width = _def.Width.Value;
+
+        if (_def.Height.HasValue)
+            HostControl.Height = _def.Height.Value;
     }
 
     internal override void Rebuild()
@@ -234,10 +237,16 @@ internal sealed class ContainerElement : ControlElement<Border>
     private void Apply()
     {
         HostControl.Background = _def.Color;
+
         if (_def.Padding.HasValue) HostControl.Padding = _def.Padding.Value;
+
         if (_def.BorderRadius.HasValue) HostControl.CornerRadius = _def.BorderRadius.Value;
-        HostControl.Width = _def.Width ?? 0;
-        HostControl.Height = _def.Height ?? 0;
+
+        if (_def.Width.HasValue)
+            HostControl.Width = _def.Width.Value;
+
+        if (_def.Height.HasValue)
+            HostControl.Height = _def.Height.Value;
     }
 
     internal override void Rebuild()
