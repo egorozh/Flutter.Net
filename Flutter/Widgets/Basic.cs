@@ -85,7 +85,7 @@ internal sealed class SizedBoxElement : ControlElement<Border>
     internal override void Rebuild()
     {
         Dirty = false;
-        _child = TreeHelpers.ReconcileSingleChild(this, _child, _def.Child ?? new SizedBox());
+        _child = TreeHelpers.ReconcileSingleChild(this, _child, _def.Child);
     }
 
     internal override void Update(Widget newWidget)
@@ -252,7 +252,7 @@ internal sealed class ContainerElement : ControlElement<Border>
     internal override void Rebuild()
     {
         Dirty = false;
-        if (_def.Child != null) _child = TreeHelpers.ReconcileSingleChild(this, _child, _def.Child);
+        _child = TreeHelpers.ReconcileSingleChild(this, _child, _def.Child);
     }
 
     internal override void Update(Widget newWidget)
