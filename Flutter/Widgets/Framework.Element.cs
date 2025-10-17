@@ -241,8 +241,19 @@ internal static class TreeHelpers
         return e;
     }
 
-    public static Element? ReconcileSingleChild(Element parent, Element? oldChild, Widget newWidget)
+    public static Element? ReconcileSingleChild(Element parent, Element? oldChild, Widget? newWidget)
     {
+        if (newWidget is null)
+        {
+            if (oldChild != null)
+            {
+                parent.RemoveChildRenderObject(oldChild);
+                DeactivateChild(oldChild);
+            }
+
+            return null;
+        }
+
         if (oldChild != null && oldChild.Widget.GetType() == newWidget.GetType() &&
             Equals(oldChild.Widget.Key, newWidget.Key))
         {
@@ -251,7 +262,11 @@ internal static class TreeHelpers
         }
 
         // replace
-        if (oldChild != null) DeactivateChild(oldChild);
+        if (oldChild != null)
+        {
+            parent.RemoveChildRenderObject(oldChild);
+            DeactivateChild(oldChild);
+        }
         var newEl = InflateWidget(parent, newWidget);
         parent.InsertChildRenderObject(0, newEl);
         return newEl;
