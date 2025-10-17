@@ -1,34 +1,59 @@
 ﻿using Avalonia.Controls;
+using Avalonia.Media;
+using Flutter.Foundation;
+using Flutterish.Widgets;
 
 namespace Flutter.Widgets;
 
-public readonly record struct Text(string Value) : IWidget
+// ─────────────────────────────────────────────────────────────────────
+// Text
+// ─────────────────────────────────────────────────────────────────────
+public sealed class Text : Widget
 {
-    public Element CreateElement() => new TextElement(this);
+    public string Data { get; }
+    public double? FontSize { get; }
+    public IBrush? Foreground { get; }
+
+    public Text(string data, double? fontSize = null, IBrush? color = null, Key? key = null) : base(key)
+    {
+        Data = data;
+        FontSize = fontSize;
+        Foreground = color;
+    }
+
+    internal override Element CreateElement() => new TextElement(this);
 }
 
-public class TextElement(Text widget) : Element(widget)
+public sealed class TextElement : ControlElement<TextBlock>
 {
-    public new Text Widget
+    private Text _w;
+
+    public TextElement(Text w) : base(w)
     {
-        get => (Text)base.Widget;
-        set => base.Widget = value;
+        _w = w;
     }
 
-    public override void Mount(Control parent)
+    protected override void OnMount()
     {
-        RenderObject = new TextBlock { Text = Widget.Value };
-
-        if (parent is Panel panel)
-            panel.Children.Add(RenderObject);
+        base.OnMount();
+        Apply(_w);
     }
 
-    public override void Update(IWidget newIWidget)
+    internal override void Rebuild()
     {
-        if (newIWidget is Text newText)
-        {
-            Widget = newText;
-            ((TextBlock)RenderObject).Text = newText.Value;
-        }
+        Dirty = false;
+    }
+
+    internal override void Update(Widget newWidget)
+    {
+        _w = (Text)newWidget;
+        Apply(_w);
+    }
+
+    private void Apply(Text w)
+    {
+        HostControl.Text = w.Data;
+        if (w.FontSize.HasValue) HostControl.FontSize = w.FontSize.Value;
+        if (w.Foreground is not null) HostControl.Foreground = w.Foreground;
     }
 }

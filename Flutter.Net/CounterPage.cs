@@ -1,22 +1,22 @@
-﻿using Flutter.Material;
+﻿
 using Flutter.Widgets;
 
 namespace Flutter.Net;
 
-public readonly record struct CounterPage : IStatefulWidget
+public class CounterPage : StatefulWidget
 {
-    public State CreateState() => new CounterState();
+    public override State CreateState() => new CounterState();
 }
 
 public class CounterState : State
 {
     private int _count;
 
-    public override IWidget Build(IBuildContext context)
+    public override Widget Build(BuildContext context)
     {
         return new Column([
             new Text($"Counter: {_count}"),
-            new Button("Increment", Increment)
+            //new Button("Increment", Increment)
         ]);
     }
 

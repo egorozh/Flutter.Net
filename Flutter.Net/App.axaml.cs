@@ -9,7 +9,7 @@ public class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
-        FlutterExtensions.Run(new MyApp(), ApplicationLifetime);
+        FlutterExtensions.Run(new CounterApp(), ApplicationLifetime);
 
         base.OnFrameworkInitializationCompleted();
     }

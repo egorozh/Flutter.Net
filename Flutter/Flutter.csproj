@@ -17,6 +17,9 @@
       <Compile Update="Widgets\Framework.Element.cs">
         <DependentUpon>Framework.cs</DependentUpon>
       </Compile>
+      <Compile Update="Widgets\Framework.BuildOwner.cs">
+        <DependentUpon>Framework.cs</DependentUpon>
+      </Compile>
     </ItemGroup>
 
 </Project>

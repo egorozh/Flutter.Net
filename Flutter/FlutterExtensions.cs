@@ -6,26 +6,26 @@ namespace Flutter;
 
 public static class FlutterExtensions
 {
-    public static void Run<T>(T application, IApplicationLifetime? applicationLifetime) where T : IWidget
+    public static void Run<T>(T application, IApplicationLifetime? applicationLifetime) where T : Widget
     {
-        var rootPanel = new StackPanel();
+        var host = new WidgetHost
+        {
+            RootWidget = application
+        };
 
-        var appElement = application.CreateElement();
-
-        appElement.Mount(rootPanel);
 
         switch (applicationLifetime)
         {
             case IClassicDesktopStyleApplicationLifetime desktop:
                 desktop.MainWindow = new Window
                 {
-                    Content = rootPanel
+                    Content = host
                 };
                 break;
             case ISingleViewApplicationLifetime singleViewPlatform:
                 singleViewPlatform.MainView = new UserControl
                 {
-                    Content = rootPanel
+                    Content = host
                 };
                 break;
         }
