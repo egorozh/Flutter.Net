@@ -94,6 +94,7 @@ public sealed class FlexPanel : Panel
         double free = Math.Max(0, mainAvail - mainUsed);
 
         // Measure flex children with allocated space proportionally.
+        double flexMainAccum = 0;
         foreach (var c in Children)
         {
             int flex = GetFlex(c);
@@ -106,7 +107,10 @@ public sealed class FlexPanel : Panel
             var s = c.DesiredSize;
             if (Direction == Axis.Horizontal) crossMax = Math.Max(crossMax, s.Height);
             else crossMax = Math.Max(crossMax, s.Width);
+            flexMainAccum += Direction == Axis.Horizontal ? s.Width : s.Height;
         }
+
+        mainUsed += flexMainAccum;
 
         var result = Direction == Axis.Horizontal
             ? new Size(Math.Min(inner.Width, mainUsed + pad.Left + pad.Right), crossMax + pad.Top + pad.Bottom)
