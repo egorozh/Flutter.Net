@@ -100,6 +100,8 @@ public sealed class StatelessElement : Element
     {
     }
 
+    public override Control? Control => _child?.Control;
+
     protected override void OnMount()
     {
         base.OnMount();
@@ -141,6 +143,8 @@ public sealed class StatefulElement : Element
         State = widget.CreateState();
         State.Element = this;
     }
+
+    public override Control? Control => _child?.Control;
 
     protected override void OnMount()
     {
@@ -184,6 +188,8 @@ public sealed class InheritedElement : Element
     public InheritedElement(InheritedWidget widget) : base(widget)
     {
     }
+
+    public override Control? Control => _child?.Control;
 
     protected override void OnMount()
     {
