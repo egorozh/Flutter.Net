@@ -1,4 +1,6 @@
-﻿using Avalonia;
+﻿using System;
+using System.Linq;
+using Avalonia;
 using Avalonia.Controls;
 
 namespace Flutter.Rendering;
@@ -148,24 +150,49 @@ public sealed class FlexPanel : Panel
         }
 
         // Main-axis positioning
-        double start = inner.X;
-        double ystart = inner.Y;
-        double offset = 0;
-        double used = sizes.Sum() + (Spacing > 0 && Children.Count > 1 ? Spacing * (Children.Count - 1) : 0);
+        int childCount = Children.Count;
+        int gapCount = Math.Max(0, childCount - 1);
+        double baseSpacing = Spacing;
+        double betweenSpace = baseSpacing;
+        double usedMainWithoutSpacing = sizes.Sum();
+        double usedWithSpacing = usedMainWithoutSpacing + betweenSpace * gapCount;
+        double leadingSpace = 0;
+
         switch (MainAxisAlignment)
         {
-            case MainAxisAlignment.Start: offset = 0; break;
-            case MainAxisAlignment.Center: offset = (mainExtent - used) / 2; break;
-            case MainAxisAlignment.End: offset = mainExtent - used; break;
-            case MainAxisAlignment.SpaceBetween:
-                offset = 0;
-                if (Children.Count > 1) Spacing = (mainExtent - sizes.Sum()) / (Children.Count - 1);
+            case MainAxisAlignment.Start:
+                leadingSpace = 0;
                 break;
-            case MainAxisAlignment.SpaceAround: offset = (mainExtent - used) / (Children.Count * 2); break;
-            case MainAxisAlignment.SpaceEvenly: offset = (mainExtent - used) / (Children.Count + 1); break;
+            case MainAxisAlignment.Center:
+                leadingSpace = Math.Max(0, (mainExtent - usedWithSpacing) / 2);
+                break;
+            case MainAxisAlignment.End:
+                leadingSpace = Math.Max(0, mainExtent - usedWithSpacing);
+                break;
+            case MainAxisAlignment.SpaceBetween:
+                betweenSpace = gapCount > 0
+                    ? Math.Max(0, (mainExtent - usedMainWithoutSpacing) / gapCount)
+                    : 0;
+                usedWithSpacing = usedMainWithoutSpacing + betweenSpace * gapCount;
+                leadingSpace = 0;
+                break;
+            case MainAxisAlignment.SpaceAround:
+                betweenSpace = childCount > 0
+                    ? Math.Max(0, (mainExtent - usedMainWithoutSpacing) / childCount)
+                    : 0;
+                usedWithSpacing = usedMainWithoutSpacing + betweenSpace * gapCount;
+                leadingSpace = betweenSpace / 2;
+                break;
+            case MainAxisAlignment.SpaceEvenly:
+                betweenSpace = childCount > 0
+                    ? Math.Max(0, (mainExtent - usedMainWithoutSpacing) / (childCount + 1))
+                    : 0;
+                usedWithSpacing = usedMainWithoutSpacing + betweenSpace * gapCount;
+                leadingSpace = betweenSpace;
+                break;
         }
 
-        double cursor = offset;
+        double cursor = leadingSpace;
         for (int i = 0; i < Children.Count; i++)
         {
             var c = Children[i];
@@ -204,7 +231,7 @@ public sealed class FlexPanel : Panel
 
             var rect = new Rect(x, y, w, h);
             c.Arrange(rect);
-            cursor += sizes[i] + (i < Children.Count - 1 ? Spacing : 0);
+            cursor += sizes[i] + (i < Children.Count - 1 ? betweenSpace : 0);
         }
 
         return finalSize;
