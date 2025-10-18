@@ -419,6 +419,28 @@ internal sealed class FlexElement : ControlElement<FlexPanel>
         var ctrl = child.Control as Control;
         if (ctrl != null)
         {
+            if (ReferenceEquals(ctrl.Parent, HostControl))
+            {
+                var currentIndex = HostControl.Children.IndexOf(ctrl);
+                if (currentIndex == index)
+                {
+                    return; // already in the right spot
+                }
+
+                if (currentIndex >= 0)
+                {
+                    HostControl.Children.RemoveAt(currentIndex);
+                    if (currentIndex < index)
+                    {
+                        index--;
+                    }
+                }
+            }
+            else if (ctrl.Parent is Panel otherParent)
+            {
+                otherParent.Children.Remove(ctrl);
+            }
+
             if (index <= HostControl.Children.Count) HostControl.Children.Insert(index, ctrl);
             else HostControl.Children.Add(ctrl);
         }
