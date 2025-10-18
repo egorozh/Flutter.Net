@@ -61,13 +61,23 @@ public sealed class FlexPanel : Panel
     {
         var pad = Padding ?? new Thickness(0);
         var inner = availableSize.Deflate(pad);
-        double mainUsed = 0, crossMax = 0;
+        double innerWidth = double.IsInfinity(inner.Width) ? inner.Width : Math.Max(0, inner.Width);
+        double innerHeight = double.IsInfinity(inner.Height) ? inner.Height : Math.Max(0, inner.Height);
+
+        double maxMain = Direction == Axis.Horizontal ? innerWidth : innerHeight;
+        bool canFlex = !double.IsInfinity(maxMain);
+
+        double allocatedMain = 0;
+        double crossMax = 0;
         int totalFlex = 0;
+        int childCount = Children.Count;
+        int gapCount = Math.Max(0, childCount - 1);
+        double spacingTotal = gapCount > 0 ? Spacing * gapCount : 0;
 
         foreach (var c in Children)
         {
             int flex = GetFlex(c);
-            if (flex > 0)
+            if (flex > 0 && canFlex)
             {
                 totalFlex += flex;
                 continue;
@@ -75,53 +85,47 @@ public sealed class FlexPanel : Panel
 
             c.Measure(inner);
             var s = c.DesiredSize;
-            if (Direction == Axis.Horizontal)
-            {
-                mainUsed += s.Width;
-                crossMax = Math.Max(crossMax, s.Height);
-            }
-            else
-            {
-                mainUsed += s.Height;
-                crossMax = Math.Max(crossMax, s.Width);
-            }
+            double main = Direction == Axis.Horizontal ? s.Width : s.Height;
+            double cross = Direction == Axis.Horizontal ? s.Height : s.Width;
+            allocatedMain += main;
+            crossMax = Math.Max(crossMax, cross);
         }
 
-        if (Spacing > 0 && Children.Count > 1)
-            mainUsed += Spacing * (Children.Count - 1);
+        allocatedMain += spacingTotal;
 
-        double mainAvail = Direction == Axis.Horizontal ? inner.Width : inner.Height;
-        double free = Math.Max(0, mainAvail - mainUsed);
-
-        // Measure flex children with allocated space proportionally.
-        double flexMainAccum = 0;
-        foreach (var c in Children)
+        if (totalFlex > 0 && canFlex)
         {
-            int flex = GetFlex(c);
-            if (flex <= 0) continue;
-            double share = totalFlex == 0 ? 0 : free * (double)flex / totalFlex;
-            Size childConstraint = Direction == Axis.Horizontal
-                ? new Size(share, inner.Height)
-                : new Size(inner.Width, share);
-            c.Measure(childConstraint);
-            var s = c.DesiredSize;
-            if (Direction == Axis.Horizontal) crossMax = Math.Max(crossMax, s.Height);
-            else crossMax = Math.Max(crossMax, s.Width);
-            flexMainAccum += Direction == Axis.Horizontal ? s.Width : s.Height;
+            double freeSpace = Math.Max(0, maxMain - allocatedMain);
+            foreach (var c in Children)
+            {
+                int flex = GetFlex(c);
+                if (flex <= 0) continue;
+
+                double share = totalFlex == 0 ? 0 : freeSpace * flex / totalFlex;
+                Size constraint = Direction == Axis.Horizontal
+                    ? new Size(share, innerHeight)
+                    : new Size(innerWidth, share);
+                c.Measure(constraint);
+
+                var s = c.DesiredSize;
+                double cross = Direction == Axis.Horizontal ? s.Height : s.Width;
+                crossMax = Math.Max(crossMax, cross);
+                allocatedMain += share;
+            }
         }
 
-        mainUsed += flexMainAccum;
+        double usedMain = allocatedMain;
+        double usedCross = crossMax;
 
-        var result = Direction == Axis.Horizontal
-            ? new Size(Math.Min(inner.Width, mainUsed + pad.Left + pad.Right), crossMax + pad.Top + pad.Bottom)
-            : new Size(crossMax + pad.Left + pad.Right, Math.Min(inner.Height, mainUsed + pad.Top + pad.Bottom));
+        var constrained = Direction == Axis.Horizontal
+            ? new Size(Math.Min(innerWidth, usedMain + pad.Left + pad.Right), usedCross + pad.Top + pad.Bottom)
+            : new Size(usedCross + pad.Left + pad.Right, Math.Min(innerHeight, usedMain + pad.Top + pad.Bottom));
 
-        // Ensure we report at least the used size with padding
         var used = Direction == Axis.Horizontal
-            ? new Size(mainUsed + pad.Left + pad.Right, crossMax + pad.Top + pad.Bottom)
-            : new Size(crossMax + pad.Left + pad.Right, mainUsed + pad.Top + pad.Bottom);
+            ? new Size(usedMain + pad.Left + pad.Right, usedCross + pad.Top + pad.Bottom)
+            : new Size(usedCross + pad.Left + pad.Right, usedMain + pad.Top + pad.Bottom);
 
-        return new Size(Math.Max(result.Width, used.Width), Math.Max(result.Height, used.Height));
+        return new Size(Math.Max(constrained.Width, used.Width), Math.Max(constrained.Height, used.Height));
     }
 
     protected override Size ArrangeOverride(Size finalSize)
@@ -130,6 +134,7 @@ public sealed class FlexPanel : Panel
         Rect inner = new Rect(finalSize).Deflate(pad);
         double mainExtent = Direction == Axis.Horizontal ? inner.Width : inner.Height;
         double crossExtent = Direction == Axis.Horizontal ? inner.Height : inner.Width;
+        bool canFlex = !double.IsInfinity(mainExtent);
 
         // Compute sizes
         double[] sizes = new double[Children.Count];
@@ -139,18 +144,31 @@ public sealed class FlexPanel : Panel
         {
             var c = Children[i];
             int flex = GetFlex(c);
-            if (flex > 0) totalFlex += flex;
-            else fixedSum += Direction == Axis.Horizontal ? c.DesiredSize.Width : c.DesiredSize.Height;
+            double desiredMain = Direction == Axis.Horizontal ? c.DesiredSize.Width : c.DesiredSize.Height;
+            if (flex > 0 && canFlex)
+            {
+                totalFlex += flex;
+            }
+            else
+            {
+                sizes[i] = desiredMain;
+                fixedSum += desiredMain;
+            }
         }
 
         if (Spacing > 0 && Children.Count > 1) fixedSum += Spacing * (Children.Count - 1);
-        double free = Math.Max(0, mainExtent - fixedSum);
+        double free = canFlex ? Math.Max(0, mainExtent - fixedSum) : 0;
         for (int i = 0; i < Children.Count; i++)
         {
             var c = Children[i];
             int flex = GetFlex(c);
-            if (flex > 0) sizes[i] = totalFlex == 0 ? 0 : free * (double)flex / totalFlex;
-            else sizes[i] = Direction == Axis.Horizontal ? c.DesiredSize.Width : c.DesiredSize.Height;
+            if (flex > 0)
+            {
+                if (canFlex && totalFlex > 0)
+                    sizes[i] = free * flex / totalFlex;
+                else
+                    sizes[i] = Direction == Axis.Horizontal ? c.DesiredSize.Width : c.DesiredSize.Height;
+            }
         }
 
         // Main-axis positioning
