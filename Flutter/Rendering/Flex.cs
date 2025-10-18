@@ -196,37 +196,46 @@ public sealed class FlexPanel : Panel
         for (int i = 0; i < Children.Count; i++)
         {
             var c = Children[i];
-            double w = Direction == Axis.Horizontal ? sizes[i] : crossExtent;
-            double h = Direction == Axis.Horizontal ? crossExtent : sizes[i];
-            double x = Direction == Axis.Horizontal ? inner.X + cursor : inner.X;
-            double y = Direction == Axis.Horizontal ? inner.Y : inner.Y + cursor;
+            double main = sizes[i];
+            double crossDesired = Direction == Axis.Horizontal ? c.DesiredSize.Height : c.DesiredSize.Width;
+            double crossSize = crossDesired;
+            double crossOffset = 0;
+            bool finiteCross = !double.IsInfinity(crossExtent);
 
-            // Cross-axis alignment (approximation)
             switch (CrossAxisAlignment)
             {
                 case CrossAxisAlignment.Start:
-                    if (Direction == Axis.Horizontal) h = c.DesiredSize.Height;
-                    else w = c.DesiredSize.Width;
+                    crossSize = crossDesired;
+                    crossOffset = 0;
                     break;
                 case CrossAxisAlignment.Center:
-                    // leave w/h as computed, center below
+                    crossSize = crossDesired;
+                    crossOffset = finiteCross ? Math.Max(0, (crossExtent - crossSize) / 2) : 0;
                     break;
                 case CrossAxisAlignment.End:
-                    if (Direction == Axis.Horizontal)
-                    {
-                        y += crossExtent - c.DesiredSize.Height;
-                        h = c.DesiredSize.Height;
-                    }
-                    else
-                    {
-                        x += crossExtent - c.DesiredSize.Width;
-                        w = c.DesiredSize.Width;
-                    }
-
+                    crossSize = crossDesired;
+                    crossOffset = finiteCross ? Math.Max(0, crossExtent - crossSize) : 0;
                     break;
                 case CrossAxisAlignment.Stretch:
-                    // already stretched by using crossExtent
+                    crossSize = finiteCross ? crossExtent : crossDesired;
+                    crossOffset = 0;
                     break;
+            }
+
+            double w, h, x, y;
+            if (Direction == Axis.Horizontal)
+            {
+                w = main;
+                h = crossSize;
+                x = inner.X + cursor;
+                y = inner.Y + crossOffset;
+            }
+            else
+            {
+                w = crossSize;
+                h = main;
+                x = inner.X + crossOffset;
+                y = inner.Y + cursor;
             }
 
             var rect = new Rect(x, y, w, h);
