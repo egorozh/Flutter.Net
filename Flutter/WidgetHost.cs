@@ -10,7 +10,7 @@ namespace Flutter;
 public sealed class WidgetHost : ContentControl
 {
     private BuildOwner? _owner;
-    private Element? _rootElement;
+    private RootElement? _rootElement;
     private Widget? _rootWidget;
 
     public Widget? RootWidget
@@ -28,24 +28,83 @@ public sealed class WidgetHost : ContentControl
     {
         if (_rootWidget is null)
         {
+            if (_rootElement != null)
+            {
+                _rootElement.Unmount();
+                _rootElement = null;
+            }
+
             Content = null;
             return;
         }
 
-        if (_owner is null)
+        _owner ??= new BuildOwner();
+
+        if (_rootElement is null)
         {
-            _owner = new BuildOwner();
-            _rootElement = _rootWidget.CreateElement();
+            _rootElement = new RootElement(this, _rootWidget);
             _rootElement.Attach(_owner);
             _rootElement.Mount(parent: null);
-            // find topmost control from the element tree
-            Content = _rootElement.Control;
         }
         else
         {
-            Debug.Assert(_rootElement != null);
             _rootElement.Update(_rootWidget);
-            _rootElement.MarkNeedsBuild();
+        }
+    }
+
+    private sealed class RootElement : Element
+    {
+        private readonly WidgetHost _host;
+        private Element? _child;
+
+        public RootElement(WidgetHost host, Widget widget) : base(widget)
+        {
+            _host = host;
+        }
+
+        protected override void OnMount()
+        {
+            base.OnMount();
+            Rebuild();
+        }
+
+        internal override void Rebuild()
+        {
+            Dirty = false;
+            _child = TreeHelpers.ReconcileSingleChild(this, _child, Widget);
+        }
+
+        internal override void Update(Widget newWidget)
+        {
+            base.Update(newWidget);
+            MarkNeedsBuild();
+        }
+
+        internal override void InsertChildRenderObject(int index, Element child)
+        {
+            if (child.Control is Control control)
+            {
+                _host.Content = control;
+            }
+        }
+
+        internal override void RemoveChildRenderObject(Element child)
+        {
+            if (ReferenceEquals(_host.Content, child.Control))
+            {
+                _host.Content = null;
+            }
+        }
+
+        internal override void Unmount()
+        {
+            if (_child != null)
+            {
+                TreeHelpers.DeactivateChild(_child);
+                _child = null;
+            }
+
+            base.Unmount();
         }
     }
 }
