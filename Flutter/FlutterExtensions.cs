@@ -1,5 +1,4 @@
-﻿using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
+﻿using Avalonia.Controls.ApplicationLifetimes;
 using Flutter.Widgets;
 
 namespace Flutter;
@@ -17,16 +16,10 @@ public static class FlutterExtensions
         switch (applicationLifetime)
         {
             case IClassicDesktopStyleApplicationLifetime desktop:
-                desktop.MainWindow = new Window
-                {
-                    Content = host
-                };
+                desktop.MainWindow = new DemoWindow();
                 break;
             case ISingleViewApplicationLifetime singleViewPlatform:
-                singleViewPlatform.MainView = new UserControl
-                {
-                    Content = host
-                };
+                singleViewPlatform.MainView = host;
                 break;
         }
     }
