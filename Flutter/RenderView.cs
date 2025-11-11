@@ -8,7 +8,7 @@ public sealed class RenderView : RenderBox
 {
     public RenderBox? Child { get; set; }
 
-    public override void Layout(BoxConstraints constraints)
+    public override void Layout(BoxConstraints constraints, bool parentUsesSize = false)
     {
         // RenderView просто прокидывает constraints ребёнку
         if (Child != null)

@@ -10,7 +10,7 @@ public sealed class RenderColumn : RenderBox
     public List<RenderBox> Children { get; } = new();
     private readonly List<Point> _childOffsets = new();
 
-    public override void Layout(BoxConstraints constraints)
+    public override void Layout(BoxConstraints constraints, bool parentUsesSize = false)
     {
         _childOffsets.Clear();
         double y = 0;

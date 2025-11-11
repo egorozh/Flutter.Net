@@ -60,7 +60,7 @@ public sealed class RenderAnimatedBox : RenderBox, IDisposable
         else MarkNeedsPaint();
     }
 
-    public override void Layout(BoxConstraints constraints)
+    public override void Layout(BoxConstraints constraints, bool parentUsesSize = false)
     {
         // Задаёмся анимируемыми размерами, но не превышаем constraints
         var desired = new Size(_currentW <= 0 ? _fromW : _currentW,

@@ -15,7 +15,7 @@ public sealed class RenderParagraph : RenderBox
 
     public RenderParagraph(string text) => Text = text;
 
-    public override void Layout(BoxConstraints constraints)
+    public override void Layout(BoxConstraints constraints, bool parentUsesSize = false)
     {
         _layout = new TextLayout(
             text: Text,

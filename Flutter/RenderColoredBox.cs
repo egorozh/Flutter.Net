@@ -19,7 +19,7 @@ public sealed class RenderColoredBox : RenderBox
         Radius = radius;
     }
 
-    public override void Layout(BoxConstraints constraints)
+    public override void Layout(BoxConstraints constraints, bool parentUsesSize = false)
     {
         double w = Width ?? constraints.MaxWidth;
         double h = Height ?? 80;
