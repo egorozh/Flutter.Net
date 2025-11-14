@@ -37,7 +37,7 @@ public sealed class PipelineOwner
         _needsPaint = true; // layout обычно ведёт к перерисовке
     }
 
-    public void FlushPaint(DrawingContext ctx)
+    public void FlushPaint(PaintingContext ctx)
     {
         if (!_needsPaint) return;
         

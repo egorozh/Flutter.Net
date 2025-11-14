@@ -46,6 +46,6 @@ public sealed class FlutterHost : Control
     {
         _pipeline.FlushLayout(Bounds.Size);
 
-        _pipeline.FlushPaint(context);
+        _pipeline.FlushPaint(new PaintingContext(context));
     }
 }

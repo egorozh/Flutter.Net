@@ -7,28 +7,25 @@ namespace Flutter;
 public sealed class RenderColoredBox : RenderBox
 {
     public SolidColorBrush Brush { get; }
-    public double? Width { get; set; }
-    public double? Height { get; set; }
+
     public double Radius { get; set; }
 
-    public RenderColoredBox(Color color, double? width = null, double? height = null, double radius = 12)
+    public RenderColoredBox(Color color, double radius = 12)
     {
         Brush = new SolidColorBrush(color);
-        Width = width;
-        Height = height;
+  
         Radius = radius;
     }
 
-    public override void Layout(BoxConstraints constraints, bool parentUsesSize = false)
+    protected override void PerformLayout()
     {
-        double w = Width ?? constraints.MaxWidth;
-        double h = Height ?? 80;
-        Size = constraints.Constrain(new Size(w, h));
+        Size = new Size(40,40);
     }
 
-    public override void Paint(DrawingContext ctx, Point offset)
+    public override void Paint(PaintingContext ctx, Point offset)
     {
         var rect = new Rect(offset, Size);
-        ctx.DrawRectangle(Brush, pen: null, rect: rect, Radius, Radius);
+        
+        ctx.Context.DrawRectangle(Brush, pen: null, rect: rect, Radius, Radius);
     }
 }

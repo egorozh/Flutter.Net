@@ -15,21 +15,21 @@ public sealed class RenderParagraph : RenderBox
 
     public RenderParagraph(string text) => Text = text;
 
-    public override void Layout(BoxConstraints constraints, bool parentUsesSize = false)
+    protected override void PerformLayout()
     {
         _layout = new TextLayout(
             text: Text,
             typeface: Typeface,
             fontSize: FontSize,
             foreground: Foreground,
-            maxWidth: double.IsInfinity(constraints.MaxWidth) ? 1000 : constraints.MaxWidth
+            maxWidth: double.IsInfinity(Constraints.MaxWidth) ? 1000 : Constraints.MaxWidth
         );
 
-        Size = constraints.Constrain(new Size(_layout.Width, _layout.Height));
+        Size = Constraints.Constrain(new Size(_layout.Width, _layout.Height));
     }
 
-    public override void Paint(DrawingContext ctx, Point offset)
+    public override void Paint(PaintingContext ctx, Point offset)
     {
-        _layout?.Draw(ctx, offset);
+        _layout?.Draw(ctx.Context, offset);
     }
 }

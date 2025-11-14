@@ -60,18 +60,19 @@ public sealed class RenderAnimatedBox : RenderBox, IDisposable
         else MarkNeedsPaint();
     }
 
-    public override void Layout(BoxConstraints constraints, bool parentUsesSize = false)
+    protected override void PerformLayout()
     {
         // Задаёмся анимируемыми размерами, но не превышаем constraints
         var desired = new Size(_currentW <= 0 ? _fromW : _currentW,
             _currentH <= 0 ? _fromH : _currentH);
-        Size = constraints.Constrain(desired);
+
+        Size = Constraints.Constrain(desired);
     }
 
-    public override void Paint(DrawingContext ctx, Point offset)
+    public override void Paint(PaintingContext ctx, Point offset)
     {
         var rect = new Rect(offset, Size);
-        ctx.DrawRectangle(Brush, null, rect, 16, 16);
+        ctx.Context.DrawRectangle(Brush, null, rect, 16, 16);
     }
 
     public void Dispose()

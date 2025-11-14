@@ -3,6 +3,16 @@ using Avalonia.Controls;
 
 namespace Flutter.Rendering;
 
+/// <summary>
+/// How much space should be occupied in the main axis.
+/// </summary>
+public enum MainAxisSize
+{
+    Min,
+
+    Max
+}
+
 /// How the children should be placed along the main axis in a flex layout.
 ///
 /// See also:
@@ -32,13 +42,61 @@ public enum CrossAxisAlignment
     Start,
     Center,
     End,
-    Stretch
+    Stretch,
+    Baseline
 }
 
 public enum Axis
 {
     Horizontal,
     Vertical
+}
+
+/// How the child is inscribed into the available space.
+///
+/// See also:
+///
+///  * [RenderFlex], the flex render object.
+///  * [Column], [Row], and [Flex], the flex widgets.
+///  * [Expanded], the widget equivalent of [tight].
+///  * [Flexible], the widget equivalent of [loose].
+public enum FlexFit
+{
+    /// The child is forced to fill the available space.
+    ///
+    /// The [Expanded] widget assigns this kind of [FlexFit] to its child.
+    Tight,
+
+    /// The child can be at most as large as the available space (but is
+    /// allowed to be smaller).
+    ///
+    /// The [Flexible] widget assigns this kind of [FlexFit] to its child.
+    Loose,
+}
+
+
+
+/// Parent data for use with [RenderFlex].
+public sealed class FlexParentData : ContainerBoxParentData<RenderBox>
+{
+    /// The flex factor to use for this child.
+    ///
+    /// If null or zero, the child is inflexible and determines its own size. If
+    /// non-zero, the amount of space the child's can occupy in the main axis is
+    /// determined by dividing the free space (after placing the inflexible
+    /// children) according to the flex factors of the flexible children.
+    public int? flex;
+
+    /// How a flexible child is inscribed into the available space.
+    ///
+    /// If [flex] is non-zero, the [fit] determines whether the child fills the
+    /// space the parent makes available during layout. If the fit is
+    /// [FlexFit.tight], the child is required to fill the available space. If the
+    /// fit is [FlexFit.loose], the child can be at most as large as the available
+    /// space (but is allowed to be smaller).
+    public FlexFit? fit;
+
+    public override string ToString() => $"{base.ToString()}; flex={flex}; fit={fit}";
 }
 
 public sealed class FlexPanel : Panel

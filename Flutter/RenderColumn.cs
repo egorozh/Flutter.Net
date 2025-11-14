@@ -4,7 +4,7 @@ using Flutter.Rendering;
 
 namespace Flutter;
 
-public sealed class RenderColumn : RenderBox
+public sealed class RenderColumn2 : RenderBox
 {
     public double Spacing { get; set; } = 8;
     public List<RenderBox> Children { get; } = new();
@@ -18,7 +18,7 @@ public sealed class RenderColumn : RenderBox
 
         foreach (var child in Children)
         {
-            child.Parent = this;
+            //child.Parent = this;
 
             child.Layout(new BoxConstraints(0, constraints.MaxWidth, 0, double.PositiveInfinity));
 
@@ -35,7 +35,7 @@ public sealed class RenderColumn : RenderBox
         Size = constraints.Constrain(new Size(maxWidth, y));
     }
 
-    public override void Paint(DrawingContext ctx, Point offset)
+    public override void Paint(PaintingContext ctx, Point offset)
     {
         for (int i = 0; i < Children.Count; i++)
         {

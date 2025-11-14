@@ -22,7 +22,7 @@ public sealed class RenderView : RenderBox
         }
     }
 
-    public override void Paint(DrawingContext ctx, Point offset)
+    public override void Paint(PaintingContext ctx, Point offset)
     {
         Child?.Paint(ctx, offset);
     }

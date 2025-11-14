@@ -2,6 +2,52 @@
 
 namespace Flutter.Rendering;
 
+/// Parent data used by [RenderBox] and its subclasses.
+///
+/// {@tool dartpad}
+/// Parent data is used to communicate to a render object about its
+/// children. In this example, there are two render objects that perform
+/// text layout. They use parent data to identify the kind of child they
+/// are laying out, and space the children accordingly.
+///
+/// ** See code in examples/api/lib/rendering/box/parent_data.0.dart **
+/// {@end-tool}
+public class BoxParentData : ParentData
+{
+    /// The offset at which to paint the child in the parent's coordinate system.
+    public Point offset = new Point();
+
+    public override string ToString() => $"offset={offset}";
+}
+
+/// Abstract [ParentData] subclass for [RenderBox] subclasses that want the
+/// [ContainerRenderObjectMixin].
+///
+/// This is a convenience class that mixes in the relevant classes with
+/// the relevant type arguments.
+public abstract class ContainerBoxParentData<TChild> : BoxParentData, IContainerParentDataMixin<TChild>
+    where TChild : RenderObject
+{
+    private readonly IContainerParentDataMixin<TChild> _mixin1;
+
+    protected ContainerBoxParentData()
+    {
+        _mixin1 = new ContainerParentDataMixin<TChild>(this);
+    }
+
+    public TChild? previousSibling
+    {
+        get => _mixin1.previousSibling;
+        set => _mixin1.previousSibling = value;
+    }
+
+    public TChild? nextSibling
+    {
+        get => _mixin1.nextSibling;
+        set => _mixin1.nextSibling = value;
+    }
+}
+
 /// <summary>
 /// Immutable layout constraints for [RenderBox] layout.
 /// </summary>
@@ -16,6 +62,13 @@ public readonly record struct BoxConstraints(
     double MaxHeight = double.PositiveInfinity)
     : IConstraints
 {
+    /// The biggest size that satisfies the constraints.
+    public Size Biggest => new Size(ConstrainWidth(), ConstrainHeight());
+
+    /// The smallest size that satisfies the constraints.
+    public Size Smallest => new Size(ConstrainWidth(0.0), ConstrainHeight(0.0));
+
+
     /// Whether there is exactly one width value that satisfies the constraints.
     public bool HasTightWidth => MinWidth >= MaxWidth;
 
@@ -25,6 +78,14 @@ public readonly record struct BoxConstraints(
     public bool IsTight => HasTightWidth && HasTightHeight;
 
     public bool IsNormalized => MinWidth >= 0.0 && MinWidth <= MaxWidth && MinHeight >= 0.0 && MinHeight <= MaxHeight;
+
+    /// A box constraints with the width and height constraints flipped.
+    public BoxConstraints Flipped => new(
+        MinWidth: MinHeight,
+        MaxWidth: MaxHeight,
+        MinHeight: MinWidth,
+        MaxHeight: MaxWidth
+    );
 
 
     public Size Constrain(Size size)
@@ -39,8 +100,32 @@ public readonly record struct BoxConstraints(
     /// </summary>
     public static BoxConstraints Tight(Size s) => new BoxConstraints(s.Width, s.Width, s.Height, s.Height);
 
+    /// Creates box constraints that require the given width or height.
+    public static BoxConstraints TightFor(double? width = null, double? height = null)
+        => new BoxConstraints(
+            width ?? 0.0,
+            width ?? double.PositiveInfinity,
+            height ?? 0.0,
+            height ?? double.PositiveInfinity);
+
     public static BoxConstraints Loose(Size s) => new BoxConstraints(0, s.Width, 0, s.Height);
 
     public BoxConstraints Tighten(double? width = null, double? height = null) =>
         new BoxConstraints(width ?? MinWidth, width ?? MaxWidth, height ?? MinHeight, height ?? MaxHeight);
+
+    /// Returns the width that both satisfies the constraints and is as close as
+    /// possible to the given width.
+    public double ConstrainWidth(double width = double.PositiveInfinity)
+    {
+        //assert(debugAssertIsValid());
+        return Math.Clamp(width, MinWidth, MaxWidth);
+    }
+
+    /// Returns the height that both satisfies the constraints and is as close as
+    /// possible to the given height.
+    public double ConstrainHeight(double height = double.PositiveInfinity)
+    {
+        //assert(debugAssertIsValid());
+        return Math.Clamp(height, MinHeight, MaxHeight);
+    }
 }
