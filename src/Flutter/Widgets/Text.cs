@@ -1,58 +1,39 @@
-﻿using Avalonia.Controls;
 using Avalonia.Media;
 using Flutter.Foundation;
+using Flutter.Rendering;
 
 namespace Flutter.Widgets;
 
-// ─────────────────────────────────────────────────────────────────────
-// Text
-// ─────────────────────────────────────────────────────────────────────
-public sealed class Text : Widget
+public sealed class Text : LeafRenderObjectWidget
 {
-    public string Data { get; }
-    public double? FontSize { get; }
-    public IBrush? Foreground { get; }
-
-    public Text(string data, double? fontSize = null, IBrush? color = null, Key? key = null) : base(key)
+    public Text(string data, double? fontSize = null, Color? color = null, Key? key = null) : base(key)
     {
         Data = data;
         FontSize = fontSize;
-        Foreground = color;
+        Color = color;
     }
 
-    internal override Element CreateElement() => new TextElement(this);
-}
+    public string Data { get; }
 
-public sealed class TextElement : ControlElement<TextBlock>
-{
-    private Text _w;
+    public double? FontSize { get; }
 
-    public TextElement(Text w) : base(w)
+    public Color? Color { get; }
+
+    internal override RenderObject CreateRenderObject(BuildContext context)
     {
-        _w = w;
+        return new RenderParagraph(Data)
+        {
+            FontSize = FontSize ?? 14,
+            Foreground = new SolidColorBrush(Color ?? Colors.Black)
+        };
     }
 
-    protected override void OnMount()
+    internal override void UpdateRenderObject(BuildContext context, RenderObject renderObject)
     {
-        base.OnMount();
-        Apply(_w);
-    }
-
-    internal override void Rebuild()
-    {
-        Dirty = false;
-    }
-
-    internal override void Update(Widget newWidget)
-    {
-        _w = (Text)newWidget;
-        Apply(_w);
-    }
-
-    private void Apply(Text w)
-    {
-        HostControl.Text = w.Data;
-        if (w.FontSize.HasValue) HostControl.FontSize = w.FontSize.Value;
-        if (w.Foreground is not null) HostControl.Foreground = w.Foreground;
+        var paragraph = (RenderParagraph)renderObject;
+        paragraph.Text = Data;
+        paragraph.FontSize = FontSize ?? 14;
+        paragraph.Foreground = new SolidColorBrush(Color ?? Colors.Black);
+        paragraph.MarkNeedsLayout();
     }
 }

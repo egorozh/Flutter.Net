@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Media;
 using Flutter.Rendering;
 using Flutter.Widgets;
@@ -16,43 +16,35 @@ public sealed class CounterApp : StatefulWidget
         public override Widget Build(BuildContext context)
         {
             return new Container(
-                color: Brushes.White,
+                color: Colors.White,
                 padding: new Thickness(24),
                 child: new Column(
+                    crossAxisAlignment: CrossAxisAlignment.Stretch,
+                    spacing: 12,
                     children:
                     [
-                        new Text("Flutter Counter", fontSize: 20, color: Brushes.Black),
-
-                        new SizedBox(height: 12),
-
-                        new Text($"Count: {_count}", fontSize: 16, color: Brushes.DarkSlateBlue),
-
-                        new SizedBox(height: 12),
-
+                        new Text("Flutter Counter", fontSize: 24, color: Colors.Black),
+                        new Text($"Count: {_count}", fontSize: 18, color: Colors.DarkSlateBlue),
                         new Row(
-                            mainAxisAlignment: MainAxisAlignment.SpaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.Stretch,
                             spacing: 12,
+                            mainAxisAlignment: MainAxisAlignment.Start,
                             children:
                             [
                                 new Expanded(
-                                    child: new Container(
-                                        color: Brushes.LightGray,
-                                        padding: new Thickness(12),
-                                        child: new Text("-")
-                                    )
-                                ),
-
-                                new SizedBox(width: 12),
-
-                                new Expanded(new Container(
-                                        color: Brushes.SkyBlue,
-                                        padding: new Thickness(12),
-                                        child: new Text("+")
-                                    )
-                                )
-                            ]
-                        )
+                                    child: new Button(
+                                        label: "-",
+                                        onPressed: () => SetState(() => _count--),
+                                        background: Colors.LightGray,
+                                        foreground: Colors.Black,
+                                        fontSize: 20)),
+                                new Expanded(
+                                    child: new Button(
+                                        label: "+",
+                                        onPressed: () => SetState(() => _count++),
+                                        background: Colors.SkyBlue,
+                                        foreground: Colors.Black,
+                                        fontSize: 20))
+                            ])
                     ])
             );
         }

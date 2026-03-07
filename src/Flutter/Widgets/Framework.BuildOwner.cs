@@ -63,8 +63,8 @@ public sealed class BuildOwner
             if (y is null) return 1;
             int d = x.Depth.CompareTo(y.Depth);
             if (d != 0) return d;
-            // fallback to hash for stability
-            return x.GetHashCode().CompareTo(y.GetHashCode());
+            // stable tiebreaker so SortedSet keeps both elements
+            return x.SequenceId.CompareTo(y.SequenceId);
         }
     }
 }

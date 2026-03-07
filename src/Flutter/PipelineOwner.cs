@@ -15,7 +15,7 @@ public sealed class PipelineOwner
 
     public void Attach(RenderObject obj)
     {
-        obj.Owner = this;
+        obj.Attach(this);
         
         obj.VisitChildren(Attach);
     }

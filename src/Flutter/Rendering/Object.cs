@@ -91,6 +91,12 @@ public interface IContainerRenderObjectMixin<TChild, TParentData> : IRenderObjec
     /// The last child in the child list.
     TChild? LastChild { get; }
 
+    void Insert(TChild child, TChild? after = default);
+
+    void Move(TChild child, TChild? after = default);
+
+    void Remove(TChild child);
+
     void AddAll(List<TChild> children);
 
     /// The previous child before the given child in the child list.
@@ -98,6 +104,13 @@ public interface IContainerRenderObjectMixin<TChild, TParentData> : IRenderObjec
 
     /// The next child after the given child in the child list.
     TChild? ChildAfter(TChild child);
+}
+
+public interface IRenderObjectContainer
+{
+    void Insert(RenderObject child, RenderObject? after = null);
+    void Move(RenderObject child, RenderObject? after = null);
+    void Remove(RenderObject child);
 }
 
 /// <summary>
@@ -135,6 +148,24 @@ public class ContainerRenderObjectMixin<TChild, TParentData>(RenderObject owner)
     {
         foreach (var child in children)
             Add(child);
+    }
+
+    public void Move(TChild child, TChild? after = null)
+    {
+        if (ReferenceEquals(ChildBefore(child), after))
+        {
+            return;
+        }
+
+        _removeFromChildList(child);
+        _insertIntoChildList(child, after);
+        owner.MarkNeedsLayout();
+    }
+
+    public void Remove(TChild child)
+    {
+        _removeFromChildList(child);
+        owner.DropChild(child);
     }
 
     public TChild? ChildAfter(TChild child)
@@ -208,6 +239,35 @@ public class ContainerRenderObjectMixin<TChild, TParentData>(RenderObject owner)
         }
     }
 
+    private void _removeFromChildList(TChild child)
+    {
+        var childParentData = (TParentData)child.parentData!;
+
+        if (childParentData.previousSibling == null)
+        {
+            _firstChild = childParentData.nextSibling;
+        }
+        else
+        {
+            var prevParentData = (TParentData)childParentData.previousSibling.parentData!;
+            prevParentData.nextSibling = childParentData.nextSibling;
+        }
+
+        if (childParentData.nextSibling == null)
+        {
+            _lastChild = childParentData.previousSibling;
+        }
+        else
+        {
+            var nextParentData = (TParentData)childParentData.nextSibling.parentData!;
+            nextParentData.previousSibling = childParentData.previousSibling;
+        }
+
+        childParentData.previousSibling = default;
+        childParentData.nextSibling = default;
+        _childCount -= 1;
+    }
+
     public void AdoptChild(RenderObject child) => owner.AdoptChild(child);
 }
 
@@ -217,6 +277,8 @@ public interface IRenderBoxContainerDefaultsMixin<TChild, TParentData>
     where TParentData : ContainerBoxParentData<TChild>
 {
     void DefaultPaint(PaintingContext ctx, Point offset);
+
+    bool DefaultHitTestChildren(BoxHitTestResult result, Point position);
 }
 
 public class RenderBoxContainerDefaultsMixin<TChild, TParentData>(RenderObject owner)
@@ -243,5 +305,23 @@ public class RenderBoxContainerDefaultsMixin<TChild, TParentData>(RenderObject o
 
             child = childParentData.nextSibling;
         }
+    }
+
+    public bool DefaultHitTestChildren(BoxHitTestResult result, Point position)
+    {
+        var child = LastChild;
+        while (child != null)
+        {
+            var childParentData = (TParentData)child.parentData!;
+            var transformedPosition = position - childParentData.offset;
+            if (child.HitTest(result, transformedPosition))
+            {
+                return true;
+            }
+
+            child = childParentData.previousSibling;
+        }
+
+        return false;
     }
 }

@@ -10,7 +10,7 @@ namespace Flutter.Rendering;
 /// <summary>
 /// Displays its children in a one-dimensional array.
 /// </summary>
-public class RenderFlex : RenderBox, IRenderBoxContainerDefaultsMixin<RenderBox, FlexParentData>
+public class RenderFlex : RenderBox, IRenderBoxContainerDefaultsMixin<RenderBox, FlexParentData>, IRenderObjectContainer
 {
     private readonly RenderBoxContainerDefaultsMixin<RenderBox, FlexParentData> _mixin1;
 
@@ -291,6 +291,19 @@ public class RenderFlex : RenderBox, IRenderBoxContainerDefaultsMixin<RenderBox,
         }
         
         DefaultPaint(ctx, offset);
+    }
+
+    public override void VisitChildren(Action<RenderObject> visitor)
+    {
+        for (RenderBox? child = FirstChild; child != null; child = ChildAfter(child))
+        {
+            visitor(child);
+        }
+    }
+
+    protected override bool HitTestChildren(BoxHitTestResult result, Point position)
+    {
+        return DefaultHitTestChildren(result, position);
     }
 
     private static int _getFlex(RenderBox child)
@@ -791,6 +804,27 @@ public class RenderFlex : RenderBox, IRenderBoxContainerDefaultsMixin<RenderBox,
 
     public RenderBox? LastChild => _mixin1.LastChild;
 
+    public void Insert(RenderBox child, RenderBox? after = null) => _mixin1.Insert(child, after);
+
+    public void Move(RenderBox child, RenderBox? after = null) => _mixin1.Move(child, after);
+
+    public void Remove(RenderBox child) => _mixin1.Remove(child);
+
+    void IRenderObjectContainer.Insert(RenderObject child, RenderObject? after)
+    {
+        Insert((RenderBox)child, (RenderBox?)after);
+    }
+
+    void IRenderObjectContainer.Move(RenderObject child, RenderObject? after)
+    {
+        Move((RenderBox)child, (RenderBox?)after);
+    }
+
+    void IRenderObjectContainer.Remove(RenderObject child)
+    {
+        Remove((RenderBox)child);
+    }
+
     public void AddAll(List<RenderBox> children) => _mixin1.AddAll(children);
 
     public RenderBox? ChildBefore(RenderBox child) => _mixin1.ChildBefore(child);
@@ -798,6 +832,9 @@ public class RenderFlex : RenderBox, IRenderBoxContainerDefaultsMixin<RenderBox,
     public RenderBox? ChildAfter(RenderBox child) => _mixin1.ChildAfter(child);
 
     public void DefaultPaint(PaintingContext ctx, Point offset) => _mixin1.DefaultPaint(ctx, offset);
+
+    public bool DefaultHitTestChildren(BoxHitTestResult result, Point position) =>
+        _mixin1.DefaultHitTestChildren(result, position);
 
     #endregion
 }

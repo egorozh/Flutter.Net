@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using Avalonia;
+using Avalonia.Input;
 using Avalonia.Media;
 
 namespace Flutter.Rendering;
@@ -139,6 +140,24 @@ public abstract class RenderObject : IRenderObject
         }
 
         RedepthChild(child);
+    }
+
+    public void DropChild(RenderObject child)
+    {
+        if (!ReferenceEquals(child.Parent, this))
+        {
+            return;
+        }
+
+        child.Parent = null;
+
+        if (Attached && child.Attached)
+        {
+            child.Detach();
+        }
+
+        MarkNeedsLayout();
+        MarkNeedsPaint();
     }
 
     /// <summary>
@@ -322,6 +341,15 @@ public abstract class RenderObject : IRenderObject
     /// Paint this render object into the given context at the given offset.
     /// </summary>
     public abstract void Paint(PaintingContext ctx, Point offset);
+
+    public virtual bool HitTest(BoxHitTestResult result, Point position)
+    {
+        return false;
+    }
+
+    public virtual void HandleEvent(PointerPressedEventArgs @event, HitTestEntry entry)
+    {
+    }
 
 
     internal void _paintWithContext(PaintingContext context, Point offset)

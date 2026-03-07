@@ -24,6 +24,37 @@ public abstract class RenderBox : RenderObject
 
     public new BoxConstraints Constraints => (BoxConstraints)base.Constraints;
 
+    public override bool HitTest(BoxHitTestResult result, Point position)
+    {
+        if (!HasSize)
+        {
+            return false;
+        }
+
+        if (position.X < 0 || position.Y < 0 || position.X > Size.Width || position.Y > Size.Height)
+        {
+            return false;
+        }
+
+        if (HitTestChildren(result, position) || HitTestSelf(position))
+        {
+            result.Add(new HitTestEntry(this));
+            return true;
+        }
+
+        return false;
+    }
+
+    protected virtual bool HitTestChildren(BoxHitTestResult result, Point position)
+    {
+        return false;
+    }
+
+    protected virtual bool HitTestSelf(Point position)
+    {
+        return false;
+    }
+
 
     /// Returns the distance from the y-coordinate of the position of the box to
     /// the y-coordinate of the first given baseline in the box's contents.

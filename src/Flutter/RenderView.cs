@@ -1,29 +1,83 @@
-﻿using Avalonia;
-using Avalonia.Media;
+using Avalonia;
 using Flutter.Rendering;
 
 namespace Flutter;
 
 public sealed class RenderView : RenderBox
 {
-    public RenderBox? Child { get; set; }
+    private RenderBox? _child;
 
-    public override void Layout(BoxConstraints constraints, bool parentUsesSize = false)
+    public RenderBox? Child
     {
-        // RenderView просто прокидывает constraints ребёнку
-        if (Child != null)
+        get => _child;
+        set
         {
-            Child.Layout(constraints);
-            Size = Child.Size;
+            if (ReferenceEquals(_child, value))
+            {
+                return;
+            }
+
+            if (_child != null)
+            {
+                DropChild(_child);
+            }
+
+            _child = value;
+
+            if (_child != null)
+            {
+                AdoptChild(_child);
+            }
+
+            MarkNeedsLayout();
+        }
+    }
+
+    public override void SetupParentData(RenderObject child)
+    {
+        if (child.parentData is not BoxParentData)
+        {
+            child.parentData = new BoxParentData();
+        }
+    }
+
+    public override void VisitChildren(Action<RenderObject> visitor)
+    {
+        if (_child != null)
+        {
+            visitor(_child);
+        }
+    }
+
+    protected override void PerformLayout()
+    {
+        if (_child != null)
+        {
+            _child.Layout(Constraints, parentUsesSize: true);
+            Size = Constraints.Constrain(_child.Size);
+            ((BoxParentData)_child.parentData!).offset = new Point(0, 0);
         }
         else
         {
-            Size = constraints.Constrain(new Size());
+            Size = Constraints.Constrain(new Size());
         }
     }
 
     public override void Paint(PaintingContext ctx, Point offset)
     {
-        Child?.Paint(ctx, offset);
+        if (_child != null)
+        {
+            ctx.PaintChild(_child, offset);
+        }
+    }
+
+    protected override bool HitTestChildren(BoxHitTestResult result, Point position)
+    {
+        if (_child == null)
+        {
+            return false;
+        }
+
+        return _child.HitTest(result, position);
     }
 }

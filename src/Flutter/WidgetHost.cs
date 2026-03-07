@@ -1,15 +1,11 @@
-﻿using System.Diagnostics;
-using Avalonia.Controls;
+using Flutter.Rendering;
 using Flutter.Widgets;
 
 namespace Flutter;
 
-/// <summary>
-/// WidgetHost — root control to embed in Avalonia app/window
-/// </summary>
-public sealed class WidgetHost : ContentControl
+public sealed class WidgetHost : FlutterHost
 {
-    private BuildOwner? _owner;
+    private readonly BuildOwner _owner = new();
     private RootElement? _rootElement;
     private Widget? _rootWidget;
 
@@ -18,7 +14,11 @@ public sealed class WidgetHost : ContentControl
         get => _rootWidget;
         set
         {
-            if (_rootWidget == value) return;
+            if (ReferenceEquals(_rootWidget, value))
+            {
+                return;
+            }
+
             _rootWidget = value;
             InitializeOrUpdate();
         }
@@ -26,7 +26,7 @@ public sealed class WidgetHost : ContentControl
 
     private void InitializeOrUpdate()
     {
-        if (_rootWidget is null)
+        if (_rootWidget == null)
         {
             if (_rootElement != null)
             {
@@ -34,17 +34,15 @@ public sealed class WidgetHost : ContentControl
                 _rootElement = null;
             }
 
-            Content = null;
+            SetRootChild(null);
             return;
         }
 
-        _owner ??= new BuildOwner();
-
-        if (_rootElement is null)
+        if (_rootElement == null)
         {
             _rootElement = new RootElement(this, _rootWidget);
             _rootElement.Attach(_owner);
-            _rootElement.Mount(parent: null);
+            _rootElement.Mount(parent: null, newSlot: null);
         }
         else
         {
@@ -52,7 +50,7 @@ public sealed class WidgetHost : ContentControl
         }
     }
 
-    private sealed class RootElement : Element
+    private sealed class RootElement : Element, IRenderObjectHost
     {
         private readonly WidgetHost _host;
         private Element? _child;
@@ -61,6 +59,10 @@ public sealed class WidgetHost : ContentControl
         {
             _host = host;
         }
+
+        public override RenderObject? RenderObject => _child?.RenderObject;
+
+        internal override Element? RenderObjectAttachingChild => _child;
 
         protected override void OnMount()
         {
@@ -71,7 +73,7 @@ public sealed class WidgetHost : ContentControl
         internal override void Rebuild()
         {
             Dirty = false;
-            _child = TreeHelpers.ReconcileSingleChild(this, _child, Widget);
+            _child = UpdateChild(_child, Widget, Slot);
         }
 
         internal override void Update(Widget newWidget)
@@ -80,19 +82,48 @@ public sealed class WidgetHost : ContentControl
             MarkNeedsBuild();
         }
 
-        internal override void InsertChildRenderObject(int index, Element child)
+        internal override void ForgetChild(Element child)
         {
-            if (child.Control is Control control)
+            if (ReferenceEquals(child, _child))
             {
-                _host.Content = control;
+                _child = null;
             }
         }
 
-        internal override void RemoveChildRenderObject(Element child)
+        public void InsertRenderObjectChild(RenderObject child, object? slot)
         {
-            if (ReferenceEquals(_host.Content, child.Control))
+            if (slot != null)
             {
-                _host.Content = null;
+                throw new InvalidOperationException("RootElement expects null slot.");
+            }
+
+            if (child is RenderBox renderBox)
+            {
+                _host.SetRootChild(renderBox);
+                return;
+            }
+
+            throw new InvalidOperationException("RootElement can host only RenderBox.");
+        }
+
+        public void MoveRenderObjectChild(RenderObject child, object? oldSlot, object? newSlot)
+        {
+            if (!Equals(oldSlot, newSlot))
+            {
+                throw new InvalidOperationException("RootElement does not support non-null slot moves.");
+            }
+        }
+
+        public void RemoveRenderObjectChild(RenderObject child, object? slot)
+        {
+            if (slot != null)
+            {
+                throw new InvalidOperationException("RootElement expects null slot.");
+            }
+
+            if (child is RenderBox renderBox && ReferenceEquals(_host.RootChild, renderBox))
+            {
+                _host.SetRootChild(null);
             }
         }
 
@@ -100,7 +131,7 @@ public sealed class WidgetHost : ContentControl
         {
             if (_child != null)
             {
-                TreeHelpers.DeactivateChild(_child);
+                DeactivateChild(_child);
                 _child = null;
             }
 

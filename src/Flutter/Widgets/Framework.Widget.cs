@@ -1,4 +1,5 @@
 ﻿using Flutter.Foundation;
+using Flutter.Rendering;
 
 namespace Flutter.Widgets;
 
@@ -13,6 +14,11 @@ namespace Flutter.Widgets;
 public abstract class Widget(Key? key = null)
 {
     public Key? Key { get; } = key;
+
+    internal static bool CanUpdate(Widget oldWidget, Widget newWidget)
+    {
+        return oldWidget.GetType() == newWidget.GetType() && Equals(oldWidget.Key, newWidget.Key);
+    }
 
     internal abstract Element CreateElement();
 }
@@ -35,6 +41,52 @@ public abstract class StatefulWidget : Widget
 
     public abstract State CreateState();
     internal override Element CreateElement() => new StatefulElement(this);
+}
+
+public abstract class ProxyWidget : Widget
+{
+    protected ProxyWidget(Widget child, Key? key = null) : base(key)
+    {
+        Child = child;
+    }
+
+    public Widget Child { get; }
+
+    internal override Element CreateElement() => new ProxyElement(this);
+}
+
+internal interface IParentDataWidget
+{
+    bool DebugIsValidRenderObject(RenderObject renderObject);
+    void ApplyParentData(RenderObject renderObject);
+}
+
+public abstract class ParentDataWidget<T> : ProxyWidget, IParentDataWidget where T : IParentData
+{
+    protected ParentDataWidget(Widget child, Key? key = null) : base(child, key)
+    {
+    }
+
+    public abstract Type DebugTypicalAncestorWidgetType { get; }
+
+    internal override Element CreateElement() => new ParentDataElement<T>(this);
+
+    protected virtual bool DebugIsValidRenderObject(RenderObject renderObject)
+    {
+        return renderObject.parentData is T;
+    }
+
+    protected abstract void ApplyParentData(RenderObject renderObject);
+
+    bool IParentDataWidget.DebugIsValidRenderObject(RenderObject renderObject)
+    {
+        return DebugIsValidRenderObject(renderObject);
+    }
+
+    void IParentDataWidget.ApplyParentData(RenderObject renderObject)
+    {
+        ApplyParentData(renderObject);
+    }
 }
 
 public abstract class State

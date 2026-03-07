@@ -1,7 +1,20 @@
-﻿using Avalonia.Controls;
 using Flutter.Foundation;
+using Flutter.Rendering;
 
 namespace Flutter.Widgets;
+
+public sealed class IndexedSlot<T>
+{
+    public IndexedSlot(int index, T? value)
+    {
+        Index = index;
+        Value = value;
+    }
+
+    public int Index { get; }
+
+    public T? Value { get; }
+}
 
 public readonly struct BuildContext
 {
@@ -15,12 +28,15 @@ public readonly struct BuildContext
     public T? DependOnInherited<T>() where T : InheritedWidget => Owner.DependOnInherited<T>();
 }
 
-// Base Element
 public abstract class Element
 {
+    private static int _nextElementId;
+
     public Widget Widget { get; private set; }
     public Element? Parent { get; private set; }
     public int Depth { get; private set; }
+    public object? Slot { get; private set; }
+    internal int SequenceId { get; } = Interlocked.Increment(ref _nextElementId);
     internal bool Dirty { get; set; }
     internal BuildOwner? Owner { get; private set; }
 
@@ -35,15 +51,21 @@ public abstract class Element
         Owner.RegisterElement(this);
     }
 
-    internal void Mount(Element? parent)
+    internal void Mount(Element? parent, object? newSlot)
     {
         Parent = parent;
+        Slot = newSlot;
         Depth = (parent?.Depth ?? 0) + 1;
         OnMount();
     }
 
     protected virtual void OnMount()
     {
+    }
+
+    internal virtual void UpdateSlot(object? newSlot)
+    {
+        Slot = newSlot;
     }
 
     protected virtual void OnUnmount()
@@ -55,41 +77,251 @@ public abstract class Element
         OnUnmount();
         Owner?.UnregisterElement(this);
         Parent = null;
+        Slot = null;
     }
 
     internal abstract void Rebuild();
 
     internal void MarkNeedsBuild()
     {
-        if (Dirty) return;
+        if (Dirty)
+        {
+            return;
+        }
+
         Dirty = true;
         Owner?.ScheduleBuild(this);
     }
 
     internal virtual void Update(Widget newWidget)
     {
-        Widget = newWidget; // default: just replace ref
+        Widget = newWidget;
     }
 
-    // Inherited support
+    internal virtual void ForgetChild(Element child)
+    {
+    }
+
+    internal virtual void UpdateSlotForChild(Element child, object? newSlot)
+    {
+        void Visit(Element element)
+        {
+            element.UpdateSlot(newSlot);
+            if (element.RenderObjectAttachingChild is { } descendant)
+            {
+                Visit(descendant);
+            }
+        }
+
+        Visit(child);
+    }
+
+    internal virtual void DeactivateChild(Element child)
+    {
+        ForgetChild(child);
+        child.Unmount();
+    }
+
+    internal Element InflateWidget(Widget newWidget, object? newSlot)
+    {
+        var element = newWidget.CreateElement();
+        element.Attach(Owner!);
+        element.Mount(this, newSlot);
+        return element;
+    }
+
+    internal Element? UpdateChild(Element? child, Widget? newWidget, object? newSlot)
+    {
+        if (newWidget == null)
+        {
+            if (child != null)
+            {
+                DeactivateChild(child);
+            }
+
+            return null;
+        }
+
+        if (child != null)
+        {
+            if (ReferenceEquals(child.Widget, newWidget))
+            {
+                if (!Equals(child.Slot, newSlot))
+                {
+                    UpdateSlotForChild(child, newSlot);
+                }
+
+                return child;
+            }
+
+            if (Widget.CanUpdate(child.Widget, newWidget))
+            {
+                if (!Equals(child.Slot, newSlot))
+                {
+                    UpdateSlotForChild(child, newSlot);
+                }
+
+                child.Update(newWidget);
+                return child;
+            }
+
+            DeactivateChild(child);
+        }
+
+        return InflateWidget(newWidget, newSlot);
+    }
+
+    internal List<Element> UpdateChildren(
+        List<Element> oldChildren,
+        IReadOnlyList<Widget> newWidgets,
+        HashSet<Element>? forgottenChildren = null,
+        IReadOnlyList<object?>? slots = null)
+    {
+        if (slots != null && slots.Count != newWidgets.Count)
+        {
+            throw new ArgumentException("slots and newWidgets must have the same length.");
+        }
+
+        Element? ReplaceWithNullIfForgotten(Element child)
+        {
+            return forgottenChildren != null && forgottenChildren.Contains(child) ? null : child;
+        }
+
+        object? SlotFor(int newChildIndex, Element? previousChild)
+        {
+            return slots != null
+                ? slots[newChildIndex]
+                : new IndexedSlot<Element?>(newChildIndex, previousChild);
+        }
+
+        int newChildrenTop = 0;
+        int oldChildrenTop = 0;
+        int newChildrenBottom = newWidgets.Count - 1;
+        int oldChildrenBottom = oldChildren.Count - 1;
+
+        var newChildren = new Element[newWidgets.Count];
+
+        Element? previousChild = null;
+
+        while (oldChildrenTop <= oldChildrenBottom && newChildrenTop <= newChildrenBottom)
+        {
+            var oldChild = ReplaceWithNullIfForgotten(oldChildren[oldChildrenTop]);
+            var newWidget = newWidgets[newChildrenTop];
+            if (oldChild == null || !Widget.CanUpdate(oldChild.Widget, newWidget))
+            {
+                break;
+            }
+
+            var newChild = UpdateChild(oldChild, newWidget, SlotFor(newChildrenTop, previousChild))!;
+            newChildren[newChildrenTop] = newChild;
+            previousChild = newChild;
+            newChildrenTop += 1;
+            oldChildrenTop += 1;
+        }
+
+        while (oldChildrenTop <= oldChildrenBottom && newChildrenTop <= newChildrenBottom)
+        {
+            var oldChild = ReplaceWithNullIfForgotten(oldChildren[oldChildrenBottom]);
+            var newWidget = newWidgets[newChildrenBottom];
+            if (oldChild == null || !Widget.CanUpdate(oldChild.Widget, newWidget))
+            {
+                break;
+            }
+
+            oldChildrenBottom -= 1;
+            newChildrenBottom -= 1;
+        }
+
+        var haveOldChildren = oldChildrenTop <= oldChildrenBottom;
+        Dictionary<Key, Element>? oldKeyedChildren = null;
+        if (haveOldChildren)
+        {
+            oldKeyedChildren = [];
+            while (oldChildrenTop <= oldChildrenBottom)
+            {
+                var oldChild = ReplaceWithNullIfForgotten(oldChildren[oldChildrenTop]);
+                if (oldChild != null)
+                {
+                    if (oldChild.Widget.Key != null)
+                    {
+                        oldKeyedChildren[oldChild.Widget.Key!] = oldChild;
+                    }
+                    else
+                    {
+                        DeactivateChild(oldChild);
+                    }
+                }
+
+                oldChildrenTop += 1;
+            }
+        }
+
+        while (newChildrenTop <= newChildrenBottom)
+        {
+            Element? oldChild = null;
+            var newWidget = newWidgets[newChildrenTop];
+
+            if (haveOldChildren)
+            {
+                var key = newWidget.Key;
+                if (key != null && oldKeyedChildren!.TryGetValue(key, out var keyedOldChild))
+                {
+                    if (Widget.CanUpdate(keyedOldChild.Widget, newWidget))
+                    {
+                        oldChild = keyedOldChild;
+                        oldKeyedChildren.Remove(key);
+                    }
+                }
+            }
+
+            var newChild = UpdateChild(oldChild, newWidget, SlotFor(newChildrenTop, previousChild))!;
+            newChildren[newChildrenTop] = newChild;
+            previousChild = newChild;
+            newChildrenTop += 1;
+        }
+
+        newChildrenBottom = newWidgets.Count - 1;
+        oldChildrenBottom = oldChildren.Count - 1;
+
+        while (oldChildrenTop <= oldChildrenBottom && newChildrenTop <= newChildrenBottom)
+        {
+            var oldChild = oldChildren[oldChildrenTop];
+            if (ReplaceWithNullIfForgotten(oldChild) == null)
+            {
+                oldChildrenTop += 1;
+                continue;
+            }
+
+            var newWidget = newWidgets[newChildrenTop];
+            var newChild = UpdateChild(oldChild, newWidget, SlotFor(newChildrenTop, previousChild))!;
+            newChildren[newChildrenTop] = newChild;
+            previousChild = newChild;
+            newChildrenTop += 1;
+            oldChildrenTop += 1;
+        }
+
+        if (haveOldChildren && oldKeyedChildren!.Count > 0)
+        {
+            foreach (var oldChild in oldKeyedChildren.Values)
+            {
+                if (forgottenChildren == null || !forgottenChildren.Contains(oldChild))
+                {
+                    DeactivateChild(oldChild);
+                }
+            }
+        }
+
+        return [..newChildren];
+    }
+
     internal virtual T? DependOnInherited<T>() where T : InheritedWidget
     {
         return Parent?.DependOnInherited<T>();
     }
 
-    // Render-control bridging
-    public virtual Control? Control => null; // not every element owns a control
+    public virtual RenderObject? RenderObject => null;
 
-    internal virtual void InsertChildRenderObject(int index, Element child)
-    {
-        // bubble up to a parent that knows how to host visuals
-        Parent?.InsertChildRenderObject(index, child);
-    }
-
-    internal virtual void RemoveChildRenderObject(Element child)
-    {
-        Parent?.RemoveChildRenderObject(child);
-    }
+    internal virtual Element? RenderObjectAttachingChild => null;
 }
 
 public sealed class StatelessElement : Element
@@ -100,7 +332,9 @@ public sealed class StatelessElement : Element
     {
     }
 
-    public override Control? Control => _child?.Control;
+    public override RenderObject? RenderObject => _child?.RenderObject;
+
+    internal override Element? RenderObjectAttachingChild => _child;
 
     protected override void OnMount()
     {
@@ -112,7 +346,7 @@ public sealed class StatelessElement : Element
     {
         Dirty = false;
         var childWidget = ((StatelessWidget)Widget).Build(new BuildContext(this));
-        _child = TreeHelpers.ReconcileSingleChild(this, _child, childWidget);
+        _child = UpdateChild(_child, childWidget, Slot);
     }
 
     internal override void Update(Widget newWidget)
@@ -121,11 +355,19 @@ public sealed class StatelessElement : Element
         MarkNeedsBuild();
     }
 
+    internal override void ForgetChild(Element child)
+    {
+        if (ReferenceEquals(child, _child))
+        {
+            _child = null;
+        }
+    }
+
     internal override void Unmount()
     {
         if (_child != null)
         {
-            TreeHelpers.DeactivateChild(_child);
+            DeactivateChild(_child);
             _child = null;
         }
 
@@ -144,7 +386,9 @@ public sealed class StatefulElement : Element
         State.Element = this;
     }
 
-    public override Control? Control => _child?.Control;
+    public override RenderObject? RenderObject => _child?.RenderObject;
+
+    internal override Element? RenderObjectAttachingChild => _child;
 
     protected override void OnMount()
     {
@@ -157,22 +401,30 @@ public sealed class StatefulElement : Element
     {
         Dirty = false;
         var widget = State.Build(new BuildContext(this));
-        _child = TreeHelpers.ReconcileSingleChild(this, _child, widget);
+        _child = UpdateChild(_child, widget, Slot);
     }
 
     internal override void Update(Widget newWidget)
     {
         var old = (StatefulWidget)Widget;
         base.Update(newWidget);
-        State.DidUpdateWidget((StatefulWidget)old);
+        State.DidUpdateWidget(old);
         MarkNeedsBuild();
+    }
+
+    internal override void ForgetChild(Element child)
+    {
+        if (ReferenceEquals(child, _child))
+        {
+            _child = null;
+        }
     }
 
     internal override void Unmount()
     {
         if (_child != null)
         {
-            TreeHelpers.DeactivateChild(_child);
+            DeactivateChild(_child);
             _child = null;
         }
 
@@ -189,7 +441,9 @@ public sealed class InheritedElement : Element
     {
     }
 
-    public override Control? Control => _child?.Control;
+    public override RenderObject? RenderObject => _child?.RenderObject;
+
+    internal override Element? RenderObjectAttachingChild => _child;
 
     protected override void OnMount()
     {
@@ -201,7 +455,7 @@ public sealed class InheritedElement : Element
     {
         Dirty = false;
         var child = ((InheritedWidget)Widget).Build(new BuildContext(this));
-        _child = TreeHelpers.ReconcileSingleChild(this, _child, child);
+        _child = UpdateChild(_child, child, Slot);
     }
 
     internal override void Update(Widget newWidget)
@@ -210,25 +464,25 @@ public sealed class InheritedElement : Element
         base.Update(newWidget);
         if (((InheritedWidget)newWidget).UpdateShouldNotify(old))
         {
-            // notify dependents by marking subtree dirty
             Owner?.MarkSubtreeNeedsBuild(this);
         }
 
         MarkNeedsBuild();
     }
 
-    // internal override T? DependOnInherited<T>() where T : InheritedWidget
-    // {
-    //     if (Widget is T t) return t;
-    //     
-    //     return base.DependOnInherited<T>();
-    // }
-    
+    internal override void ForgetChild(Element child)
+    {
+        if (ReferenceEquals(child, _child))
+        {
+            _child = null;
+        }
+    }
+
     internal override void Unmount()
     {
         if (_child != null)
         {
-            TreeHelpers.DeactivateChild(_child);
+            DeactivateChild(_child);
             _child = null;
         }
 
@@ -236,93 +490,109 @@ public sealed class InheritedElement : Element
     }
 }
 
-// Tree helpers (inflate/reconcile)
-internal static class TreeHelpers
+public class ProxyElement : Element
 {
-    public static Element InflateWidget(Element parent, Widget widget)
+    private Element? _child;
+
+    public ProxyElement(ProxyWidget widget) : base(widget)
     {
-        var e = widget.CreateElement();
-        e.Attach(parent.Owner!);
-        e.Mount(parent);
-        return e;
     }
 
-    public static Element? ReconcileSingleChild(Element parent, Element? oldChild, Widget? newWidget)
+    public override RenderObject? RenderObject => _child?.RenderObject;
+
+    internal override Element? RenderObjectAttachingChild => _child;
+
+    protected override void OnMount()
     {
-        if (newWidget is null)
-        {
-            if (oldChild != null)
-            {
-                parent.RemoveChildRenderObject(oldChild);
-                DeactivateChild(oldChild);
-            }
-
-            return null;
-        }
-
-        if (oldChild != null && oldChild.Widget.GetType() == newWidget.GetType() &&
-            Equals(oldChild.Widget.Key, newWidget.Key))
-        {
-            oldChild.Update(newWidget);
-            return oldChild;
-        }
-
-        // replace
-        if (oldChild != null)
-        {
-            parent.RemoveChildRenderObject(oldChild);
-            DeactivateChild(oldChild);
-        }
-        var newEl = InflateWidget(parent, newWidget);
-        parent.InsertChildRenderObject(0, newEl);
-        return newEl;
+        base.OnMount();
+        Rebuild();
     }
 
-    public static List<Element> ReconcileChildren(Element parent, List<Element> oldChildren,
-        IReadOnlyList<Widget> newWidgets)
+    internal override void Rebuild()
     {
-        // Very simple keyed reconciler (O(n))
-        var newChildren = new List<Element>(newWidgets.Count);
-        var oldByKey = new Dictionary<Key, Element>();
-        foreach (var c in oldChildren)
-        {
-            if (c.Widget.Key is Key k) oldByKey[k] = c;
-            else
-            {
-                DeactivateChild(c);
-            }
-        }
-
-        for (int i = 0; i < newWidgets.Count; i++)
-        {
-            var w = newWidgets[i];
-            Element? reused = null;
-            if (w.Key is Key k && oldByKey.TryGetValue(k, out reused) && reused.Widget.GetType() == w.GetType())
-            {
-                reused.Update(w);
-                newChildren.Add(reused);
-                oldByKey.Remove(k);
-            }
-            else
-            {
-                var ne = InflateWidget(parent, w);
-                parent.InsertChildRenderObject(i, ne);
-                newChildren.Add(ne);
-            }
-        }
-
-        // remove leftovers
-        foreach (var (_, leftover) in oldByKey)
-        {
-            parent.RemoveChildRenderObject(leftover);
-            DeactivateChild(leftover);
-        }
-
-        return newChildren;
+        Dirty = false;
+        _child = UpdateChild(_child, ((ProxyWidget)Widget).Child, Slot);
     }
 
-    public static void DeactivateChild(Element child)
+    internal override void Update(Widget newWidget)
     {
-        child.Unmount();
+        var old = (ProxyWidget)Widget;
+        base.Update(newWidget);
+        Updated(old);
+        MarkNeedsBuild();
+    }
+
+    protected virtual void Updated(ProxyWidget oldWidget)
+    {
+    }
+
+    internal override void ForgetChild(Element child)
+    {
+        if (ReferenceEquals(child, _child))
+        {
+            _child = null;
+        }
+    }
+
+    internal override void Unmount()
+    {
+        if (_child != null)
+        {
+            DeactivateChild(_child);
+            _child = null;
+        }
+
+        base.Unmount();
+    }
+}
+
+internal abstract class ParentDataElementBase : ProxyElement
+{
+    protected ParentDataElementBase(ProxyWidget widget) : base(widget)
+    {
+    }
+
+    internal abstract IParentDataWidget ParentDataWidget { get; }
+}
+
+internal sealed class ParentDataElement<T> : ParentDataElementBase where T : IParentData
+{
+    public ParentDataElement(ParentDataWidget<T> widget) : base(widget)
+    {
+    }
+
+    internal override IParentDataWidget ParentDataWidget => (IParentDataWidget)Widget;
+
+    internal override void Rebuild()
+    {
+        base.Rebuild();
+        ApplyParentData((ParentDataWidget<T>)Widget);
+    }
+
+    protected override void Updated(ProxyWidget oldWidget)
+    {
+        ApplyParentData((ParentDataWidget<T>)Widget);
+    }
+
+    private void ApplyParentData(ParentDataWidget<T> widget)
+    {
+        void ApplyParentDataToChild(Element child)
+        {
+            if (child is RenderObjectElement renderObjectElement)
+            {
+                renderObjectElement.UpdateParentData(widget);
+                return;
+            }
+
+            if (child.RenderObjectAttachingChild != null)
+            {
+                ApplyParentDataToChild(child.RenderObjectAttachingChild);
+            }
+        }
+
+        if (RenderObjectAttachingChild != null)
+        {
+            ApplyParentDataToChild(RenderObjectAttachingChild);
+        }
     }
 }
