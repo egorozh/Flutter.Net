@@ -25,6 +25,11 @@ This file defines expectations for coding agents working in this repository.
 - .NET SDK 10 preview (projects target `net10.0` and platform-specific TFMs).
 - Avalonia tooling/workloads for browser/mobile targets where applicable.
 
+## Local Reference Paths
+
+- Flutter source: `/Users/egorozh/Documents/flutter/flutter`
+- Avalonia source: `../Avalonia` (resolved: `/Users/egorozh/Flutter.Net.Local/Avalonia`)
+
 ## Common Commands
 
 Run from repository root:
