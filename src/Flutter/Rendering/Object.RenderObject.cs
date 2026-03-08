@@ -19,8 +19,17 @@ public abstract class RenderObject : IRenderObject
     internal SemanticsNode? _semanticsNode;
     private bool _needsCompositingBitsUpdate = true;
     private bool _needsSemanticsUpdate = true;
+    private bool _semanticsParentDataDirty = true;
     private bool _needsCompositedLayerUpdate;
     private bool _isSemanticsBoundary;
+    private bool _hasCachedSemanticsConfiguration;
+    private SemanticsConfiguration? _cachedSemanticsConfiguration;
+    private Matrix _semanticsTransform = Matrix.Identity;
+    private Rect? _semanticsClipRect;
+    private Rect _semanticsRect;
+    private bool _semanticsRectClippedOut;
+    private bool _hasBlockingSemanticsCache;
+    private bool _blocksPreviousSemanticsCache;
 
 
     /// Cause the entire subtree rooted at the given [RenderObject] to be marked
@@ -221,6 +230,12 @@ public abstract class RenderObject : IRenderObject
     {
         _layer = null;
         _semanticsNode = null;
+        _semanticsParentDataDirty = true;
+        _hasCachedSemanticsConfiguration = false;
+        _cachedSemanticsConfiguration = null;
+        _semanticsRectClippedOut = false;
+        _hasBlockingSemanticsCache = false;
+        _blocksPreviousSemanticsCache = false;
         Owner = null;
     }
 
@@ -409,6 +424,9 @@ public abstract class RenderObject : IRenderObject
 
     public void MarkNeedsSemanticsUpdate()
     {
+        _semanticsParentDataDirty = true;
+        _hasBlockingSemanticsCache = false;
+
         if (_needsSemanticsUpdate)
         {
             return;
@@ -459,7 +477,7 @@ public abstract class RenderObject : IRenderObject
         }
     }
 
-    internal void BuildSemantics(SemanticsOwner owner, Matrix transform, Rect? clipRect, List<SemanticsNode> output)
+    internal void UpdateSemanticsChildren(Matrix transform, Rect? clipRect)
     {
         if (_needsSemanticsUpdate)
         {
@@ -469,7 +487,18 @@ public abstract class RenderObject : IRenderObject
 
         var config = new SemanticsConfiguration();
         DescribeSemanticsConfiguration(config);
+        _cachedSemanticsConfiguration = config;
+        _hasCachedSemanticsConfiguration = true;
         _isSemanticsBoundary = config.IsSemanticBoundary;
+        _semanticsTransform = transform;
+        _semanticsClipRect = clipRect;
+        _semanticsRectClippedOut = false;
+        _semanticsParentDataDirty = false;
+        _hasBlockingSemanticsCache = false;
+
+        // Start from dirty parent data for all render children. Only children
+        // visited for semantics in this pass will become clean.
+        VisitChildren(static child => child.MarkSemanticsParentDataDirty());
 
         if (config.IsExcluded)
         {
@@ -477,17 +506,85 @@ public abstract class RenderObject : IRenderObject
             return;
         }
 
-        var children = new List<SemanticsNode>();
+        var semanticsChildren = new List<(RenderObject child, Matrix transform, Rect? clipRect)>();
         VisitChildrenForSemantics((child, childOffset, childTransform) =>
         {
-            var childNodes = new List<SemanticsNode>();
             var childMatrix =
                 transform
                 * Matrix.CreateTranslation(childOffset.X, childOffset.Y)
                 * childTransform;
 
             var clipForChild = IntersectClip(clipRect, DescribeSemanticsClip(child), transform);
-            child.BuildSemantics(owner, childMatrix, clipForChild, childNodes);
+            semanticsChildren.Add((child, childMatrix, clipForChild));
+        });
+
+        foreach (var entry in semanticsChildren)
+        {
+            entry.child.UpdateSemanticsChildren(entry.transform, entry.clipRect);
+        }
+
+        var nonBlockedChildren = new List<RenderObject>();
+        foreach (var entry in semanticsChildren)
+        {
+            if (entry.child.BlocksPreviousSemanticsSibling())
+            {
+                foreach (var droppedSibling in nonBlockedChildren)
+                {
+                    droppedSibling.MarkSemanticsParentDataDirty();
+                }
+
+                nonBlockedChildren.Clear();
+            }
+
+            nonBlockedChildren.Add(entry.child);
+        }
+    }
+
+    internal void EnsureSemanticsGeometry()
+    {
+        if (_semanticsParentDataDirty || !_hasCachedSemanticsConfiguration || _cachedSemanticsConfiguration == null)
+        {
+            return;
+        }
+
+        var config = _cachedSemanticsConfiguration;
+        if (config.IsExcluded)
+        {
+            _semanticsRectClippedOut = true;
+            return;
+        }
+
+        if (HasOwnSemantics(config))
+        {
+            var localBounds = config.ExplicitRect ?? SemanticBounds;
+            var transformedRect = TransformRect(_semanticsTransform, localBounds);
+            _semanticsRect = transformedRect;
+            _semanticsRectClippedOut = _semanticsClipRect.HasValue
+                                       && !_semanticsClipRect.Value.Intersects(transformedRect);
+        }
+
+        VisitChildrenForSemantics((child, _, _) => child.EnsureSemanticsGeometry());
+    }
+
+    internal void EnsureSemanticsNode(SemanticsOwner owner, List<SemanticsNode> output)
+    {
+        if (_semanticsParentDataDirty || !_hasCachedSemanticsConfiguration || _cachedSemanticsConfiguration == null)
+        {
+            return;
+        }
+
+        var config = _cachedSemanticsConfiguration;
+        if (config.IsExcluded)
+        {
+            _semanticsNode = null;
+            return;
+        }
+
+        var children = new List<SemanticsNode>();
+        VisitChildrenForSemantics((child, _, _) =>
+        {
+            var childNodes = new List<SemanticsNode>();
+            child.EnsureSemanticsNode(owner, childNodes);
 
             if (childNodes.Any(static node => node.BlocksPreviousNodes))
             {
@@ -503,32 +600,21 @@ public abstract class RenderObject : IRenderObject
             children.Clear();
         }
 
-        var hasOwnSemantics = config.IsSemanticBoundary
-                              || config.IsMergingSemanticsOfDescendants
-                              || config.IsBlockingSemanticsOfPreviouslyPaintedNodes
-                              || !string.IsNullOrEmpty(config.Label)
-                              || config.Flags != SemanticsFlags.None
-                              || config.Actions != SemanticsActions.None
-                              || config.HasActionHandlers;
-
-        if (!hasOwnSemantics)
+        if (!HasOwnSemantics(config))
         {
             _semanticsNode = null;
             output.AddRange(children);
             return;
         }
 
-        var semanticsNode = owner.EnsureNode(this);
-        var localBounds = config.ExplicitRect ?? SemanticBounds;
-        var transformedRect = TransformRect(transform, localBounds);
-
-        if (clipRect.HasValue && !clipRect.Value.Intersects(transformedRect))
+        if (_semanticsRectClippedOut)
         {
             _semanticsNode = null;
             return;
         }
 
-        semanticsNode.Rect = transformedRect;
+        var semanticsNode = owner.EnsureNode(this);
+        semanticsNode.Rect = _semanticsRect;
         semanticsNode.Label = config.Label;
         semanticsNode.Flags = config.Flags;
         semanticsNode.Actions = config.Actions;
@@ -537,6 +623,73 @@ public abstract class RenderObject : IRenderObject
         semanticsNode.SetActionHandlers(config.ActionHandlers);
 
         output.Add(semanticsNode);
+    }
+
+    private static bool HasOwnSemantics(SemanticsConfiguration config)
+    {
+        return config.IsSemanticBoundary
+               || config.IsMergingSemanticsOfDescendants
+               || config.IsBlockingSemanticsOfPreviouslyPaintedNodes
+               || !string.IsNullOrEmpty(config.Label)
+               || config.Flags != SemanticsFlags.None
+               || config.Actions != SemanticsActions.None
+               || config.HasActionHandlers;
+    }
+
+    private void MarkSemanticsParentDataDirty()
+    {
+        _semanticsParentDataDirty = true;
+        _hasBlockingSemanticsCache = false;
+    }
+
+    private bool BlocksPreviousSemanticsSibling()
+    {
+        if (_hasBlockingSemanticsCache)
+        {
+            return _blocksPreviousSemanticsCache;
+        }
+
+        if (!_hasCachedSemanticsConfiguration || _cachedSemanticsConfiguration == null)
+        {
+            _hasBlockingSemanticsCache = true;
+            _blocksPreviousSemanticsCache = false;
+            return false;
+        }
+
+        var config = _cachedSemanticsConfiguration;
+        if (config.IsExcluded)
+        {
+            _hasBlockingSemanticsCache = true;
+            _blocksPreviousSemanticsCache = false;
+            return false;
+        }
+
+        if (config.IsBlockingSemanticsOfPreviouslyPaintedNodes)
+        {
+            _hasBlockingSemanticsCache = true;
+            _blocksPreviousSemanticsCache = true;
+            return true;
+        }
+
+        if (config.IsSemanticBoundary)
+        {
+            _hasBlockingSemanticsCache = true;
+            _blocksPreviousSemanticsCache = false;
+            return false;
+        }
+
+        var blocksPreviousSibling = false;
+        VisitChildrenForSemantics((child, _, _) =>
+        {
+            if (!blocksPreviousSibling && child.BlocksPreviousSemanticsSibling())
+            {
+                blocksPreviousSibling = true;
+            }
+        });
+
+        _hasBlockingSemanticsCache = true;
+        _blocksPreviousSemanticsCache = blocksPreviousSibling;
+        return blocksPreviousSibling;
     }
 
     private static void MergeChildSemanticsIntoConfiguration(
@@ -616,6 +769,7 @@ public abstract class RenderObject : IRenderObject
     internal bool NeedsLayoutOrDescendantNeedsLayout => _needsLayout || _descendantNeedsLayout;
     internal bool NeedsLayout => _needsLayout;
     internal bool NeedsCompositingBitsUpdate => _needsCompositingBitsUpdate;
+    internal bool SemanticsParentDataDirty => _semanticsParentDataDirty;
 
     /// <summary>
     /// Whether this render object repaints separately from its parent.

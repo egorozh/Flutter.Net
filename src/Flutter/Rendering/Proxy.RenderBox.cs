@@ -266,6 +266,7 @@ public sealed class RenderTransform : RenderProxyBox
             if (Child != null)
             {
                 MarkNeedsCompositedLayerUpdate();
+                MarkNeedsSemanticsUpdate();
             }
         }
     }
@@ -321,6 +322,7 @@ public sealed class RenderClipRect : RenderProxyBox
             if (Child != null)
             {
                 MarkNeedsCompositedLayerUpdate();
+                MarkNeedsSemanticsUpdate();
             }
         }
     }

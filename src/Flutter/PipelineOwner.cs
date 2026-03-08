@@ -275,31 +275,16 @@ public sealed class PipelineOwner
                 break;
             }
 
-            var dirtySet = new HashSet<RenderObject>(nodesToProcess);
-            foreach (var node in nodesToProcess)
-            {
-                var ancestor = node.Parent;
-                var hasDirtyAncestor = false;
-                while (ancestor != null)
-                {
-                    if (dirtySet.Contains(ancestor))
-                    {
-                        hasDirtyAncestor = true;
-                        break;
-                    }
+            // Phase 1/2: rebuild semantics fragments and propagate parent-data context.
+            Root.UpdateSemanticsChildren(Matrix.Identity, clipRect: null);
 
-                    ancestor = ancestor.Parent;
-                }
+            // Phase 3: compute semantics geometry with final transforms/clips.
+            Root.EnsureSemanticsGeometry();
 
-                if (!hasDirtyAncestor)
-                {
-                    node.UpdateSemanticsSubtree();
-                }
-            }
-
-            var roots = new List<SemanticsNode>();
-            Root.BuildSemantics(_semanticsOwner, Matrix.Identity, clipRect: null, roots);
-            _semanticsOwner.UpdateRoot(roots);
+            // Phase 4: compile semantics nodes from staged semantics data.
+            var compiledRoots = new List<SemanticsNode>();
+            Root.EnsureSemanticsNode(_semanticsOwner, compiledRoots);
+            _semanticsOwner.UpdateRoot(compiledRoots);
         }
 
         _needsSemantics = _nodesNeedingSemantics.Count > 0;

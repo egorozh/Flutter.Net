@@ -250,6 +250,79 @@ public sealed class SemanticsTreeTests
     }
 
     [Fact]
+    public void BlockingSemantics_LeavesBlockedSiblingParentDataDirty_UntilUnblocked()
+    {
+        var back = new FixedSemanticBox("Back", new Size(20, 10));
+        var front = new MutableBlockingSemanticBox("Front", new Size(20, 10), blocksPreviousNodes: true);
+        var row = new RenderFlex(
+            children: [back, front],
+            direction: Axis.Horizontal);
+
+        var renderView = new RenderView
+        {
+            Child = row
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+
+        pipeline.FlushLayout(new Size(220, 120));
+        pipeline.FlushSemantics();
+
+        Assert.True(back.SemanticsParentDataDirty);
+        Assert.False(front.SemanticsParentDataDirty);
+
+        front.BlocksPreviousNodes = false;
+        pipeline.FlushSemantics();
+
+        Assert.False(back.SemanticsParentDataDirty);
+        Assert.False(front.SemanticsParentDataDirty);
+
+        var root = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(root);
+        Assert.Equal(2, root.Children.Count);
+    }
+
+    [Fact]
+    public void VisitChildrenForSemantics_OmittedChildStaysParentDataDirty_UntilVisible()
+    {
+        var first = new FixedSemanticBox("First", new Size(20, 10));
+        var second = new FixedSemanticBox("Second", new Size(20, 10));
+        var row = new SelectiveSemanticsFlex(first, second)
+        {
+            IncludeSecondInSemantics = false
+        };
+
+        var renderView = new RenderView
+        {
+            Child = row
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+
+        pipeline.FlushLayout(new Size(220, 120));
+        pipeline.FlushSemantics();
+
+        Assert.False(first.SemanticsParentDataDirty);
+        Assert.True(second.SemanticsParentDataDirty);
+
+        var root = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(root);
+        var onlyNode = Assert.Single(root.Children);
+        Assert.Equal("First", onlyNode.Label);
+
+        row.IncludeSecondInSemantics = true;
+        pipeline.FlushSemantics();
+
+        Assert.False(second.SemanticsParentDataDirty);
+
+        var updatedRoot = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(updatedRoot);
+        Assert.Equal(2, updatedRoot.Children.Count);
+    }
+
+    [Fact]
     public void RenderTransform_AppliesTranslationToSemanticsRect()
     {
         var leaf = new FixedSemanticBox("Moved", new Size(12, 8));
@@ -269,6 +342,38 @@ public sealed class SemanticsTreeTests
         Assert.NotNull(root);
         var moved = Assert.Single(root.Children);
         Assert.Equal(new Rect(30, 12, 12, 8), moved.Rect);
+    }
+
+    [Fact]
+    public void RenderTransform_ChangingTransform_UpdatesSemanticsWithoutLayout()
+    {
+        var leaf = new FixedSemanticBox("Moved", new Size(12, 8));
+        var transform = new RenderTransform(Matrix.CreateTranslation(10, 6), leaf);
+        var renderView = new RenderView
+        {
+            Child = transform
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+
+        pipeline.FlushLayout(new Size(220, 120));
+        pipeline.FlushSemantics();
+
+        var firstRoot = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(firstRoot);
+        var firstNode = Assert.Single(firstRoot.Children);
+        var firstId = firstNode.Id;
+        Assert.Equal(new Rect(10, 6, 12, 8), firstNode.Rect);
+
+        transform.Transform = Matrix.CreateTranslation(44, 18);
+        pipeline.FlushSemantics();
+
+        var updatedRoot = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(updatedRoot);
+        var updatedNode = Assert.Single(updatedRoot.Children);
+        Assert.Equal(firstId, updatedNode.Id);
+        Assert.Equal(new Rect(44, 18, 12, 8), updatedNode.Rect);
     }
 
     [Fact]
@@ -295,6 +400,64 @@ public sealed class SemanticsTreeTests
         var root = pipeline.SemanticsOwner.RootNode;
         Assert.NotNull(root);
         Assert.Empty(root.Children);
+    }
+
+    [Fact]
+    public void RenderClipRect_ChangingClip_UpdatesSemanticsWithoutLayout()
+    {
+        var leaf = new FixedSemanticBox("Clipped", new Size(12, 8));
+        var transform = new RenderTransform(Matrix.CreateTranslation(20, 0), leaf);
+        var clip = new RenderClipRect(transform)
+        {
+            ClipRect = new Rect(0, 0, 64, 32)
+        };
+
+        var renderView = new RenderView
+        {
+            Child = clip
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+
+        pipeline.FlushLayout(new Size(220, 120));
+        pipeline.FlushSemantics();
+
+        var firstRoot = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(firstRoot);
+        Assert.Single(firstRoot.Children);
+
+        clip.ClipRect = new Rect(0, 0, 8, 8);
+        pipeline.FlushSemantics();
+
+        var updatedRoot = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(updatedRoot);
+        Assert.Empty(updatedRoot.Children);
+    }
+
+    [Fact]
+    public void SemanticsParentDataDirty_ClearsAfterFlush_AndReappearsOnDirty()
+    {
+        var leaf = new FixedSemanticBox("State", new Size(12, 8));
+        var renderView = new RenderView
+        {
+            Child = leaf
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+
+        Assert.True(leaf.SemanticsParentDataDirty);
+
+        pipeline.FlushLayout(new Size(220, 120));
+        pipeline.FlushSemantics();
+        Assert.False(leaf.SemanticsParentDataDirty);
+
+        leaf.MarkNeedsSemanticsUpdate();
+        Assert.True(leaf.SemanticsParentDataDirty);
+
+        pipeline.FlushSemantics();
+        Assert.False(leaf.SemanticsParentDataDirty);
     }
 
     private sealed class MergeSemanticsRenderBox : RenderProxyBox
@@ -442,6 +605,102 @@ public sealed class SemanticsTreeTests
             configuration.IsSemanticBoundary = true;
             configuration.IsBlockingSemanticsOfPreviouslyPaintedNodes = _blocksPreviousNodes;
             configuration.Label = _label;
+        }
+    }
+
+    private sealed class MutableBlockingSemanticBox : RenderBox
+    {
+        private readonly string _label;
+        private readonly Size _size;
+        private bool _blocksPreviousNodes;
+
+        public MutableBlockingSemanticBox(string label, Size size, bool blocksPreviousNodes)
+        {
+            _label = label;
+            _size = size;
+            _blocksPreviousNodes = blocksPreviousNodes;
+        }
+
+        public bool BlocksPreviousNodes
+        {
+            get => _blocksPreviousNodes;
+            set
+            {
+                if (_blocksPreviousNodes == value)
+                {
+                    return;
+                }
+
+                _blocksPreviousNodes = value;
+                MarkNeedsSemanticsUpdate();
+            }
+        }
+
+        protected override void PerformLayout()
+        {
+            Size = Constraints.Constrain(_size);
+        }
+
+        public override void Paint(PaintingContext ctx, Point offset)
+        {
+        }
+
+        protected override void DescribeSemanticsConfiguration(SemanticsConfiguration configuration)
+        {
+            configuration.IsSemanticBoundary = true;
+            configuration.IsBlockingSemanticsOfPreviouslyPaintedNodes = _blocksPreviousNodes;
+            configuration.Label = _label;
+        }
+    }
+
+    private sealed class SelectiveSemanticsFlex : RenderFlex
+    {
+        private bool _includeSecondInSemantics = true;
+
+        public SelectiveSemanticsFlex(RenderBox first, RenderBox second)
+            : base(children: [first, second], direction: Axis.Horizontal)
+        {
+        }
+
+        public bool IncludeSecondInSemantics
+        {
+            get => _includeSecondInSemantics;
+            set
+            {
+                if (_includeSecondInSemantics == value)
+                {
+                    return;
+                }
+
+                _includeSecondInSemantics = value;
+                MarkNeedsSemanticsUpdate();
+            }
+        }
+
+        internal override void VisitChildrenForSemantics(Action<RenderObject, Point, Matrix> visitor)
+        {
+            var firstChild = FirstChild;
+            if (firstChild == null)
+            {
+                return;
+            }
+
+            var firstParentData = (FlexParentData)firstChild.parentData!;
+            visitor(firstChild, firstParentData.offset, Matrix.Identity);
+
+            if (!_includeSecondInSemantics)
+            {
+                return;
+            }
+
+            var secondChild = ChildAfter(firstChild);
+            if (secondChild == null)
+            {
+                return;
+            }
+
+            var secondParentData = (FlexParentData)secondChild.parentData!;
+            visitor(secondChild, secondParentData.offset, Matrix.Identity);
         }
     }
 }
