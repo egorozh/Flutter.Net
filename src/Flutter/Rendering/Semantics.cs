@@ -52,6 +52,64 @@ public sealed class SemanticsConfiguration
     {
         _actionHandlers = handlers.Count == 0 ? null : handlers;
     }
+
+    internal bool HasBeenAnnotated =>
+        !string.IsNullOrWhiteSpace(Label)
+        || Flags != SemanticsFlags.None
+        || Actions != SemanticsActions.None
+        || HasActionHandlers;
+
+    internal bool IsCompatibleWith(SemanticsConfiguration? other)
+    {
+        if (other == null || !other.HasBeenAnnotated || !HasBeenAnnotated)
+        {
+            return true;
+        }
+
+        if ((Actions & other.Actions) != SemanticsActions.None)
+        {
+            return false;
+        }
+
+        if ((Flags & other.Flags) != SemanticsFlags.None)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    internal void Absorb(SemanticsConfiguration child)
+    {
+        if (!child.HasBeenAnnotated)
+        {
+            return;
+        }
+
+        Flags |= child.Flags;
+        Actions |= child.Actions;
+
+        if (!string.IsNullOrWhiteSpace(child.Label))
+        {
+            if (string.IsNullOrWhiteSpace(Label))
+            {
+                Label = child.Label;
+            }
+            else
+            {
+                Label = $"{Label} {child.Label}";
+            }
+        }
+
+        if (child.HasActionHandlers)
+        {
+            _actionHandlers ??= [];
+            foreach (var pair in child.ActionHandlers)
+            {
+                _actionHandlers.TryAdd(pair.Key, pair.Value);
+            }
+        }
+    }
 }
 
 public sealed class SemanticsNode
@@ -113,6 +171,7 @@ public sealed class SemanticsOwner
     private int _nextNodeId;
     private SemanticsNode? _syntheticRoot;
     private readonly Dictionary<int, SemanticsNode> _index = [];
+    private readonly Dictionary<RenderObject, SemanticsNode> _nodesByRenderObject = [];
 
     public SemanticsNode? RootNode { get; private set; }
 
@@ -120,11 +179,19 @@ public sealed class SemanticsOwner
     {
         if (renderObject._semanticsNode != null)
         {
+            _nodesByRenderObject[renderObject] = renderObject._semanticsNode;
             return renderObject._semanticsNode;
+        }
+
+        if (_nodesByRenderObject.TryGetValue(renderObject, out var existing))
+        {
+            renderObject._semanticsNode = existing;
+            return existing;
         }
 
         var node = new SemanticsNode(++_nextNodeId);
         renderObject._semanticsNode = node;
+        _nodesByRenderObject[renderObject] = node;
         return node;
     }
 
@@ -134,6 +201,12 @@ public sealed class SemanticsOwner
         {
             RootNode = null;
             _index.Clear();
+            foreach (var pair in _nodesByRenderObject)
+            {
+                pair.Key._semanticsNode = null;
+            }
+
+            _nodesByRenderObject.Clear();
             return;
         }
 
@@ -141,6 +214,7 @@ public sealed class SemanticsOwner
         {
             RootNode = roots[0];
             RebuildIndex();
+            PruneUnusedRenderObjectNodes();
             return;
         }
 
@@ -154,6 +228,7 @@ public sealed class SemanticsOwner
         _syntheticRoot.SetActionHandlers(new Dictionary<SemanticsActions, Action>());
         RootNode = _syntheticRoot;
         RebuildIndex();
+        PruneUnusedRenderObjectNodes();
         return;
     }
 
@@ -251,5 +326,38 @@ public sealed class SemanticsOwner
         }
 
         return new Rect(minX, minY, maxX - minX, maxY - minY);
+    }
+
+    private void PruneUnusedRenderObjectNodes()
+    {
+        if (_nodesByRenderObject.Count == 0)
+        {
+            return;
+        }
+
+        var liveNodeIds = new HashSet<int>(_index.Keys);
+        List<RenderObject>? staleOwners = null;
+
+        foreach (var pair in _nodesByRenderObject)
+        {
+            if (liveNodeIds.Contains(pair.Value.Id))
+            {
+                continue;
+            }
+
+            pair.Key._semanticsNode = null;
+            staleOwners ??= [];
+            staleOwners.Add(pair.Key);
+        }
+
+        if (staleOwners == null)
+        {
+            return;
+        }
+
+        foreach (var owner in staleOwners)
+        {
+            _nodesByRenderObject.Remove(owner);
+        }
     }
 }

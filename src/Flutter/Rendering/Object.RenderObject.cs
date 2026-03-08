@@ -620,7 +620,6 @@ public abstract class RenderObject : IRenderObject
         if (config.IsMergingSemanticsOfDescendants && children.Count > 0)
         {
             MergeChildSemanticsIntoConfiguration(config, children);
-            children.Clear();
         }
 
         if (!HasOwnSemantics(config))
@@ -720,32 +719,42 @@ public abstract class RenderObject : IRenderObject
         SemanticsConfiguration configuration,
         List<SemanticsNode> children)
     {
-        var labels = new List<string>();
-        if (!string.IsNullOrWhiteSpace(configuration.Label))
+        if (children.Count == 0)
         {
-            labels.Add(configuration.Label);
+            return;
         }
 
-        var mergedHandlers = new Dictionary<SemanticsActions, Action>();
-        foreach (var pair in configuration.ActionHandlers)
-        {
-            mergedHandlers[pair.Key] = pair.Value;
-        }
-
+        var childrenToKeep = new List<SemanticsNode>();
         foreach (var child in children)
         {
-            if (!string.IsNullOrWhiteSpace(child.Label))
+            var childConfiguration = CreateConfigurationFromSemanticsNode(child);
+            if (configuration.IsCompatibleWith(childConfiguration))
             {
-                labels.Add(child.Label);
+                configuration.Absorb(childConfiguration);
             }
-
-            configuration.Flags |= child.Flags;
-            configuration.Actions |= child.Actions;
-            child.CopyActionHandlersTo(mergedHandlers);
+            else
+            {
+                childrenToKeep.Add(child);
+            }
         }
 
-        configuration.Label = labels.Count == 0 ? configuration.Label : string.Join(" ", labels);
-        configuration.ReplaceActionHandlers(mergedHandlers);
+        children.Clear();
+        children.AddRange(childrenToKeep);
+    }
+
+    private static SemanticsConfiguration CreateConfigurationFromSemanticsNode(SemanticsNode node)
+    {
+        var configuration = new SemanticsConfiguration
+        {
+            Label = node.Label,
+            Flags = node.Flags,
+            Actions = node.Actions
+        };
+
+        var handlers = new Dictionary<SemanticsActions, Action>();
+        node.CopyActionHandlersTo(handlers);
+        configuration.ReplaceActionHandlers(handlers);
+        return configuration;
     }
 
     protected virtual void PerformUpdateCompositingBits()

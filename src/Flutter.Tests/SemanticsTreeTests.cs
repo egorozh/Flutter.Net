@@ -147,6 +147,78 @@ public sealed class SemanticsTreeTests
     }
 
     [Fact]
+    public void MergeSemantics_ConflictingActionsRemainAsSeparateChildNode()
+    {
+        var firstTapCount = 0;
+        var secondTapCount = 0;
+        var first = new ActionSemanticBox("First", new Size(20, 10), () => firstTapCount += 1);
+        var second = new ActionSemanticBox("Second", new Size(20, 10), () => secondTapCount += 1);
+        var merge = new MergeSemanticsRenderBox(
+            new RenderFlex(
+                children: [first, second],
+                direction: Axis.Horizontal));
+
+        var renderView = new RenderView
+        {
+            Child = merge
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+
+        pipeline.FlushLayout(new Size(320, 120));
+        pipeline.FlushSemantics();
+
+        var root = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(root);
+        var mergedNode = Assert.Single(root.Children);
+        Assert.Equal("Group First", mergedNode.Label);
+        Assert.True(mergedNode.Actions.HasFlag(SemanticsActions.Tap));
+
+        var conflictingNode = Assert.Single(mergedNode.Children);
+        Assert.Equal("Second", conflictingNode.Label);
+        Assert.True(conflictingNode.Actions.HasFlag(SemanticsActions.Tap));
+
+        Assert.True(pipeline.SemanticsOwner.PerformAction(mergedNode.Id, SemanticsActions.Tap));
+        Assert.Equal(1, firstTapCount);
+        Assert.Equal(0, secondTapCount);
+
+        Assert.True(pipeline.SemanticsOwner.PerformAction(conflictingNode.Id, SemanticsActions.Tap));
+        Assert.Equal(1, firstTapCount);
+        Assert.Equal(1, secondTapCount);
+    }
+
+    [Fact]
+    public void MergeSemantics_PrunesMergedChildNodeCache()
+    {
+        var first = new FixedSemanticBox("First", new Size(20, 10));
+        var second = new FixedSemanticBox("Second", new Size(20, 10));
+        var merge = new MergeSemanticsRenderBox(
+            new RenderFlex(
+                children: [first, second],
+                direction: Axis.Horizontal));
+
+        var renderView = new RenderView
+        {
+            Child = merge
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+
+        pipeline.FlushLayout(new Size(320, 120));
+        pipeline.FlushSemantics();
+
+        var root = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(root);
+        var mergedNode = Assert.Single(root.Children);
+        Assert.Empty(mergedNode.Children);
+
+        Assert.Null(first._semanticsNode);
+        Assert.Null(second._semanticsNode);
+    }
+
+    [Fact]
     public void ExcludeSemantics_RemovesSubtreeFromSemanticsTree()
     {
         var excluded = new ExcludeSemanticsRenderBox(new RenderParagraph("Hidden"));
@@ -661,6 +733,36 @@ public sealed class SemanticsTreeTests
             configuration.IsSemanticBoundary = true;
             configuration.IsBlockingSemanticsOfPreviouslyPaintedNodes = _blocksPreviousNodes;
             configuration.Label = _label;
+        }
+    }
+
+    private sealed class ActionSemanticBox : RenderBox
+    {
+        private readonly string _label;
+        private readonly Size _size;
+        private readonly Action _onTap;
+
+        public ActionSemanticBox(string label, Size size, Action onTap)
+        {
+            _label = label;
+            _size = size;
+            _onTap = onTap;
+        }
+
+        protected override void PerformLayout()
+        {
+            Size = Constraints.Constrain(_size);
+        }
+
+        public override void Paint(PaintingContext ctx, Point offset)
+        {
+        }
+
+        protected override void DescribeSemanticsConfiguration(SemanticsConfiguration configuration)
+        {
+            configuration.IsSemanticBoundary = true;
+            configuration.Label = _label;
+            configuration.AddActionHandler(SemanticsActions.Tap, _onTap);
         }
     }
 
