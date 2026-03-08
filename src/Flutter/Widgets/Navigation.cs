@@ -220,6 +220,10 @@ public abstract class NavigatorObserver
     {
     }
 
+    public virtual void DidRemove(Route route, Route? previousRoute)
+    {
+    }
+
     public virtual void DidReplace(Route newRoute, Route? oldRoute)
     {
     }
@@ -502,6 +506,16 @@ public sealed class Navigator : StatefulWidget
         Of(context).PushReplacementNamed(routeData, result);
     }
 
+    public static void RemoveRoute(BuildContext context, Route route, object? result = null)
+    {
+        Of(context).RemoveRoute(route, result);
+    }
+
+    public static void RemoveRouteBelow(BuildContext context, Route anchorRoute, object? result = null)
+    {
+        Of(context).RemoveRouteBelow(anchorRoute, result);
+    }
+
     public static bool TryHandleBackButton()
     {
         return NavigatorBackButtonDispatcher.DispatchBackButton();
@@ -771,6 +785,55 @@ public sealed class NavigatorState : State
         PushReplacement(ResolveRouteData(routeData), result);
     }
 
+    public void RemoveRoute(Route route, object? result = null)
+    {
+        if (route == null)
+        {
+            throw new ArgumentNullException(nameof(route));
+        }
+
+        SetState(() =>
+        {
+            var index = _history.FindIndex(existing => ReferenceEquals(existing, route));
+            if (index < 0)
+            {
+                throw new InvalidOperationException("Route is not present in Navigator history.");
+            }
+
+            if (_history.Count <= 1)
+            {
+                throw new InvalidOperationException("Navigator cannot remove the last route.");
+            }
+
+            RemoveRouteAt(index, result);
+        });
+    }
+
+    public void RemoveRouteBelow(Route anchorRoute, object? result = null)
+    {
+        if (anchorRoute == null)
+        {
+            throw new ArgumentNullException(nameof(anchorRoute));
+        }
+
+        SetState(() =>
+        {
+            var anchorIndex = _history.FindIndex(existing => ReferenceEquals(existing, anchorRoute));
+            if (anchorIndex < 0)
+            {
+                throw new InvalidOperationException("Anchor route is not present in Navigator history.");
+            }
+
+            var removeIndex = anchorIndex - 1;
+            if (removeIndex < 0)
+            {
+                throw new InvalidOperationException("Anchor route does not have a route below it.");
+            }
+
+            RemoveRouteAt(removeIndex, result);
+        });
+    }
+
     private void PushInitialRoute()
     {
         if (_history.Count > 0)
@@ -834,17 +897,18 @@ public sealed class NavigatorState : State
                 break;
             }
 
-            RemoveRouteAt(_history.Count - 2);
+            RemoveRouteAt(_history.Count - 2, result: null);
         }
     }
 
-    private void RemoveRouteAt(int index)
+    private void RemoveRouteAt(int index, object? result)
     {
         if (index < 0 || index >= _history.Count)
         {
             throw new ArgumentOutOfRangeException(nameof(index));
         }
 
+        var wasTopRoute = index == _history.Count - 1;
         var previousRoute = index > 0 ? _history[index - 1] : null;
         var nextRoute = index + 1 < _history.Count ? _history[index + 1] : null;
         var removedRoute = _history[index];
@@ -855,6 +919,13 @@ public sealed class NavigatorState : State
 
         previousRoute?.DidChangeNext(nextRoute);
         nextRoute?.DidChangePrevious(previousRoute);
+        if (wasTopRoute)
+        {
+            previousRoute?.DidPopNext(removedRoute);
+        }
+
+        _ = result;
+        NotifyObserversRemove(removedRoute, previousRoute);
     }
 
     private Route ResolveInitialRoute()
@@ -959,6 +1030,14 @@ public sealed class NavigatorState : State
         foreach (var observer in _observers.ToArray())
         {
             observer.DidPop(route, previousRoute);
+        }
+    }
+
+    private void NotifyObserversRemove(Route route, Route? previousRoute)
+    {
+        foreach (var observer in _observers.ToArray())
+        {
+            observer.DidRemove(route, previousRoute);
         }
     }
 

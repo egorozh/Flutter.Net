@@ -193,6 +193,19 @@ internal sealed class NavigatorDetailsPage : StatelessWidget
                     fontSize: 12,
                     padding: new Thickness(10, 8)),
                 new CounterTapButton(
+                    label: "RemoveRouteBelow(current)",
+                    onTap: () =>
+                    {
+                        if (Navigator.CanPop(context) && ModalRoute.MaybeOf(context) is { } currentRoute)
+                        {
+                            Navigator.RemoveRouteBelow(context, currentRoute);
+                        }
+                    },
+                    background: Color.Parse("#FFF3E5F5"),
+                    foreground: Colors.Black,
+                    fontSize: 12,
+                    padding: new Thickness(10, 8)),
+                new CounterTapButton(
                     label: "Back (MaybePop)",
                     onTap: () => Navigator.MaybePop(context),
                     background: Colors.SteelBlue,

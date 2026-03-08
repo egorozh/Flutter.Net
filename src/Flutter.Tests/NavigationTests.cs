@@ -634,6 +634,210 @@ public sealed class NavigationTests
     }
 
     [Fact]
+    public void NavigatorObserver_DidRemove_ReceivesEventsFromPushNamedAndRemoveUntil()
+    {
+        var owner = new BuildOwner();
+        NavigatorState? navigatorState = null;
+        var observer = new RecordingObserver();
+
+        Route BuildNamedRoute(RouteSettings settings)
+        {
+            return new BuilderPageRoute(
+                builder: context =>
+                {
+                    navigatorState ??= Navigator.Of(context);
+                    return new SizedBox(width: 1, height: 1);
+                },
+                settings: settings);
+        }
+
+        Route? OnGenerateRoute(RouteSettings settings)
+        {
+            return settings.Name switch
+            {
+                "/" => BuildNamedRoute(settings),
+                "/a" => BuildNamedRoute(settings),
+                "/b" => BuildNamedRoute(settings),
+                "/target" => BuildNamedRoute(settings),
+                _ => null
+            };
+        }
+
+        var root = new TestRootElement(
+            new Navigator(
+                onGenerateRoute: OnGenerateRoute,
+                initialRouteName: "/",
+                observers: [observer]));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        navigatorState!.PushNamed("/a");
+        owner.FlushBuild();
+        navigatorState.PushNamed("/b");
+        owner.FlushBuild();
+        navigatorState.PushNamedAndRemoveUntil("/target", route => route.Settings.Name == "/");
+        owner.FlushBuild();
+
+        Assert.Equal(
+            [
+                "push:/:null",
+                "push:/a:/",
+                "push:/b:/a",
+                "push:/target:/b",
+                "remove:/b:/a",
+                "remove:/a:/"
+            ],
+            observer.Events);
+    }
+
+    [Fact]
+    public void Navigator_RemoveRoute_RemovesSpecificRoute()
+    {
+        var owner = new BuildOwner();
+        NavigatorState? navigatorState = null;
+        var currentPageName = string.Empty;
+        var routesByName = new Dictionary<string, Route>(StringComparer.Ordinal);
+
+        Route BuildNamedRoute(string pageName, RouteSettings settings)
+        {
+            var route = new BuilderPageRoute(
+                builder: context =>
+                {
+                    navigatorState ??= Navigator.Of(context);
+                    currentPageName = pageName;
+                    return new SizedBox(width: 1, height: 1);
+                },
+                settings: settings);
+
+            routesByName[settings.Name ?? string.Empty] = route;
+            return route;
+        }
+
+        Route? OnGenerateRoute(RouteSettings settings)
+        {
+            return settings.Name switch
+            {
+                "/" => BuildNamedRoute("root", settings),
+                "/a" => BuildNamedRoute("a", settings),
+                "/b" => BuildNamedRoute("b", settings),
+                _ => null
+            };
+        }
+
+        var root = new TestRootElement(
+            new Navigator(
+                onGenerateRoute: OnGenerateRoute,
+                initialRouteName: "/"));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        navigatorState!.PushNamed("/a");
+        owner.FlushBuild();
+        navigatorState.PushNamed("/b");
+        owner.FlushBuild();
+        Assert.Equal("b", currentPageName);
+
+        navigatorState.RemoveRoute(routesByName["/a"]);
+        owner.FlushBuild();
+        Assert.Equal("b", currentPageName);
+        Assert.True(navigatorState.CanPop);
+
+        navigatorState.Pop();
+        owner.FlushBuild();
+        Assert.Equal("root", currentPageName);
+        Assert.False(navigatorState.CanPop);
+    }
+
+    [Fact]
+    public void Navigator_RemoveRouteBelow_RemovesRouteUnderAnchor()
+    {
+        var owner = new BuildOwner();
+        NavigatorState? navigatorState = null;
+        var currentPageName = string.Empty;
+        var routesByName = new Dictionary<string, Route>(StringComparer.Ordinal);
+
+        Route BuildNamedRoute(string pageName, RouteSettings settings)
+        {
+            var route = new BuilderPageRoute(
+                builder: context =>
+                {
+                    navigatorState ??= Navigator.Of(context);
+                    currentPageName = pageName;
+                    return new SizedBox(width: 1, height: 1);
+                },
+                settings: settings);
+
+            routesByName[settings.Name ?? string.Empty] = route;
+            return route;
+        }
+
+        Route? OnGenerateRoute(RouteSettings settings)
+        {
+            return settings.Name switch
+            {
+                "/" => BuildNamedRoute("root", settings),
+                "/a" => BuildNamedRoute("a", settings),
+                "/b" => BuildNamedRoute("b", settings),
+                _ => null
+            };
+        }
+
+        var root = new TestRootElement(
+            new Navigator(
+                onGenerateRoute: OnGenerateRoute,
+                initialRouteName: "/"));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        navigatorState!.PushNamed("/a");
+        owner.FlushBuild();
+        navigatorState.PushNamed("/b");
+        owner.FlushBuild();
+
+        navigatorState.RemoveRouteBelow(routesByName["/b"]);
+        owner.FlushBuild();
+
+        navigatorState.Pop();
+        owner.FlushBuild();
+
+        Assert.Equal("root", currentPageName);
+        Assert.False(navigatorState.CanPop);
+    }
+
+    [Fact]
+    public void Navigator_RemoveRoute_ThrowsWhenRemovingLastRoute()
+    {
+        var owner = new BuildOwner();
+        NavigatorState? navigatorState = null;
+        Route? rootRoute = null;
+
+        var root = new TestRootElement(
+            new Navigator(
+                initialRoute: new BuilderPageRoute(
+                    builder: context =>
+                    {
+                        navigatorState ??= Navigator.Of(context);
+                        rootRoute ??= ModalRoute.Of(context);
+                        return new SizedBox(width: 1, height: 1);
+                    },
+                    settings: new RouteSettings(Name: "/"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.NotNull(navigatorState);
+        Assert.NotNull(rootRoute);
+        Assert.Throws<InvalidOperationException>(() => navigatorState!.RemoveRoute(rootRoute!));
+    }
+
+    [Fact]
     public void Navigator_InitialRouteData_PassesParsedQueryAndArguments()
     {
         var owner = new BuildOwner();
@@ -701,6 +905,11 @@ public sealed class NavigationTests
         public override void DidPop(Route route, Route? previousRoute)
         {
             Events.Add($"pop:{route.Settings.Name}:{previousRoute?.Settings.Name ?? "null"}");
+        }
+
+        public override void DidRemove(Route route, Route? previousRoute)
+        {
+            Events.Add($"remove:{route.Settings.Name}:{previousRoute?.Settings.Name ?? "null"}");
         }
 
         public override void DidReplace(Route newRoute, Route? oldRoute)
