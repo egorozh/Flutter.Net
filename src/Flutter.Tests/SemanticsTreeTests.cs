@@ -906,6 +906,155 @@ public sealed class SemanticsTreeTests
     }
 
     [Fact]
+    public void ChildConfigurationsDelegate_IncompleteSiblingGroup_ReusesNodeIdentityAcrossFlushes()
+    {
+        var childWithoutSemantics = new RenderConstrainedBox(BoxConstraints.TightFor(width: 10, height: 10));
+        var delegated = new ChildDelegateSemanticBoundaryRenderBox("Parent", childWithoutSemantics, static _ =>
+        {
+            var synthetic = new SemanticsConfiguration
+            {
+                Label = "Synthetic Stable"
+            };
+
+            return new ChildSemanticsConfigurationsResult(
+                new List<SemanticsConfiguration>(),
+                new List<List<SemanticsConfiguration>>
+                {
+                    new List<SemanticsConfiguration> { synthetic }
+                });
+        });
+        var transform = new RenderTransform(Matrix.Identity, delegated);
+
+        var renderView = new RenderView
+        {
+            Child = transform
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+        pipeline.FlushLayout(new Size(220, 120));
+        pipeline.FlushSemantics();
+
+        var firstRoot = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(firstRoot);
+        var firstNode = FindNodeByLabel(firstRoot, "Synthetic Stable");
+        Assert.NotNull(firstNode);
+        var firstId = firstNode.Id;
+
+        transform.Transform = Matrix.CreateTranslation(6, 0);
+        pipeline.FlushSemantics();
+
+        var updatedRoot = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(updatedRoot);
+        var updatedNode = FindNodeByLabel(updatedRoot, "Synthetic Stable");
+        Assert.NotNull(updatedNode);
+        Assert.Equal(firstId, updatedNode.Id);
+    }
+
+    [Fact]
+    public void ChildConfigurationsDelegate_IncompleteSiblingGroup_ConflictToggle_ReusesIdsAcrossMergeAndSplit()
+    {
+        var delegated = new MutableSyntheticSiblingGroupRenderBox(
+            child: new RenderConstrainedBox(BoxConstraints.TightFor(width: 10, height: 10)),
+            conflictingActions: false);
+        var renderView = new RenderView
+        {
+            Child = delegated
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+        pipeline.FlushLayout(new Size(220, 120));
+        pipeline.FlushSemantics();
+
+        var firstRoot = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(firstRoot);
+        var merged = FindNodeByLabel(firstRoot, "Synthetic A Synthetic B");
+        Assert.NotNull(merged);
+        var mergedId = merged.Id;
+
+        delegated.ConflictingActions = true;
+        pipeline.FlushSemantics();
+
+        var splitRoot = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(splitRoot);
+        var firstSplit = FindNodeByLabel(splitRoot, "Synthetic A");
+        var secondSplit = FindNodeByLabel(splitRoot, "Synthetic B");
+        Assert.NotNull(firstSplit);
+        Assert.NotNull(secondSplit);
+        Assert.Equal(mergedId, firstSplit.Id);
+        var secondSplitId = secondSplit.Id;
+
+        delegated.ConflictingActions = false;
+        pipeline.FlushSemantics();
+
+        var mergedAgainRoot = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(mergedAgainRoot);
+        var mergedAgain = FindNodeByLabel(mergedAgainRoot, "Synthetic A Synthetic B");
+        Assert.NotNull(mergedAgain);
+        Assert.Equal(mergedId, mergedAgain.Id);
+
+        delegated.ConflictingActions = true;
+        pipeline.FlushSemantics();
+
+        var splitAgainRoot = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(splitAgainRoot);
+        var secondSplitAgain = FindNodeByLabel(splitAgainRoot, "Synthetic B");
+        Assert.NotNull(secondSplitAgain);
+        Assert.Equal(secondSplitId, secondSplitAgain.Id);
+    }
+
+    [Fact]
+    public void ChildConfigurationsDelegate_IncompleteMergeUp_ConflictToggle_ReusesSiblingNodeIdAcrossReappearance()
+    {
+        var delegated = new MutableSyntheticMergeUpConflictRenderBox(
+            child: new RenderConstrainedBox(BoxConstraints.TightFor(width: 10, height: 10)),
+            parentTapConflict: false);
+        var transform = new RenderTransform(Matrix.Identity, delegated);
+
+        var renderView = new RenderView
+        {
+            Child = transform
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+        pipeline.FlushLayout(new Size(220, 120));
+        pipeline.FlushSemantics();
+
+        var firstRoot = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(firstRoot);
+        Assert.NotNull(FindNodeByLabel(firstRoot, "Parent Synthetic MergeUp"));
+        Assert.Null(FindNodeByLabel(firstRoot, "Synthetic MergeUp"));
+
+        delegated.ParentTapConflict = true;
+        pipeline.FlushSemantics();
+
+        var conflictRoot = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(conflictRoot);
+        var firstSibling = FindNodeByLabel(conflictRoot, "Synthetic MergeUp");
+        Assert.NotNull(firstSibling);
+        var siblingId = firstSibling.Id;
+
+        delegated.ParentTapConflict = false;
+        pipeline.FlushSemantics();
+
+        var mergedAgainRoot = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(mergedAgainRoot);
+        Assert.NotNull(FindNodeByLabel(mergedAgainRoot, "Parent Synthetic MergeUp"));
+        Assert.Null(FindNodeByLabel(mergedAgainRoot, "Synthetic MergeUp"));
+
+        delegated.ParentTapConflict = true;
+        pipeline.FlushSemantics();
+
+        var conflictAgainRoot = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(conflictAgainRoot);
+        var secondSibling = FindNodeByLabel(conflictAgainRoot, "Synthetic MergeUp");
+        Assert.NotNull(secondSibling);
+        Assert.Equal(siblingId, secondSibling.Id);
+    }
+
+    [Fact]
     public void ChildConfigurationsDelegate_WithExplicitChildNodes_ThrowsInvalidOperation()
     {
         var row = new RenderFlex(children: [new FixedSemanticBox("One", new Size(12, 8))], direction: Axis.Horizontal);
@@ -926,6 +1075,30 @@ public sealed class SemanticsTreeTests
         pipeline.Attach(renderView);
         pipeline.FlushLayout(new Size(220, 120));
         Assert.Throws<InvalidOperationException>(() => pipeline.FlushSemantics());
+    }
+
+    private static SemanticsNode? FindNodeByLabel(SemanticsNode? node, string label)
+    {
+        if (node == null)
+        {
+            return null;
+        }
+
+        if (node.Label == label)
+        {
+            return node;
+        }
+
+        foreach (var child in node.Children)
+        {
+            var match = FindNodeByLabel(child, label);
+            if (match != null)
+            {
+                return match;
+            }
+        }
+
+        return null;
     }
 
     private sealed class MutableSemanticBoundaryRenderBox : RenderProxyBox
@@ -957,6 +1130,112 @@ public sealed class SemanticsTreeTests
         {
             configuration.IsSemanticBoundary = true;
             configuration.Label = _label;
+        }
+    }
+
+    private sealed class MutableSyntheticSiblingGroupRenderBox : RenderProxyBox
+    {
+        private bool _conflictingActions;
+
+        public MutableSyntheticSiblingGroupRenderBox(RenderBox child, bool conflictingActions)
+        {
+            Child = child;
+            _conflictingActions = conflictingActions;
+        }
+
+        public bool ConflictingActions
+        {
+            get => _conflictingActions;
+            set
+            {
+                if (_conflictingActions == value)
+                {
+                    return;
+                }
+
+                _conflictingActions = value;
+                MarkNeedsSemanticsUpdate();
+            }
+        }
+
+        protected override void DescribeSemanticsConfiguration(SemanticsConfiguration configuration)
+        {
+            configuration.IsSemanticBoundary = true;
+            configuration.Label = "Parent";
+            configuration.ChildConfigurationsDelegate = _ =>
+            {
+                var first = new SemanticsConfiguration
+                {
+                    Label = "Synthetic A"
+                };
+                first.AddActionHandler(SemanticsActions.Tap, static () => { });
+
+                var second = new SemanticsConfiguration
+                {
+                    Label = "Synthetic B"
+                };
+                if (_conflictingActions)
+                {
+                    second.AddActionHandler(SemanticsActions.Tap, static () => { });
+                }
+
+                return new ChildSemanticsConfigurationsResult(
+                    new List<SemanticsConfiguration>(),
+                    new List<List<SemanticsConfiguration>>
+                    {
+                        new List<SemanticsConfiguration> { first, second }
+                    });
+            };
+        }
+    }
+
+    private sealed class MutableSyntheticMergeUpConflictRenderBox : RenderProxyBox
+    {
+        private bool _parentTapConflict;
+
+        public MutableSyntheticMergeUpConflictRenderBox(RenderBox child, bool parentTapConflict)
+        {
+            Child = child;
+            _parentTapConflict = parentTapConflict;
+        }
+
+        public bool ParentTapConflict
+        {
+            get => _parentTapConflict;
+            set
+            {
+                if (_parentTapConflict == value)
+                {
+                    return;
+                }
+
+                _parentTapConflict = value;
+                MarkNeedsSemanticsUpdate();
+            }
+        }
+
+        protected override void DescribeSemanticsConfiguration(SemanticsConfiguration configuration)
+        {
+            configuration.IsSemanticBoundary = true;
+            configuration.Label = "Parent";
+
+            if (_parentTapConflict)
+            {
+                configuration.AddActionHandler(SemanticsActions.Tap, static () => { });
+            }
+
+            configuration.ChildConfigurationsDelegate = static _ =>
+            {
+                var synthetic = new SemanticsConfiguration
+                {
+                    Label = "Synthetic MergeUp"
+                };
+                synthetic.AddActionHandler(SemanticsActions.Tap, static () => { });
+
+                return new ChildSemanticsConfigurationsResult(
+                    new List<SemanticsConfiguration> { synthetic },
+                    new List<List<SemanticsConfiguration>>());
+            };
         }
     }
 
