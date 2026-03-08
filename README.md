@@ -16,6 +16,11 @@ Flutter-like UI framework in C#.
 3. Samples demonstrate real framework usage via widget host flow, not only low-level render demos.
 4. Core primitives are stable and close enough to Flutter semantics for practical Dart-to-C# control porting.
 
+## Project Tracking
+
+- Changelog: [`CHANGELOG.md`](CHANGELOG.md)
+- Global implementation status and roadmap: [`docs/FRAMEWORK_PLAN.md`](docs/FRAMEWORK_PLAN.md)
+
 ## Example
 
 ```csharp
@@ -44,7 +49,3 @@ public sealed class MyApp : StatelessWidget
     }
 }
 ```
-
-Application screenshot:
-
-![Flutter.Net](flutter_net_example.jpg)

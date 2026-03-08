@@ -20,8 +20,8 @@ public static class FlutterExtensions
                 desktop.MainWindow = new Window
                 {
                     Title = "Flutter.NET",
-                    Width = 420,
-                    Height = 320,
+                    Width = 512,
+                    Height = 1820,
                     Content = host
                 };
                 break;

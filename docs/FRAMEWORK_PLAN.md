@@ -1,0 +1,110 @@
+# Framework Master Plan
+
+This is the single source of truth for framework status, direction, and implementation priorities.
+
+## AI Semantic Snapshot
+
+Use this block as the fastest machine-readable status summary.
+
+```yaml
+framework_plan_version: 1
+last_updated: 2026-03-08
+north_star: "Flutter-like widget/rendering framework in C# with Avalonia as host infrastructure."
+current_phase: "Stabilize implemented core and increase practical Flutter parity."
+status:
+  widget_element_state_lifecycle: done
+  render_pipeline_layout_paint_compositing_semantics: done
+  scheduler_ticker_frame_flow: done
+  gesture_arena_and_recognizers: done
+  navigation_stack_and_observers: done
+  scroll_sliver_list_grid_pipeline: done
+  desktop_widget_host_app_flow: done
+  browser_android_ios_sample_hosts: in_progress
+  dart_to_csharp_control_porting_readiness: in_progress
+  docs_alignment_and_tracking: in_progress
+next_milestones:
+  - id: M1
+    title: "Core parity hardening"
+    status: in_progress
+  - id: M2
+    title: "Input/focus/accessibility completion"
+    status: planned
+  - id: M3
+    title: "Port-first widget set expansion"
+    status: planned
+  - id: M4
+    title: "Cross-host sample parity and stability"
+    status: planned
+```
+
+## Confirmed Done (Repository Baseline)
+
+- [x] Flutter-like core abstractions exist and are wired: `Widget -> Element -> RenderObject`.
+- [x] Stateful lifecycle and build scheduling are implemented (`State`, `SetState`, `BuildOwner`).
+- [x] Inherited dependency model is implemented (`InheritedWidget`, `InheritedModel`, `InheritedNotifier`).
+- [x] Render pipeline is implemented (`PipelineOwner`, layout/compositing/paint/semantics phases).
+- [x] Layer tree primitives are implemented (offset/opacity/transform/clip/picture layers).
+- [x] Gesture system is implemented (pointer router, arena, tap/drag/long-press recognizers).
+- [x] Navigation stack is implemented (`Navigator`, routes, named routes, observers, back handling).
+- [x] Scroll/sliver stack is implemented (`Scrollable`, `Viewport`, sliver lists/grids, keep-alive, notifications).
+- [x] Widget host path is active on desktop (`FlutterExtensions.Run` + `WidgetHost`).
+- [x] Sample gallery demonstrates navigation and scrolling demos through framework widgets.
+- [x] Automated test project exists and covers lifecycle, rendering, layers, semantics, gestures, navigation, and scrolling.
+
+## Global Plan
+
+### M1. Core Parity Hardening
+
+Status: `in_progress`
+
+Exit criteria:
+
+- Core render object semantics remain compatible with expected Flutter behavior in covered scenarios.
+- Existing test suites stay green while adding missing parity edge-cases.
+- Layout/paint/semantics invalidation rules are documented and predictable for contributors.
+
+### M2. Input, Focus, and Accessibility Completion
+
+Status: `planned`
+
+Exit criteria:
+
+- Keyboard/focus flow is implemented as first-class framework behavior.
+- Semantics actions and tree updates are stable for interactive controls.
+- Platform accessibility bridge expectations are documented per host.
+
+### M3. Port-First Widget Set Expansion
+
+Status: `planned`
+
+Exit criteria:
+
+- Priority controls needed for Dart-to-C# rewrites are identified and implemented in framework layers.
+- New widgets use the same architecture boundaries (`Widget -> Element -> RenderObject`) without leaking behavior into Avalonia controls.
+- Sample gallery includes representative real-world compositions beyond demos.
+
+### M4. Cross-Host Sample Parity and Stability
+
+Status: `planned`
+
+Exit criteria:
+
+- Desktop, browser, Android, and iOS sample hosts build successfully from the solution.
+- Framework-driven app flow remains identical across hosts.
+- `src/Sample/Flutter.Net` and `dart_sample` stay in feature/route/module parity.
+
+## Backlog Candidates (After M1-M4)
+
+- Text editing/IME primitives and richer text input workflows.
+- Overlay/portal-like primitives and advanced route transitions.
+- Performance instrumentation and frame diagnostics tooling.
+- Expanded documentation for migration recipes from Flutter (Dart) widgets to C#.
+
+## Update Protocol (For Humans and AI Agents)
+
+- Always update this file when milestone status changes (`done`, `in_progress`, `planned`, `blocked`).
+- Always record shipped outcomes in `CHANGELOG.md`.
+- For every meaningful feature change, update both:
+  - semantic status (this document),
+  - historical record (`CHANGELOG.md`).
+- Keep architecture boundaries explicit: framework behavior in `src/Flutter`, host adaptation only in sample hosts.

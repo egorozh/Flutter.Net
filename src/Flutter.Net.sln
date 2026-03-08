@@ -17,6 +17,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 	ProjectSection(SolutionItems) = preProject
 		Directory.Packages.props = Directory.Packages.props
 		..\AGENTS.md = ..\AGENTS.md
+		..\CHANGELOG.md = ..\CHANGELOG.md
+		..\docs\FRAMEWORK_PLAN.md = ..\docs\FRAMEWORK_PLAN.md
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Flutter", "Flutter\Flutter.csproj", "{326C3424-9279-4043-ACA2-2ED611A15254}"

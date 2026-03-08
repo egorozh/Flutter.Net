@@ -36,6 +36,15 @@ This file defines expectations for coding agents working in this repository.
 - `src/Sample/Flutter.Net.Android`: Android host.
 - `src/Sample/Flutter.Net.iOS`: iOS host.
 
+## Progress Source of Truth
+
+- Historical shipped changes: `CHANGELOG.md`
+- Current status + global roadmap: `docs/FRAMEWORK_PLAN.md`
+- When task scope changes framework behavior, update both files so agents can infer:
+  - what is already done,
+  - what remains,
+  - what direction has priority now.
+
 ## Environment Requirements
 
 - .NET SDK 10 preview (projects target `net10.0` and platform-specific TFMs).
@@ -82,4 +91,4 @@ dotnet build src/Sample/Flutter.Net.iOS/Flutter.Net.iOS.csproj -c Debug
 3. For rendering changes, verify that layout/paint behavior is executed by framework render objects.
 4. For browser/mobile changes, build the affected sample project(s).
 5. For sample changes, validate both C# sample (`src/Sample/Flutter.Net`) and Dart sample (`dart_sample`) are kept in parity.
-6. There is no dedicated automated test project yet; add focused tests when introducing non-trivial logic.
+6. Automated tests live in `src/Flutter.Tests`; add focused coverage when introducing non-trivial logic.
