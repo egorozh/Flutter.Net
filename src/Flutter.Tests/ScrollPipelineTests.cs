@@ -125,6 +125,35 @@ public sealed class ScrollPipelineTests
         Assert.Equal(new Point(0, 0), secondBoxOffset);
     }
 
+    [Fact]
+    public void RenderSliverList_CreatesOnlyNeededChildren_AndTrimsTrailingOnReverseScroll()
+    {
+        var manager = new TestSliverChildManager(childCount: 200, childExtent: 50);
+        var sliverList = new RenderSliverList(manager);
+        manager.AttachOwner(sliverList);
+
+        var viewport = new RenderViewport(
+            axis: Axis.Vertical,
+            offsetPixels: 0);
+        viewport.Insert(sliverList);
+
+        var root = new RenderView { Child = viewport };
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+        pipeline.FlushLayout(new Size(100, 200));
+
+        Assert.InRange(manager.MaxCreatedIndex, 0, 6);
+        Assert.Equal(0, manager.RemoveCount);
+
+        viewport.OffsetPixels = 450;
+        pipeline.FlushLayout(new Size(100, 200));
+        Assert.InRange(manager.MaxCreatedIndex, 9, 15);
+
+        viewport.OffsetPixels = 0;
+        pipeline.FlushLayout(new Size(100, 200));
+        Assert.True(manager.RemoveCount > 0);
+    }
+
     private sealed class FixedSizeBox : RenderBox
     {
         private readonly Size _size;
@@ -145,6 +174,82 @@ public sealed class ScrollPipelineTests
         }
 
         public override void Paint(PaintingContext ctx, Point offset)
+        {
+        }
+    }
+
+    private sealed class TestSliverChildManager : IRenderSliverBoxChildManager
+    {
+        private readonly int _childCount;
+        private readonly double _childExtent;
+        private readonly Dictionary<int, RenderBox> _childrenByIndex = [];
+        private readonly Dictionary<RenderBox, int> _indexByChild = [];
+        private RenderSliverList _owner = null!;
+
+        public TestSliverChildManager(int childCount, double childExtent)
+        {
+            _childCount = childCount;
+            _childExtent = childExtent;
+        }
+
+        public int? ChildCount => _childCount;
+
+        public int MaxCreatedIndex { get; private set; } = -1;
+
+        public int RemoveCount { get; private set; }
+
+        public void AttachOwner(RenderSliverList owner)
+        {
+            _owner = owner;
+        }
+
+        public bool CreateChild(int index, RenderBox? after)
+        {
+            if (index >= _childCount)
+            {
+                return false;
+            }
+
+            if (_childrenByIndex.ContainsKey(index))
+            {
+                return true;
+            }
+
+            var child = new FixedSizeBox(new Size(100, _childExtent));
+            _childrenByIndex[index] = child;
+            _indexByChild[child] = index;
+            MaxCreatedIndex = Math.Max(MaxCreatedIndex, index);
+            _owner.Insert(child, after);
+            return true;
+        }
+
+        public void RemoveChild(RenderBox child)
+        {
+            if (!_indexByChild.TryGetValue(child, out var index))
+            {
+                return;
+            }
+
+            _indexByChild.Remove(child);
+            _childrenByIndex.Remove(index);
+            RemoveCount += 1;
+            _owner.Remove(child);
+        }
+
+        public void DidAdoptChild(RenderBox child)
+        {
+            if (!_indexByChild.TryGetValue(child, out var index))
+            {
+                return;
+            }
+
+            if (child.parentData is SliverMultiBoxAdaptorParentData parentData)
+            {
+                parentData.Index = index;
+            }
+        }
+
+        public void SetDidUnderflow(bool value)
         {
         }
     }

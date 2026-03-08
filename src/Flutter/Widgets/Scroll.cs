@@ -1,8 +1,8 @@
+using Avalonia.Media;
 using Flutter.Foundation;
 using Flutter.Gestures;
 using Flutter.Rendering;
 using Flutter.UI;
-using Avalonia.Media;
 
 namespace Flutter.Widgets;
 
@@ -332,6 +332,54 @@ public sealed class Viewport : MultiChildRenderObjectWidget
     }
 }
 
+public abstract class SliverChildDelegate
+{
+    public abstract Widget? Build(BuildContext context, int index);
+
+    public virtual int? EstimatedChildCount => null;
+}
+
+public sealed class SliverChildBuilderDelegate : SliverChildDelegate
+{
+    private readonly IndexedWidgetBuilder _builder;
+    private readonly int? _childCount;
+
+    public SliverChildBuilderDelegate(IndexedWidgetBuilder builder, int? childCount = null)
+    {
+        _builder = builder;
+        _childCount = childCount;
+    }
+
+    public override int? EstimatedChildCount => _childCount;
+
+    public override Widget? Build(BuildContext context, int index)
+    {
+        if (_childCount.HasValue && index >= _childCount.Value)
+        {
+            return null;
+        }
+
+        return _builder(context, index);
+    }
+}
+
+public sealed class SliverChildListDelegate : SliverChildDelegate
+{
+    private readonly IReadOnlyList<Widget> _children;
+
+    public SliverChildListDelegate(IReadOnlyList<Widget> children)
+    {
+        _children = children;
+    }
+
+    public override int? EstimatedChildCount => _children.Count;
+
+    public override Widget? Build(BuildContext context, int index)
+    {
+        return index >= 0 && index < _children.Count ? _children[index] : null;
+    }
+}
+
 public sealed class SliverToBoxAdapter : SingleChildRenderObjectWidget
 {
     public SliverToBoxAdapter(Widget child, Key? key = null) : base(child, key)
@@ -344,19 +392,297 @@ public sealed class SliverToBoxAdapter : SingleChildRenderObjectWidget
     }
 }
 
-public sealed class SliverList : SingleChildRenderObjectWidget
+public abstract class SliverMultiBoxAdaptorWidget : RenderObjectWidget
 {
-    public SliverList(Widget child, Key? key = null) : base(child, key)
+    protected SliverMultiBoxAdaptorWidget(SliverChildDelegate @delegate, Key? key = null) : base(key)
+    {
+        Delegate = @delegate;
+    }
+
+    public SliverChildDelegate Delegate { get; }
+
+    internal override Element CreateElement()
+    {
+        return new SliverMultiBoxAdaptorElement(this);
+    }
+}
+
+internal sealed class SliverMultiBoxAdaptorElement : RenderObjectElement, IRenderSliverBoxChildManager
+{
+    private readonly SortedDictionary<int, Element> _childElements = [];
+    private readonly Dictionary<Element, int> _indexByElement = [];
+    private readonly Dictionary<RenderBox, Element> _elementByRenderObject = [];
+    private bool _didUnderflow;
+
+    public SliverMultiBoxAdaptorElement(SliverMultiBoxAdaptorWidget widget) : base(widget)
     {
     }
 
-    public static SliverList FromChildren(IReadOnlyList<Widget> children, Axis axis = Axis.Vertical, Key? key = null)
-    {
-        Widget content = axis == Axis.Vertical
-            ? new Column(crossAxisAlignment: CrossAxisAlignment.Stretch, children: children)
-            : new Row(children: children);
+    private SliverMultiBoxAdaptorWidget TypedWidget => (SliverMultiBoxAdaptorWidget)Widget;
 
-        return new SliverList(content, key);
+    private RenderSliverMultiBoxAdaptor TypedRenderObject => (RenderSliverMultiBoxAdaptor)RequireRenderObject();
+
+    int? IRenderSliverBoxChildManager.ChildCount => TypedWidget.Delegate.EstimatedChildCount;
+
+    protected override void OnMount()
+    {
+        base.OnMount();
+        TypedRenderObject.ChildManager = this;
+    }
+
+    protected override void OnActivate()
+    {
+        base.OnActivate();
+        TypedRenderObject.ChildManager = this;
+    }
+
+    protected override void OnDeactivate()
+    {
+        if (RenderObject is RenderSliverMultiBoxAdaptor renderObject && ReferenceEquals(renderObject.ChildManager, this))
+        {
+            renderObject.ChildManager = null;
+        }
+
+        base.OnDeactivate();
+    }
+
+    internal override void Rebuild()
+    {
+        base.Rebuild();
+        SyncChildWidgets();
+        TypedRenderObject.MarkNeedsLayout();
+    }
+
+    internal override void Update(Widget newWidget)
+    {
+        base.Update(newWidget);
+        TypedRenderObject.ChildManager = this;
+        SyncChildWidgets();
+        TypedRenderObject.MarkNeedsLayout();
+    }
+
+    internal override void VisitChildren(Action<Element> visitor)
+    {
+        foreach (var child in _childElements.Values)
+        {
+            visitor(child);
+        }
+    }
+
+    internal override void ForgetChild(Element child)
+    {
+        RemoveMappings(child);
+    }
+
+    internal override void Unmount()
+    {
+        foreach (var child in _childElements.Values.ToArray())
+        {
+            UnmountChild(child);
+        }
+
+        _childElements.Clear();
+        _indexByElement.Clear();
+        _elementByRenderObject.Clear();
+        base.Unmount();
+    }
+
+    public bool CreateChild(int index, RenderBox? after)
+    {
+        if (_childElements.ContainsKey(index))
+        {
+            return true;
+        }
+
+        var widget = TypedWidget.Delegate.Build(new BuildContext(this), index);
+        if (widget == null)
+        {
+            return false;
+        }
+
+        var previousElement = after != null && _elementByRenderObject.TryGetValue(after, out var mapped)
+            ? mapped
+            : PreviousElementForIndex(index);
+
+        var slot = new IndexedSlot<Element?>(index, previousElement);
+        var child = UpdateChild(null, widget, slot);
+        if (child == null)
+        {
+            return false;
+        }
+
+        AttachMappings(index, child);
+        return true;
+    }
+
+    public void RemoveChild(RenderBox child)
+    {
+        if (!_elementByRenderObject.TryGetValue(child, out var element))
+        {
+            return;
+        }
+
+        RemoveMappings(element);
+        DeactivateChild(element);
+    }
+
+    public void DidAdoptChild(RenderBox child)
+    {
+        if (!_elementByRenderObject.TryGetValue(child, out var element))
+        {
+            return;
+        }
+
+        if (!_indexByElement.TryGetValue(element, out var index))
+        {
+            return;
+        }
+
+        if (child.parentData is SliverMultiBoxAdaptorParentData parentData)
+        {
+            parentData.Index = index;
+        }
+    }
+
+    public void SetDidUnderflow(bool value)
+    {
+        _didUnderflow = value;
+    }
+
+    public override void InsertRenderObjectChild(RenderObject child, object? slot)
+    {
+        if (slot is not IndexedSlot<Element?> indexedSlot)
+        {
+            throw new InvalidOperationException("SliverMultiBoxAdaptorElement expects IndexedSlot.");
+        }
+
+        TypedRenderObject.Insert((RenderBox)child, (RenderBox?)indexedSlot.Value?.RenderObject);
+    }
+
+    public override void MoveRenderObjectChild(RenderObject child, object? oldSlot, object? newSlot)
+    {
+        if (newSlot is not IndexedSlot<Element?> indexedSlot)
+        {
+            throw new InvalidOperationException("SliverMultiBoxAdaptorElement expects IndexedSlot.");
+        }
+
+        TypedRenderObject.Move((RenderBox)child, (RenderBox?)indexedSlot.Value?.RenderObject);
+    }
+
+    public override void RemoveRenderObjectChild(RenderObject child, object? slot)
+    {
+        TypedRenderObject.Remove((RenderBox)child);
+    }
+
+    private void SyncChildWidgets()
+    {
+        foreach (var index in _childElements.Keys.ToArray())
+        {
+            if (!_childElements.TryGetValue(index, out var oldChild))
+            {
+                continue;
+            }
+
+            var updatedWidget = TypedWidget.Delegate.Build(new BuildContext(this), index);
+            if (updatedWidget == null)
+            {
+                RemoveMappings(oldChild);
+                DeactivateChild(oldChild);
+                continue;
+            }
+
+            var updatedChild = UpdateChild(oldChild, updatedWidget, new IndexedSlot<Element?>(index, PreviousElementForIndex(index)));
+            if (updatedChild == null)
+            {
+                RemoveMappings(oldChild);
+                continue;
+            }
+
+            if (!ReferenceEquals(updatedChild, oldChild))
+            {
+                RemoveMappings(oldChild);
+                AttachMappings(index, updatedChild);
+            }
+            else
+            {
+                RefreshRenderObjectMapping(updatedChild);
+            }
+        }
+
+        if (_didUnderflow)
+        {
+            TypedRenderObject.MarkNeedsLayout();
+        }
+    }
+
+    private Element? PreviousElementForIndex(int index)
+    {
+        Element? previous = null;
+        foreach (var pair in _childElements)
+        {
+            if (pair.Key >= index)
+            {
+                break;
+            }
+
+            previous = pair.Value;
+        }
+
+        return previous;
+    }
+
+    private void AttachMappings(int index, Element child)
+    {
+        _childElements[index] = child;
+        _indexByElement[child] = index;
+        if (child.RenderObject is RenderBox renderBox)
+        {
+            _elementByRenderObject[renderBox] = child;
+        }
+    }
+
+    private void RemoveMappings(Element child)
+    {
+        if (_indexByElement.TryGetValue(child, out var index))
+        {
+            _indexByElement.Remove(child);
+            _childElements.Remove(index);
+        }
+
+        if (child.RenderObject is RenderBox renderBox)
+        {
+            _elementByRenderObject.Remove(renderBox);
+        }
+    }
+
+    private void RefreshRenderObjectMapping(Element child)
+    {
+        foreach (var key in _elementByRenderObject.Where(pair => ReferenceEquals(pair.Value, child)).Select(pair => pair.Key).ToArray())
+        {
+            _elementByRenderObject.Remove(key);
+        }
+
+        if (child.RenderObject is RenderBox renderBox)
+        {
+            _elementByRenderObject[renderBox] = child;
+        }
+    }
+}
+
+public sealed class SliverList : SliverMultiBoxAdaptorWidget
+{
+    public SliverList(SliverChildDelegate @delegate, Key? key = null) : base(@delegate, key)
+    {
+    }
+
+    public static SliverList FromChildren(IReadOnlyList<Widget> children, Key? key = null)
+    {
+        return new SliverList(new SliverChildListDelegate(children), key);
+    }
+
+    public static SliverList Builder(int childCount, IndexedWidgetBuilder itemBuilder, Key? key = null)
+    {
+        return new SliverList(new SliverChildBuilderDelegate(itemBuilder, childCount), key);
     }
 
     internal override RenderObject CreateRenderObject(BuildContext context)
@@ -549,7 +875,7 @@ public sealed class Scrollbar : StatefulWidget
     }
 }
 
-public sealed class ListView : StatefulWidget
+public sealed class ListView : StatelessWidget
 {
     private readonly IReadOnlyList<Widget>? _children;
     private readonly IndexedWidgetBuilder? _itemBuilder;
@@ -566,13 +892,11 @@ public sealed class ListView : StatefulWidget
         ScrollDirection = scrollDirection;
         Controller = controller;
         Physics = physics;
-        ItemExtent = 44;
     }
 
     private ListView(
         int itemCount,
         IndexedWidgetBuilder itemBuilder,
-        double itemExtent,
         Axis scrollDirection,
         ScrollController? controller,
         ScrollPhysics? physics,
@@ -580,7 +904,6 @@ public sealed class ListView : StatefulWidget
     {
         _itemCount = itemCount;
         _itemBuilder = itemBuilder;
-        ItemExtent = itemExtent;
         ScrollDirection = scrollDirection;
         Controller = controller;
         Physics = physics;
@@ -592,12 +915,9 @@ public sealed class ListView : StatefulWidget
 
     public ScrollPhysics? Physics { get; }
 
-    public double ItemExtent { get; }
-
     public static ListView Builder(
         int itemCount,
         IndexedWidgetBuilder itemBuilder,
-        double itemExtent = 44,
         Axis scrollDirection = Axis.Vertical,
         ScrollController? controller = null,
         ScrollPhysics? physics = null,
@@ -606,141 +926,22 @@ public sealed class ListView : StatefulWidget
         return new ListView(
             itemCount: itemCount,
             itemBuilder: itemBuilder,
-            itemExtent: itemExtent,
             scrollDirection: scrollDirection,
             controller: controller,
             physics: physics,
             key: key);
     }
 
-    public override State CreateState()
+    public override Widget Build(BuildContext context)
     {
-        return new ListViewState();
-    }
+        Widget sliver = _itemBuilder != null
+            ? SliverList.Builder(_itemCount, _itemBuilder)
+            : SliverList.FromChildren(_children ?? []);
 
-    private sealed class ListViewState : State
-    {
-        private ScrollController? _fallbackController;
-        private ScrollController _activeController = null!;
-
-        private ListView CurrentWidget => (ListView)Element.Widget;
-
-        public override void InitState()
-        {
-            _activeController = ResolveController(CurrentWidget.Controller);
-            _activeController.AddListener(HandleControllerChanged);
-        }
-
-        public override void DidUpdateWidget(StatefulWidget oldWidget)
-        {
-            var oldList = (ListView)oldWidget;
-            if (ReferenceEquals(oldList.Controller, CurrentWidget.Controller))
-            {
-                return;
-            }
-
-            _activeController.RemoveListener(HandleControllerChanged);
-            _activeController = ResolveController(CurrentWidget.Controller);
-            _activeController.AddListener(HandleControllerChanged);
-            SetState(static () => { });
-        }
-
-        public override void Dispose()
-        {
-            _activeController.RemoveListener(HandleControllerChanged);
-            _fallbackController?.Dispose();
-        }
-
-        public override Widget Build(BuildContext context)
-        {
-            var widget = CurrentWidget;
-            var sliver = widget._itemBuilder == null
-                ? BuildStaticSliver(widget)
-                : BuildVirtualizedBuilderSliver(widget, context, _activeController);
-
-            return new CustomScrollView(
-                slivers: [sliver],
-                scrollDirection: widget.ScrollDirection,
-                controller: _activeController,
-                physics: widget.Physics);
-        }
-
-        private ScrollController ResolveController(ScrollController? provided)
-        {
-            if (provided != null)
-            {
-                return provided;
-            }
-
-            _fallbackController ??= new ScrollController();
-            return _fallbackController;
-        }
-
-        private static Widget BuildStaticSliver(ListView widget)
-        {
-            var children = widget._children ?? [];
-            return SliverList.FromChildren(children, widget.ScrollDirection);
-        }
-
-        private static Widget BuildVirtualizedBuilderSliver(
-            ListView widget,
-            BuildContext context,
-            ScrollController controller)
-        {
-            var itemBuilder = widget._itemBuilder!;
-            var itemCount = Math.Max(0, widget._itemCount);
-            var itemExtent = Math.Max(1, widget.ItemExtent);
-            var offset = Math.Max(0, controller.Offset);
-            var viewportExtent = controller.PrimaryPosition?.ViewportDimension ?? 0;
-            if (viewportExtent <= 0)
-            {
-                viewportExtent = 480;
-            }
-
-            const int cacheItems = 2;
-            var firstVisible = (int)Math.Floor(offset / itemExtent);
-            var visibleCount = (int)Math.Ceiling(viewportExtent / itemExtent) + cacheItems * 2 + 1;
-            var start = Math.Clamp(firstVisible - cacheItems, 0, Math.Max(0, itemCount - 1));
-            var end = Math.Clamp(start + visibleCount - 1, 0, Math.Max(0, itemCount - 1));
-
-            var beforeExtent = start * itemExtent;
-            var afterExtent = Math.Max(0, (itemCount - end - 1) * itemExtent);
-
-            var children = new List<Widget>();
-            if (beforeExtent > 0)
-            {
-                children.Add(widget.ScrollDirection == Axis.Vertical
-                    ? new SizedBox(height: beforeExtent)
-                    : new SizedBox(width: beforeExtent));
-            }
-
-            for (var index = start; index <= end; index++)
-            {
-                var item = itemBuilder(context, index);
-                item = widget.ScrollDirection == Axis.Vertical
-                    ? new SizedBox(height: itemExtent, child: item)
-                    : new SizedBox(width: itemExtent, child: item);
-                children.Add(item);
-            }
-
-            if (afterExtent > 0)
-            {
-                children.Add(widget.ScrollDirection == Axis.Vertical
-                    ? new SizedBox(height: afterExtent)
-                    : new SizedBox(width: afterExtent));
-            }
-
-            if (children.Count == 0)
-            {
-                children.Add(new SizedBox(height: 0, width: 0));
-            }
-
-            return SliverList.FromChildren(children, widget.ScrollDirection);
-        }
-
-        private void HandleControllerChanged()
-        {
-            SetState(static () => { });
-        }
+        return new CustomScrollView(
+            slivers: [sliver],
+            scrollDirection: ScrollDirection,
+            controller: Controller,
+            physics: Physics);
     }
 }
