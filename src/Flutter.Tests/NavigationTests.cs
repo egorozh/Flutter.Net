@@ -208,6 +208,70 @@ public sealed class NavigationTests
     }
 
     [Fact]
+    public void Navigator_StaticApi_PushNamedAndPop_WorkThroughBuildContext()
+    {
+        var owner = new BuildOwner();
+        BuildContext? rootContext = null;
+        BuildContext? detailsContext = null;
+        var currentPageName = string.Empty;
+        object? latestArguments = null;
+
+        Route? OnGenerateRoute(RouteSettings settings)
+        {
+            return settings.Name switch
+            {
+                "/" => new BuilderPageRoute(
+                    builder: context =>
+                    {
+                        rootContext = context;
+                        currentPageName = "root";
+                        latestArguments = settings.Arguments;
+                        return new SizedBox(width: 1, height: 1);
+                    },
+                    settings: settings),
+                "/details" => new BuilderPageRoute(
+                    builder: context =>
+                    {
+                        detailsContext = context;
+                        currentPageName = "details";
+                        latestArguments = settings.Arguments;
+                        return new SizedBox(width: 1, height: 1);
+                    },
+                    settings: settings),
+                _ => null
+            };
+        }
+
+        var root = new TestRootElement(
+            new Navigator(
+                onGenerateRoute: OnGenerateRoute,
+                initialRouteName: "/"));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.True(rootContext.HasValue);
+        Assert.Equal("root", currentPageName);
+        Assert.False(Navigator.CanPop(rootContext.Value));
+
+        Navigator.PushNamed(rootContext.Value, "/details", arguments: 99);
+        owner.FlushBuild();
+
+        Assert.True(detailsContext.HasValue);
+        Assert.Equal("details", currentPageName);
+        Assert.Equal(99, latestArguments);
+        Assert.True(Navigator.CanPop(detailsContext.Value));
+
+        Navigator.Pop(detailsContext.Value);
+        owner.FlushBuild();
+
+        Assert.True(rootContext.HasValue);
+        Assert.Equal("root", currentPageName);
+        Assert.False(Navigator.CanPop(rootContext.Value));
+    }
+
+    [Fact]
     public void Navigator_PushReplacementNamed_ReplacesTopRoute()
     {
         var owner = new BuildOwner();
@@ -252,6 +316,138 @@ public sealed class NavigationTests
 
         Assert.Equal("replacement", currentPageName);
         Assert.False(navigatorState.CanPop);
+    }
+
+    [Fact]
+    public void Navigator_PopUntil_PopsUntilPredicateMatches()
+    {
+        var owner = new BuildOwner();
+        NavigatorState? navigatorState = null;
+        var currentPageName = string.Empty;
+
+        var root = new TestRootElement(
+            new Navigator(
+                initialRoute: BuildRoute(
+                    name: "root",
+                    onBuild: name => currentPageName = name,
+                    captureState: state => navigatorState ??= state)));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        navigatorState!.Push(BuildRoute("a", name => currentPageName = name, _ => { }));
+        owner.FlushBuild();
+        navigatorState.Push(BuildRoute("b", name => currentPageName = name, _ => { }));
+        owner.FlushBuild();
+        navigatorState.Push(BuildRoute("c", name => currentPageName = name, _ => { }));
+        owner.FlushBuild();
+        Assert.Equal("c", currentPageName);
+
+        navigatorState.PopUntil(route => route.Settings.Name == "a");
+        owner.FlushBuild();
+
+        Assert.Equal("a", currentPageName);
+        Assert.True(navigatorState.CanPop);
+    }
+
+    [Fact]
+    public void Navigator_PushNamedAndRemoveUntil_RemovesIntermediateRoutes()
+    {
+        var owner = new BuildOwner();
+        NavigatorState? navigatorState = null;
+        var currentPageName = string.Empty;
+
+        Route BuildNamedRoute(string pageName, RouteSettings settings)
+        {
+            return new BuilderPageRoute(
+                builder: context =>
+                {
+                    navigatorState ??= Navigator.Of(context);
+                    currentPageName = pageName;
+                    return new SizedBox(width: 1, height: 1);
+                },
+                settings: settings);
+        }
+
+        Route? OnGenerateRoute(RouteSettings settings)
+        {
+            return settings.Name switch
+            {
+                "/" => BuildNamedRoute("root", settings),
+                "/a" => BuildNamedRoute("a", settings),
+                "/b" => BuildNamedRoute("b", settings),
+                "/target" => BuildNamedRoute("target", settings),
+                _ => null
+            };
+        }
+
+        var root = new TestRootElement(
+            new Navigator(
+                onGenerateRoute: OnGenerateRoute,
+                initialRouteName: "/"));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        navigatorState!.PushNamed("/a");
+        owner.FlushBuild();
+        navigatorState.PushNamed("/b");
+        owner.FlushBuild();
+        Assert.Equal("b", currentPageName);
+
+        navigatorState.PushNamedAndRemoveUntil("/target", route => route.Settings.Name == "/");
+        owner.FlushBuild();
+
+        Assert.Equal("target", currentPageName);
+        Assert.True(navigatorState.CanPop);
+
+        Assert.True(navigatorState.MaybePop());
+        owner.FlushBuild();
+        Assert.Equal("root", currentPageName);
+        Assert.False(navigatorState.CanPop);
+    }
+
+    [Fact]
+    public void Navigator_InitialRouteData_PassesParsedQueryAndArguments()
+    {
+        var owner = new BuildOwner();
+        RouteData? capturedRouteData = null;
+        var currentPageName = string.Empty;
+
+        Route? OnGenerateRoute(RouteSettings settings)
+        {
+            if (settings.Name != "/details")
+            {
+                return null;
+            }
+
+            return new BuilderPageRoute(
+                builder: _ =>
+                {
+                    capturedRouteData = Assert.IsType<RouteData>(settings.Arguments);
+                    currentPageName = settings.Name ?? string.Empty;
+                    return new SizedBox(width: 1, height: 1);
+                },
+                settings: settings);
+        }
+
+        var root = new TestRootElement(
+            new Navigator(
+                onGenerateRoute: OnGenerateRoute,
+                initialRouteData: RouteData.FromLocation("/details?id=42&tab=main", arguments: "payload")));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.Equal("/details", currentPageName);
+        Assert.NotNull(capturedRouteData);
+        Assert.Equal("/details", capturedRouteData!.Name);
+        Assert.Equal("42", capturedRouteData.QueryParameters["id"]);
+        Assert.Equal("main", capturedRouteData.QueryParameters["tab"]);
+        Assert.Equal("payload", capturedRouteData.Arguments);
     }
 
     private static Route BuildRoute(

@@ -12,6 +12,8 @@ internal static class SampleRoutes
 {
     public const string Menu = "/";
     public const string Counter = "/counter";
+    public const string Navigator = "/navigator";
+    public const string NavigatorDetails = "/navigator/details";
     public const string ListViewSeparated = "/list-separated";
     public const string ListViewFixedExtent = "/list-fixed-extent";
     public const string ListViewReverse = "/list-reverse";
@@ -31,6 +33,7 @@ internal sealed class SampleGalleryScreen : StatelessWidget
     private static readonly IReadOnlyList<SampleRouteDefinition> DemoPages =
     [
         new(SampleRoutes.Counter, "Counter", "existing sample", () => new CounterScreen()),
+        new(SampleRoutes.Navigator, "Navigator", "named routes + RouteData + stack APIs", () => new NavigatorDemoPage()),
         new(SampleRoutes.ListViewSeparated, "ListView.Separated", "item + separator builder", () => new ListViewSeparatedDemoPage()),
         new(SampleRoutes.ListViewFixedExtent, "ListView fixed extent", "itemExtent + padding", () => new ListViewFixedExtentDemoPage()),
         new(SampleRoutes.ListViewReverse, "ListView reverse", "reverse=true behavior", () => new ListViewReverseDemoPage()),
@@ -55,6 +58,18 @@ internal sealed class SampleGalleryScreen : StatelessWidget
         {
             return new BuilderPageRoute(
                 builder: _ => new SampleMenuPage(DemoPages),
+                settings: settings);
+        }
+
+        if (settings.Name == SampleRoutes.NavigatorDetails)
+        {
+            var routeData = settings.Arguments as RouteData
+                ?? new RouteData(SampleRoutes.NavigatorDetails, arguments: settings.Arguments);
+            return new BuilderPageRoute(
+                builder: _ => new SampleDemoPage(
+                    title: "Navigator details",
+                    subtitle: "RouteData query/arguments + push/pop operations",
+                    child: new NavigatorDetailsPage(routeData)),
                 settings: settings);
         }
 
@@ -117,12 +132,19 @@ internal sealed class SampleMenuPage : StatelessWidget
 
 internal sealed class SampleDemoPage : StatelessWidget
 {
-    private readonly SampleRouteDefinition _page;
+    private readonly string _title;
+    private readonly string _subtitle;
     private readonly Widget _child;
 
     public SampleDemoPage(SampleRouteDefinition page, Widget child)
+        : this(page.Title, page.Subtitle, child)
     {
-        _page = page;
+    }
+
+    public SampleDemoPage(string title, string subtitle, Widget child)
+    {
+        _title = title;
+        _subtitle = subtitle;
         _child = child;
     }
 
@@ -150,9 +172,9 @@ internal sealed class SampleDemoPage : StatelessWidget
                                     fontSize: 12,
                                     padding: new Thickness(10, 8))),
                             new Expanded(
-                                child: new Text(_page.Title, fontSize: 22, color: Colors.Black)),
+                                child: new Text(_title, fontSize: 22, color: Colors.Black)),
                         ]),
-                    new Text(_page.Subtitle, fontSize: 14, color: Colors.DimGray),
+                    new Text(_subtitle, fontSize: 14, color: Colors.DimGray),
                     new Expanded(
                         child: new Container(
                             color: Color.Parse("#FFF7F9FC"),

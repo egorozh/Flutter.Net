@@ -7,6 +7,103 @@ namespace Flutter.Widgets;
 
 public sealed record RouteSettings(string? Name = null, object? Arguments = null);
 public delegate Route? RouteFactory(RouteSettings settings);
+public delegate bool RoutePredicate(Route route);
+
+public sealed class RouteData
+{
+    private static readonly IReadOnlyDictionary<string, string> EmptyQueryParameters =
+        new Dictionary<string, string>();
+
+    public RouteData(
+        string name,
+        IReadOnlyDictionary<string, string>? queryParameters = null,
+        object? arguments = null)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException("name cannot be null or whitespace.", nameof(name));
+        }
+
+        Name = name;
+        QueryParameters = queryParameters ?? EmptyQueryParameters;
+        Arguments = arguments;
+    }
+
+    public string Name { get; }
+
+    public IReadOnlyDictionary<string, string> QueryParameters { get; }
+
+    public object? Arguments { get; }
+
+    public static RouteData FromLocation(string location, object? arguments = null)
+    {
+        if (string.IsNullOrWhiteSpace(location))
+        {
+            throw new ArgumentException("location cannot be null or whitespace.", nameof(location));
+        }
+
+        var normalized = NormalizeLocation(location);
+        var queryIndex = normalized.IndexOf('?', StringComparison.Ordinal);
+        var path = queryIndex >= 0
+            ? normalized[..queryIndex]
+            : normalized;
+        if (string.IsNullOrEmpty(path))
+        {
+            path = "/";
+        }
+
+        var query = queryIndex >= 0 ? normalized[(queryIndex + 1)..] : string.Empty;
+        return new RouteData(
+            name: path,
+            queryParameters: ParseQueryParameters(query),
+            arguments: arguments);
+    }
+
+    private static string NormalizeLocation(string location)
+    {
+        if (location.Contains("://", StringComparison.Ordinal)
+            && Uri.TryCreate(location, UriKind.Absolute, out var absoluteUri))
+        {
+            var normalized = absoluteUri.PathAndQuery;
+            if (!string.IsNullOrEmpty(absoluteUri.Fragment))
+            {
+                normalized += absoluteUri.Fragment;
+            }
+
+            return normalized;
+        }
+
+        return location;
+    }
+
+    private static IReadOnlyDictionary<string, string> ParseQueryParameters(string query)
+    {
+        if (string.IsNullOrEmpty(query))
+        {
+            return EmptyQueryParameters;
+        }
+
+        var parameters = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var pair in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var separatorIndex = pair.IndexOf('=', StringComparison.Ordinal);
+            var rawKey = separatorIndex < 0 ? pair : pair[..separatorIndex];
+            if (rawKey.Length == 0)
+            {
+                continue;
+            }
+
+            var rawValue = separatorIndex < 0 ? string.Empty : pair[(separatorIndex + 1)..];
+            var key = Uri.UnescapeDataString(rawKey.Replace('+', ' '));
+            var value = Uri.UnescapeDataString(rawValue.Replace('+', ' '));
+            parameters[key] = value;
+        }
+
+        return parameters.Count == 0
+            ? EmptyQueryParameters
+            : parameters;
+    }
+}
 
 public abstract class Route
 {
@@ -123,6 +220,17 @@ public sealed class Navigator : StatefulWidget
 
     public Navigator(
         RouteFactory onGenerateRoute,
+        RouteData initialRouteData,
+        IReadOnlyList<NavigatorObserver>? observers = null,
+        Key? key = null) : base(key)
+    {
+        OnGenerateRoute = onGenerateRoute ?? throw new ArgumentNullException(nameof(onGenerateRoute));
+        InitialRouteData = initialRouteData ?? throw new ArgumentNullException(nameof(initialRouteData));
+        Observers = observers ?? [];
+    }
+
+    public Navigator(
+        RouteFactory onGenerateRoute,
         string initialRouteName = "/",
         IReadOnlyList<NavigatorObserver>? observers = null,
         Key? key = null) : base(key)
@@ -140,6 +248,8 @@ public sealed class Navigator : StatefulWidget
     public Route? InitialRoute { get; }
 
     public string? InitialRouteName { get; }
+
+    public RouteData? InitialRouteData { get; }
 
     public RouteFactory? OnGenerateRoute { get; }
 
@@ -159,6 +269,85 @@ public sealed class Navigator : StatefulWidget
     public static NavigatorState? MaybeOf(BuildContext context)
     {
         return context.DependOnInherited<NavigatorScope>()?.Navigator;
+    }
+
+    public static bool CanPop(BuildContext context)
+    {
+        return MaybeOf(context)?.CanPop ?? false;
+    }
+
+    public static bool MaybePop(BuildContext context, object? result = null)
+    {
+        var navigator = MaybeOf(context);
+        if (navigator == null)
+        {
+            return false;
+        }
+
+        return navigator.MaybePop(result);
+    }
+
+    public static void Pop(BuildContext context, object? result = null)
+    {
+        Of(context).Pop(result);
+    }
+
+    public static void PopUntil(BuildContext context, RoutePredicate predicate)
+    {
+        Of(context).PopUntil(predicate);
+    }
+
+    public static void Push(BuildContext context, Route route)
+    {
+        Of(context).Push(route);
+    }
+
+    public static void PushAndRemoveUntil(BuildContext context, Route newRoute, RoutePredicate predicate)
+    {
+        Of(context).PushAndRemoveUntil(newRoute, predicate);
+    }
+
+    public static void PushNamed(BuildContext context, string routeName, object? arguments = null)
+    {
+        Of(context).PushNamed(routeName, arguments);
+    }
+
+    public static void PushNamed(BuildContext context, RouteData routeData)
+    {
+        Of(context).PushNamed(routeData);
+    }
+
+    public static void PushNamedAndRemoveUntil(
+        BuildContext context,
+        string routeName,
+        RoutePredicate predicate,
+        object? arguments = null)
+    {
+        Of(context).PushNamedAndRemoveUntil(routeName, predicate, arguments);
+    }
+
+    public static void PushNamedAndRemoveUntil(BuildContext context, RouteData routeData, RoutePredicate predicate)
+    {
+        Of(context).PushNamedAndRemoveUntil(routeData, predicate);
+    }
+
+    public static void PushReplacement(BuildContext context, Route newRoute, object? result = null)
+    {
+        Of(context).PushReplacement(newRoute, result);
+    }
+
+    public static void PushReplacementNamed(
+        BuildContext context,
+        string routeName,
+        object? arguments = null,
+        object? result = null)
+    {
+        Of(context).PushReplacementNamed(routeName, arguments, result);
+    }
+
+    public static void PushReplacementNamed(BuildContext context, RouteData routeData, object? result = null)
+    {
+        Of(context).PushReplacementNamed(routeData, result);
     }
 
     public static bool TryHandleBackButton()
@@ -265,10 +454,61 @@ public sealed class NavigatorState : State
         });
     }
 
+    public void PushAndRemoveUntil(Route newRoute, RoutePredicate predicate)
+    {
+        if (newRoute == null)
+        {
+            throw new ArgumentNullException(nameof(newRoute));
+        }
+
+        if (predicate == null)
+        {
+            throw new ArgumentNullException(nameof(predicate));
+        }
+
+        SetState(() =>
+        {
+            var previousRoute = CurrentRoute;
+            InstallRoute(newRoute);
+            previousRoute?.DidChangeNext(newRoute);
+            newRoute.DidChangePrevious(previousRoute);
+            newRoute.DidPush();
+            NotifyObserversPush(newRoute, previousRoute);
+            RemoveRoutesBelowTopUntil(predicate);
+        });
+    }
+
     public void PushNamed(string routeName, object? arguments = null)
     {
-        var route = ResolveNamedRoute(routeName, arguments);
+        var route = ResolveRouteLocation(routeName, arguments);
         Push(route);
+    }
+
+    public void PushNamed(RouteData routeData)
+    {
+        if (routeData == null)
+        {
+            throw new ArgumentNullException(nameof(routeData));
+        }
+
+        Push(ResolveRouteData(routeData));
+    }
+
+    public void PushNamedAndRemoveUntil(string routeName, RoutePredicate predicate, object? arguments = null)
+    {
+        var route = ResolveRouteLocation(routeName, arguments);
+        PushAndRemoveUntil(route, predicate);
+    }
+
+    public void PushNamedAndRemoveUntil(RouteData routeData, RoutePredicate predicate)
+    {
+        if (routeData == null)
+        {
+            throw new ArgumentNullException(nameof(routeData));
+        }
+
+        var route = ResolveRouteData(routeData);
+        PushAndRemoveUntil(route, predicate);
     }
 
     public bool MaybePop(object? result = null)
@@ -294,6 +534,33 @@ public sealed class NavigatorState : State
         {
             throw new InvalidOperationException("Navigator cannot pop the current route.");
         }
+    }
+
+    public void PopUntil(RoutePredicate predicate)
+    {
+        if (predicate == null)
+        {
+            throw new ArgumentNullException(nameof(predicate));
+        }
+
+        SetState(() =>
+        {
+            while (_history.Count > 0)
+            {
+                var route = _history[^1];
+                if (predicate(route))
+                {
+                    break;
+                }
+
+                if (_history.Count <= 1 || !route.WillPop())
+                {
+                    break;
+                }
+
+                PopCurrentRoute(result: null);
+            }
+        });
     }
 
     public void PushReplacement(Route newRoute, object? result = null)
@@ -338,8 +605,18 @@ public sealed class NavigatorState : State
 
     public void PushReplacementNamed(string routeName, object? arguments = null, object? result = null)
     {
-        var route = ResolveNamedRoute(routeName, arguments);
+        var route = ResolveRouteLocation(routeName, arguments);
         PushReplacement(route, result);
+    }
+
+    public void PushReplacementNamed(RouteData routeData, object? result = null)
+    {
+        if (routeData == null)
+        {
+            throw new ArgumentNullException(nameof(routeData));
+        }
+
+        PushReplacement(ResolveRouteData(routeData), result);
     }
 
     private void PushInitialRoute()
@@ -395,11 +672,49 @@ public sealed class NavigatorState : State
         }
     }
 
+    private void RemoveRoutesBelowTopUntil(RoutePredicate predicate)
+    {
+        while (_history.Count > 1)
+        {
+            var routeBelowTop = _history[^2];
+            if (predicate(routeBelowTop))
+            {
+                break;
+            }
+
+            RemoveRouteAt(_history.Count - 2);
+        }
+    }
+
+    private void RemoveRouteAt(int index)
+    {
+        if (index < 0 || index >= _history.Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index));
+        }
+
+        var previousRoute = index > 0 ? _history[index - 1] : null;
+        var nextRoute = index + 1 < _history.Count ? _history[index + 1] : null;
+        var removedRoute = _history[index];
+        _history.RemoveAt(index);
+
+        removedRoute.Dispose();
+        removedRoute.Detach();
+
+        previousRoute?.DidChangeNext(nextRoute);
+        nextRoute?.DidChangePrevious(previousRoute);
+    }
+
     private Route ResolveInitialRoute()
     {
         if (CurrentWidget.InitialRoute != null)
         {
             return CurrentWidget.InitialRoute;
+        }
+
+        if (CurrentWidget.InitialRouteData != null)
+        {
+            return ResolveRouteData(CurrentWidget.InitialRouteData);
         }
 
         var routeName = CurrentWidget.InitialRouteName;
@@ -408,7 +723,7 @@ public sealed class NavigatorState : State
             throw new InvalidOperationException("Navigator requires either InitialRoute or InitialRouteName.");
         }
 
-        return ResolveNamedRoute(routeName);
+        return ResolveRouteLocation(routeName, arguments: null);
     }
 
     private Route ResolveNamedRoute(string routeName, object? arguments = null)
@@ -433,6 +748,21 @@ public sealed class NavigatorState : State
         }
 
         return route;
+    }
+
+    private Route ResolveRouteData(RouteData routeData)
+    {
+        return ResolveNamedRoute(routeData.Name, routeData);
+    }
+
+    private Route ResolveRouteLocation(string routeName, object? arguments)
+    {
+        if (routeName.IndexOf('?') >= 0 || routeName.Contains("://", StringComparison.Ordinal))
+        {
+            return ResolveRouteData(RouteData.FromLocation(routeName, arguments));
+        }
+
+        return ResolveNamedRoute(routeName, arguments);
     }
 
     private void SyncObservers(
