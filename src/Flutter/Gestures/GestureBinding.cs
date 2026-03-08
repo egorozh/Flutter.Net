@@ -42,6 +42,13 @@ public sealed class GestureBinding
                 hitTestResult = result;
                 break;
             }
+            case PointerSignalEvent:
+            {
+                var result = new BoxHitTestResult();
+                root.HitTest(result, @event.Position);
+                hitTestResult = result;
+                break;
+            }
         }
 
         DispatchEvent(eventWithDelta, hitTestResult);
@@ -83,6 +90,11 @@ public sealed class GestureBinding
 
     private PointerEvent AttachDelta(PointerEvent @event)
     {
+        if (@event is PointerSignalEvent)
+        {
+            return @event.WithDelta(default);
+        }
+
         var pointer = @event.Pointer;
         if (!_lastPositions.TryGetValue(pointer, out var previousPosition))
         {

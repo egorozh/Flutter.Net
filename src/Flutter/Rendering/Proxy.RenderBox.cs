@@ -390,15 +390,19 @@ public sealed class RenderPointerListener : RenderProxyBox
     public RenderPointerListener(
         Action<PointerDownEvent>? onPointerDown = null,
         Action<PointerMoveEvent>? onPointerMove = null,
+        Action<PointerHoverEvent>? onPointerHover = null,
         Action<PointerUpEvent>? onPointerUp = null,
         Action<PointerCancelEvent>? onPointerCancel = null,
+        Action<PointerSignalEvent>? onPointerSignal = null,
         HitTestBehavior behavior = HitTestBehavior.DeferToChild,
         RenderBox? child = null)
     {
         OnPointerDown = onPointerDown;
         OnPointerMove = onPointerMove;
+        OnPointerHover = onPointerHover;
         OnPointerUp = onPointerUp;
         OnPointerCancel = onPointerCancel;
+        OnPointerSignal = onPointerSignal;
         _behavior = behavior;
         Child = child;
     }
@@ -407,9 +411,13 @@ public sealed class RenderPointerListener : RenderProxyBox
 
     public Action<PointerMoveEvent>? OnPointerMove { get; set; }
 
+    public Action<PointerHoverEvent>? OnPointerHover { get; set; }
+
     public Action<PointerUpEvent>? OnPointerUp { get; set; }
 
     public Action<PointerCancelEvent>? OnPointerCancel { get; set; }
+
+    public Action<PointerSignalEvent>? OnPointerSignal { get; set; }
 
     public HitTestBehavior Behavior
     {
@@ -448,11 +456,17 @@ public sealed class RenderPointerListener : RenderProxyBox
             case PointerMoveEvent moveEvent:
                 OnPointerMove?.Invoke(moveEvent);
                 break;
+            case PointerHoverEvent hoverEvent:
+                OnPointerHover?.Invoke(hoverEvent);
+                break;
             case PointerUpEvent upEvent:
                 OnPointerUp?.Invoke(upEvent);
                 break;
             case PointerCancelEvent cancelEvent:
                 OnPointerCancel?.Invoke(cancelEvent);
+                break;
+            case PointerSignalEvent signalEvent:
+                OnPointerSignal?.Invoke(signalEvent);
                 break;
         }
     }

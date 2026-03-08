@@ -175,6 +175,91 @@ public sealed class GesturePipelineTests
         }
     }
 
+    [Fact]
+    public void GestureBinding_ArenaConflict_HorizontalDragBeatsTap()
+    {
+        var binding = GestureBinding.Instance;
+        binding.ResetForTests();
+
+        var taps = 0;
+        var dragUpdates = 0;
+        var tap = new TapGestureRecognizer
+        {
+            OnTap = () => taps += 1
+        };
+        var drag = new HorizontalDragGestureRecognizer
+        {
+            OnUpdate = _ => dragUpdates += 1
+        };
+
+        try
+        {
+            var listener = new RenderPointerListener(
+                onPointerDown: @event =>
+                {
+                    tap.AddPointer(@event);
+                    drag.AddPointer(@event);
+                },
+                behavior: HitTestBehavior.Opaque,
+                child: new FixedHitTestBox(new Size(160, 80), hitSelf: true));
+            var pipeline = BuildPipeline(listener);
+
+            binding.HandlePointerEvent(
+                pipeline.Root,
+                new PointerDownEvent(3, PointerDeviceKind.Mouse, new Point(10, 10), PointerButtons.Primary, DateTime.UtcNow));
+
+            binding.HandlePointerEvent(
+                pipeline.Root,
+                new PointerMoveEvent(3, PointerDeviceKind.Mouse, new Point(90, 12), PointerButtons.Primary, down: true, DateTime.UtcNow));
+
+            binding.HandlePointerEvent(
+                pipeline.Root,
+                new PointerUpEvent(3, PointerDeviceKind.Mouse, new Point(90, 12), PointerButtons.None, DateTime.UtcNow));
+
+            Assert.Equal(0, taps);
+            Assert.True(dragUpdates > 0);
+        }
+        finally
+        {
+            tap.Dispose();
+            drag.Dispose();
+            binding.ResetForTests();
+        }
+    }
+
+    [Fact]
+    public void GestureBinding_PointerSignal_DispatchesToListener()
+    {
+        var binding = GestureBinding.Instance;
+        binding.ResetForTests();
+
+        Point? scrollDelta = null;
+        var listener = new RenderPointerListener(
+            behavior: HitTestBehavior.Opaque,
+            onPointerSignal: @event =>
+            {
+                if (@event is PointerScrollEvent scroll)
+                {
+                    scrollDelta = scroll.ScrollDelta;
+                }
+            },
+            child: new FixedHitTestBox(new Size(140, 80), hitSelf: true));
+        var pipeline = BuildPipeline(listener);
+
+        binding.HandlePointerEvent(
+            pipeline.Root,
+            new PointerScrollEvent(
+                pointer: 44,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(30, 30),
+                buttons: PointerButtons.None,
+                scrollDelta: new Point(0, -1),
+                timestampUtc: DateTime.UtcNow));
+
+        Assert.Equal(new Point(0, -1), scrollDelta);
+        binding.ResetForTests();
+    }
+
     private static PipelineOwner BuildPipeline(RenderBox child)
     {
         var root = new RenderView

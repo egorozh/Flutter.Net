@@ -94,6 +94,19 @@ public class FlutterHost : Control
         }
     }
 
+    protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
+    {
+        base.OnPointerWheelChanged(e);
+
+        DispatchPointerEvent(new PointerScrollEvent(
+            pointer: unchecked((int)e.Pointer.Id),
+            kind: ToPointerKind(e.Pointer.Type),
+            position: e.GetPosition(this),
+            buttons: ToPointerButtons(e.GetCurrentPoint(this).Properties),
+            scrollDelta: new Point(e.Delta.X, e.Delta.Y),
+            timestampUtc: DateTime.UtcNow));
+    }
+
     protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
     {
         base.OnPointerCaptureLost(e);

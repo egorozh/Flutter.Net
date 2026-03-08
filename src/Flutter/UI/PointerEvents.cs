@@ -141,3 +141,33 @@ public sealed class PointerCancelEvent : PointerEvent
     {
     }
 }
+
+public abstract class PointerSignalEvent : PointerEvent
+{
+    protected PointerSignalEvent(
+        int pointer,
+        PointerDeviceKind kind,
+        Point position,
+        PointerButtons buttons,
+        DateTime timestampUtc)
+        : base(pointer, kind, position, buttons, down: false, timestampUtc)
+    {
+    }
+}
+
+public sealed class PointerScrollEvent : PointerSignalEvent
+{
+    public PointerScrollEvent(
+        int pointer,
+        PointerDeviceKind kind,
+        Point position,
+        PointerButtons buttons,
+        Point scrollDelta,
+        DateTime timestampUtc)
+        : base(pointer, kind, position, buttons, timestampUtc)
+    {
+        ScrollDelta = scrollDelta;
+    }
+
+    public Point ScrollDelta { get; }
+}

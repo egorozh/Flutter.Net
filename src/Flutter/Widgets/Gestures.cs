@@ -11,15 +11,19 @@ public sealed class Listener : SingleChildRenderObjectWidget
         Widget? child = null,
         Action<PointerDownEvent>? onPointerDown = null,
         Action<PointerMoveEvent>? onPointerMove = null,
+        Action<PointerHoverEvent>? onPointerHover = null,
         Action<PointerUpEvent>? onPointerUp = null,
         Action<PointerCancelEvent>? onPointerCancel = null,
+        Action<PointerSignalEvent>? onPointerSignal = null,
         HitTestBehavior behavior = HitTestBehavior.DeferToChild,
         Key? key = null) : base(child, key)
     {
         OnPointerDown = onPointerDown;
         OnPointerMove = onPointerMove;
+        OnPointerHover = onPointerHover;
         OnPointerUp = onPointerUp;
         OnPointerCancel = onPointerCancel;
+        OnPointerSignal = onPointerSignal;
         Behavior = behavior;
     }
 
@@ -27,9 +31,13 @@ public sealed class Listener : SingleChildRenderObjectWidget
 
     public Action<PointerMoveEvent>? OnPointerMove { get; }
 
+    public Action<PointerHoverEvent>? OnPointerHover { get; }
+
     public Action<PointerUpEvent>? OnPointerUp { get; }
 
     public Action<PointerCancelEvent>? OnPointerCancel { get; }
+
+    public Action<PointerSignalEvent>? OnPointerSignal { get; }
 
     public HitTestBehavior Behavior { get; }
 
@@ -38,8 +46,10 @@ public sealed class Listener : SingleChildRenderObjectWidget
         return new RenderPointerListener(
             onPointerDown: OnPointerDown,
             onPointerMove: OnPointerMove,
+            onPointerHover: OnPointerHover,
             onPointerUp: OnPointerUp,
             onPointerCancel: OnPointerCancel,
+            onPointerSignal: OnPointerSignal,
             behavior: Behavior);
     }
 
@@ -48,8 +58,10 @@ public sealed class Listener : SingleChildRenderObjectWidget
         var listener = (RenderPointerListener)renderObject;
         listener.OnPointerDown = OnPointerDown;
         listener.OnPointerMove = OnPointerMove;
+        listener.OnPointerHover = OnPointerHover;
         listener.OnPointerUp = OnPointerUp;
         listener.OnPointerCancel = OnPointerCancel;
+        listener.OnPointerSignal = OnPointerSignal;
         listener.Behavior = Behavior;
     }
 }
