@@ -15,8 +15,9 @@ public interface IRenderObject
 public abstract class RenderObject : IRenderObject
 {
     internal bool _wasRepaintBoundary;
-
-    bool _needsCompositedLayerUpdate = false;
+    internal Layer? _layer;
+    private bool _needsCompositingBitsUpdate = true;
+    private bool _needsSemanticsUpdate = true;
 
 
     /// Cause the entire subtree rooted at the given [RenderObject] to be marked
@@ -37,9 +38,9 @@ public abstract class RenderObject : IRenderObject
     public void Reassemble()
     {
         MarkNeedsLayout();
-        //MarkNeedsCompositingBitsUpdate();
+        MarkNeedsCompositingBitsUpdate();
         MarkNeedsPaint();
-        //MarkNeedsSemanticsUpdate();
+        MarkNeedsSemanticsUpdate();
 
         VisitChildren(child => child.Reassemble());
     }
@@ -130,8 +131,8 @@ public abstract class RenderObject : IRenderObject
     {
         SetupParentData(child);
         MarkNeedsLayout();
-        // MarkNeedsCompositingBitsUpdate();
-        // MarkNeedsSemanticsUpdate();
+        MarkNeedsCompositingBitsUpdate();
+        MarkNeedsSemanticsUpdate();
         child.Parent = this;
 
         if (Attached)
@@ -157,7 +158,9 @@ public abstract class RenderObject : IRenderObject
         }
 
         MarkNeedsLayout();
+        MarkNeedsCompositingBitsUpdate();
         MarkNeedsPaint();
+        MarkNeedsSemanticsUpdate();
     }
 
     /// <summary>
@@ -179,22 +182,24 @@ public abstract class RenderObject : IRenderObject
 
         // If the node was dirtied in some way while unattached, make sure to add
         // it to the appropriate dirty list now that an owner is available
-        if (_needsLayout && _isRelayoutBoundary != null)
+        if (_needsLayout)
         {
-            // Don't enter this block if we've never laid out at all;
-            // scheduleInitialLayout() will handle it
-            _needsLayout = false;
-            MarkNeedsLayout();
+            Owner.RequestLayout();
         }
 
-        if (_needsPaint
-            //&& _layerHandle.layer != null
-           )
+        if (_needsCompositingBitsUpdate)
         {
-            // Don't enter this block if we've never painted at all;
-            // scheduleInitialPaint() will handle it
-            _needsPaint = false;
-            MarkNeedsPaint();
+            Owner.RequestCompositingBitsUpdate();
+        }
+
+        if (_needsPaint)
+        {
+            Owner.RequestPaint();
+        }
+
+        if (_needsSemanticsUpdate)
+        {
+            Owner.RequestSemanticsUpdate();
         }
     }
 
@@ -203,6 +208,7 @@ public abstract class RenderObject : IRenderObject
     /// </summary>
     public void Detach()
     {
+        _layer = null;
         Owner = null;
     }
 
@@ -248,7 +254,7 @@ public abstract class RenderObject : IRenderObject
             {
                 PerformResize();
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 // ignored
             }
@@ -257,15 +263,16 @@ public abstract class RenderObject : IRenderObject
         try
         {
             PerformLayout();
-            //MarkNeedsSemanticsUpdate();
         }
-        catch (Exception e)
+        catch (Exception)
         {
             // ignored
         }
 
         _needsLayout = false;
+        MarkNeedsCompositingBitsUpdate();
         MarkNeedsPaint();
+        MarkNeedsSemanticsUpdate();
     }
 
     protected bool SizedByParent { get; private set; } = false;
@@ -317,6 +324,76 @@ public abstract class RenderObject : IRenderObject
         }
     }
 
+    public void MarkNeedsCompositingBitsUpdate()
+    {
+        if (_needsCompositingBitsUpdate)
+        {
+            return;
+        }
+
+        _needsCompositingBitsUpdate = true;
+        Owner?.RequestCompositingBitsUpdate();
+    }
+
+    public void MarkNeedsSemanticsUpdate()
+    {
+        if (_needsSemanticsUpdate)
+        {
+            return;
+        }
+
+        _needsSemanticsUpdate = true;
+        Owner?.RequestSemanticsUpdate();
+    }
+
+    internal void FlushCompositingBits()
+    {
+        VisitChildren(static child => child.FlushCompositingBits());
+
+        if (!_needsCompositingBitsUpdate)
+        {
+            return;
+        }
+
+        _needsCompositingBitsUpdate = false;
+        PerformUpdateCompositingBits();
+    }
+
+    internal void FlushSemantics()
+    {
+        VisitChildren(static child => child.FlushSemantics());
+
+        if (!_needsSemanticsUpdate)
+        {
+            return;
+        }
+
+        _needsSemanticsUpdate = false;
+        PerformSemantics();
+    }
+
+    protected virtual void PerformUpdateCompositingBits()
+    {
+        var needsCompositing = IsRepaintBoundary;
+
+        if (!needsCompositing)
+        {
+            VisitChildren(child =>
+            {
+                if (child.NeedsCompositing || child.IsRepaintBoundary)
+                {
+                    needsCompositing = true;
+                }
+            });
+        }
+
+        NeedsCompositing = needsCompositing;
+    }
+
+    protected virtual void PerformSemantics()
+    {
+    }
+
     /// <summary>
     /// Whether this render object repaints separately from its parent.
     /// </summary>
@@ -324,6 +401,8 @@ public abstract class RenderObject : IRenderObject
 
 
     private bool _needsPaint = true;
+    internal bool NeedsPaint => _needsPaint;
+    internal bool NeedsCompositing { get; private set; }
 
     protected void MarkNeedsPaint()
     {
@@ -453,7 +532,6 @@ public abstract class RenderObject : IRenderObject
         //     return true;
         // }
         // ());
-        RenderObject? debugLastActivePaint;
         // assert(() {
         //     _debugDoingThisPaint = true;
         //     debugLastActivePaint = _debugActivePaint;
@@ -464,8 +542,6 @@ public abstract class RenderObject : IRenderObject
         // ());
         _needsPaint = false;
 
-        _needsCompositedLayerUpdate = false;
-
         _wasRepaintBoundary = IsRepaintBoundary;
 
         try
@@ -474,7 +550,7 @@ public abstract class RenderObject : IRenderObject
             Debug.Assert(!_needsLayout); // check that the paint() method didn't mark us dirty again
             Debug.Assert(!_needsPaint); // check that the paint() method didn't mark us dirty again
         }
-        catch (Exception e)
+        catch (Exception)
         {
             //_reportException('paint', e, stack);
         }

@@ -1,37 +1,42 @@
-﻿using System.Diagnostics;
 using Avalonia;
 using Avalonia.Media;
+using Avalonia.Media.TextFormatting;
 
 namespace Flutter.Rendering;
 
-public class PaintingContext(DrawingContext ctx)
+public sealed class PaintingContext
 {
-    public DrawingContext Context => ctx;
+    private readonly ContainerLayer _containerLayer;
+    private PictureLayer? _currentPictureLayer;
 
+    public PaintingContext(ContainerLayer containerLayer)
+    {
+        _containerLayer = containerLayer;
+    }
 
-    /// Paint a child [RenderObject].
-    ///
-    /// If the child has its own composited layer, the child will be composited
-    /// into the layer subtree associated with this painting context. Otherwise,
-    /// the child will be painted into the current PictureLayer for this context.
     public void PaintChild(RenderObject child, Point offset)
     {
-        // Debug.Assert(() => {
-        //     //debugOnProfilePaint?.call(child);
-        //     return true;
-        // }());
-
         if (child.IsRepaintBoundary)
         {
             StopRecordingIfNeeded();
-            //_compositeChild(child, offset);
-            // If a render object was a repaint boundary but no longer is one, this
-            // is where the framework managed layer is automatically disposed.
+
+            var layer = child._layer as OffsetLayer;
+            var shouldRepaint = child.NeedsPaint || layer == null;
+            layer ??= new OffsetLayer();
+            layer.Offset = offset;
+            _containerLayer.Append(layer);
+            child._layer = layer;
+
+            if (shouldRepaint)
+            {
+                layer.RemoveAllChildren();
+                var childContext = new PaintingContext(layer);
+                child._paintWithContext(childContext, new Point(0, 0));
+            }
         }
         else if (child._wasRepaintBoundary)
         {
-            // Debug.Assert(child._layerHandle.layer is OffsetLayer);
-            // child._layerHandle.layer = null;
+            child._layer = null;
             child._paintWithContext(this, offset);
         }
         else
@@ -40,43 +45,36 @@ public class PaintingContext(DrawingContext ctx)
         }
     }
 
-    /// Stop recording to a canvas if recording has started.
-    ///
-    /// Do not call this function directly: functions in this class will call
-    /// this method as needed. This function is called internally to ensure that
-    /// recording is stopped before adding layers or finalizing the results of a
-    /// paint.
-    ///
-    /// Subclasses that need to customize how recording to a canvas is performed
-    /// should override this method to save the results of the custom canvas
-    /// recordings.
-    protected void StopRecordingIfNeeded()
+    public void DrawRectangle(IBrush brush, IPen? pen, Rect rect, double radiusX = 0, double radiusY = 0)
     {
-        // if (!_isRecording)
-        // {
-        //     return;
-        // }
+        var pictureLayer = EnsurePictureLayer();
+        pictureLayer.AddDrawCommand((drawingContext, sceneOffset) =>
+        {
+            var translatedRect = new Rect(rect.Position + sceneOffset, rect.Size);
+            drawingContext.DrawRectangle(brush, pen, translatedRect, radiusX, radiusY);
+        });
+    }
 
-        // assert(() {
-        //     if (debugRepaintRainbowEnabled) {
-        //         final Paint paint = Paint()
-        //             ..style = PaintingStyle.stroke
-        //             ..strokeWidth = 6.0
-        //             ..color = debugCurrentRepaintColor.toColor();
-        //         canvas.drawRect(estimatedBounds.deflate(3.0), paint);
-        //     }
-        //     if (debugPaintLayerBordersEnabled) {
-        //         final Paint paint = Paint()
-        //             ..style = PaintingStyle.stroke
-        //             ..strokeWidth = 1.0
-        //             ..color = const Color(0xFFFF9800);
-        //         canvas.drawRect(estimatedBounds, paint);
-        //     }
-        //     return true;
-        // }());
-        // _currentLayer!.picture = _recorder!.endRecording();
-        // _currentLayer = null;
-        // _recorder = null;
-        // _canvas = null;
+    public void DrawTextLayout(TextLayout layout, Point point)
+    {
+        var pictureLayer = EnsurePictureLayer();
+        pictureLayer.AddDrawCommand((drawingContext, sceneOffset) => layout.Draw(drawingContext, point + sceneOffset));
+    }
+
+    private PictureLayer EnsurePictureLayer()
+    {
+        if (_currentPictureLayer != null)
+        {
+            return _currentPictureLayer;
+        }
+
+        _currentPictureLayer = new PictureLayer();
+        _containerLayer.Append(_currentPictureLayer);
+        return _currentPictureLayer;
+    }
+
+    private void StopRecordingIfNeeded()
+    {
+        _currentPictureLayer = null;
     }
 }

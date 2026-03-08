@@ -9,6 +9,11 @@ public sealed class WidgetHost : FlutterHost
     private RootElement? _rootElement;
     private Widget? _rootWidget;
 
+    public WidgetHost()
+    {
+        _owner.OnBuildScheduled = ScheduleVisualUpdate;
+    }
+
     public Widget? RootWidget
     {
         get => _rootWidget;
@@ -48,6 +53,11 @@ public sealed class WidgetHost : FlutterHost
         {
             _rootElement.Update(_rootWidget);
         }
+    }
+
+    protected override void OnDrawFrame(TimeSpan timestamp)
+    {
+        _owner.BuildScope();
     }
 
     private sealed class RootElement : Element, IRenderObjectHost

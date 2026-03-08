@@ -2,7 +2,6 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
-using Avalonia.Threading;
 using Flutter.Rendering;
 
 namespace Flutter;
@@ -11,20 +10,16 @@ public class FlutterHost : Control
 {
     private readonly RenderView _root = new();
     private readonly PipelineOwner _pipeline;
+    private bool _isSubscribedToScheduler;
 
     public FlutterHost()
     {
         _pipeline = new PipelineOwner(_root);
+        _pipeline.OnNeedVisualUpdate = ScheduleVisualUpdate;
         _pipeline.Attach(_root);
 
         ClipToBounds = true;
-
-        var timer = new DispatcherTimer(
-            interval: TimeSpan.FromMilliseconds(16),
-            DispatcherPriority.Render,
-            (_, _) => InvalidateArrange());
-
-        timer.Start();
+        EnsureSchedulerSubscription();
     }
 
     internal RenderBox? RootChild => _root.Child;
@@ -34,7 +29,7 @@ public class FlutterHost : Control
         _root.Child = child;
         _pipeline.RequestLayout();
         _pipeline.RequestPaint();
-        InvalidateVisual();
+        ScheduleVisualUpdate();
     }
 
     protected override Size ArrangeOverride(Size finalSize)
@@ -68,6 +63,73 @@ public class FlutterHost : Control
     public override void Render(DrawingContext context)
     {
         _pipeline.FlushLayout(Bounds.Size);
-        _pipeline.FlushPaint(new PaintingContext(context));
+        _pipeline.FlushCompositingBits();
+        _pipeline.FlushPaint();
+        _pipeline.CompositeFrame(context);
+        _pipeline.FlushSemantics();
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        EnsureSchedulerSubscription();
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        RemoveSchedulerSubscription();
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    protected virtual void OnDrawFrame(TimeSpan timestamp)
+    {
+    }
+
+    protected void ScheduleVisualUpdate()
+    {
+        Scheduler.ScheduleFrame();
+    }
+
+    private void HandleSchedulerDrawFrame(TimeSpan timestamp)
+    {
+        if (!IsVisible)
+        {
+            return;
+        }
+
+        OnDrawFrame(timestamp);
+        _pipeline.FlushLayout(Bounds.Size);
+        _pipeline.FlushCompositingBits();
+
+        if (_pipeline.NeedsPaint)
+        {
+            InvalidateVisual();
+        }
+        else
+        {
+            _pipeline.FlushSemantics();
+        }
+    }
+
+    private void EnsureSchedulerSubscription()
+    {
+        if (_isSubscribedToScheduler)
+        {
+            return;
+        }
+
+        Scheduler.AddPersistentFrameCallback(HandleSchedulerDrawFrame);
+        _isSubscribedToScheduler = true;
+    }
+
+    private void RemoveSchedulerSubscription()
+    {
+        if (!_isSubscribedToScheduler)
+        {
+            return;
+        }
+
+        Scheduler.RemovePersistentFrameCallback(HandleSchedulerDrawFrame);
+        _isSubscribedToScheduler = false;
     }
 }

@@ -1,5 +1,3 @@
-using Avalonia.Threading;
-
 namespace Flutter.Widgets;
 
 /// <summary>
@@ -13,6 +11,7 @@ public sealed class BuildOwner
     private readonly Dictionary<GlobalKey, Element> _globalKeyRegistry = [];
 
     private bool _scheduled;
+    internal Action? OnBuildScheduled { get; set; }
 
     public void RegisterElement(Element element)
     {
@@ -108,7 +107,7 @@ public sealed class BuildOwner
         }
 
         _scheduled = true;
-        Dispatcher.UIThread.Post(PerformBuild, DispatcherPriority.Render);
+        OnBuildScheduled?.Invoke();
     }
 
     internal void UnscheduleBuild(Element element)
@@ -137,7 +136,7 @@ public sealed class BuildOwner
         return false;
     }
 
-    private void PerformBuild()
+    internal void BuildScope()
     {
         _scheduled = false;
 
@@ -159,7 +158,7 @@ public sealed class BuildOwner
 
     internal void FlushBuild()
     {
-        PerformBuild();
+        BuildScope();
     }
 
     private void FinalizeInactiveElements()

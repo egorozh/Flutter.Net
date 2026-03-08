@@ -133,7 +133,7 @@ public sealed class RenderButton : RenderBox
             : new SolidColorBrush(Background);
 
         var rect = new Rect(offset, Size);
-        ctx.Context.DrawRectangle(background, null, rect, 10, 10);
+        ctx.DrawRectangle(background, null, rect, 10, 10);
 
         if (_layout == null)
         {
@@ -142,7 +142,7 @@ public sealed class RenderButton : RenderBox
 
         var textX = offset.X + (Size.Width - _layout.Width) / 2;
         var textY = offset.Y + (Size.Height - _layout.Height) / 2;
-        _layout.Draw(ctx.Context, new Point(textX, textY));
+        ctx.DrawTextLayout(_layout, new Point(textX, textY));
     }
 
     protected override bool HitTestSelf(Point position)

@@ -182,7 +182,7 @@ public sealed class RenderColoredBox : RenderProxyBox
 
     public override void Paint(PaintingContext ctx, Point offset)
     {
-        ctx.Context.DrawRectangle(new SolidColorBrush(Color), null, new Rect(offset, Size));
+        ctx.DrawRectangle(new SolidColorBrush(Color), null, new Rect(offset, Size));
         base.Paint(ctx, offset);
     }
 }
