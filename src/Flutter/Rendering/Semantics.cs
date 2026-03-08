@@ -69,6 +69,7 @@ public sealed class SemanticsNode
     public string? Label { get; internal set; }
     public SemanticsFlags Flags { get; internal set; }
     public SemanticsActions Actions { get; internal set; }
+    public bool IsHidden { get; internal set; }
     public IReadOnlyList<SemanticsNode> Children => _children;
     internal bool BlocksPreviousNodes { get; set; }
 
@@ -149,6 +150,7 @@ public sealed class SemanticsOwner
         _syntheticRoot.Label = null;
         _syntheticRoot.Flags = SemanticsFlags.None;
         _syntheticRoot.Actions = SemanticsActions.None;
+        _syntheticRoot.IsHidden = false;
         _syntheticRoot.SetActionHandlers(new Dictionary<SemanticsActions, Action>());
         RootNode = _syntheticRoot;
         RebuildIndex();
@@ -216,6 +218,11 @@ public sealed class SemanticsOwner
         if (node.Actions != SemanticsActions.None)
         {
             builder.Append(" actions=").Append(node.Actions);
+        }
+
+        if (node.IsHidden)
+        {
+            builder.Append(" hidden");
         }
 
         builder.AppendLine();

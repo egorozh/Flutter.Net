@@ -436,6 +436,62 @@ public sealed class SemanticsTreeTests
     }
 
     [Fact]
+    public void DistinctSemanticsClip_OutsidePaintClip_NodeStaysAsHidden()
+    {
+        var leaf = new FixedSemanticBox("HiddenByPaint", new Size(12, 8));
+        var transform = new RenderTransform(Matrix.CreateTranslation(30, 0), leaf);
+        var clip = new DistinctSemanticsClipRenderBox(transform)
+        {
+            PaintClipRect = new Rect(0, 0, 20, 20),
+            SemanticsClipRect = new Rect(0, 0, 64, 20)
+        };
+
+        var renderView = new RenderView
+        {
+            Child = clip
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+
+        pipeline.FlushLayout(new Size(220, 120));
+        pipeline.FlushSemantics();
+
+        var root = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(root);
+        var hiddenNode = Assert.Single(root.Children);
+        Assert.Equal("HiddenByPaint", hiddenNode.Label);
+        Assert.True(hiddenNode.IsHidden);
+    }
+
+    [Fact]
+    public void DistinctSemanticsClip_OutsideSemanticsClip_DropsNode()
+    {
+        var leaf = new FixedSemanticBox("DroppedBySemanticsClip", new Size(12, 8));
+        var transform = new RenderTransform(Matrix.CreateTranslation(80, 0), leaf);
+        var clip = new DistinctSemanticsClipRenderBox(transform)
+        {
+            PaintClipRect = new Rect(0, 0, 20, 20),
+            SemanticsClipRect = new Rect(0, 0, 64, 20)
+        };
+
+        var renderView = new RenderView
+        {
+            Child = clip
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+
+        pipeline.FlushLayout(new Size(220, 120));
+        pipeline.FlushSemantics();
+
+        var root = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(root);
+        Assert.Empty(root.Children);
+    }
+
+    [Fact]
     public void SemanticsParentDataDirty_ClearsAfterFlush_AndReappearsOnDirty()
     {
         var leaf = new FixedSemanticBox("State", new Size(12, 8));
@@ -701,6 +757,57 @@ public sealed class SemanticsTreeTests
 
             var secondParentData = (FlexParentData)secondChild.parentData!;
             visitor(secondChild, secondParentData.offset, Matrix.Identity);
+        }
+    }
+
+    private sealed class DistinctSemanticsClipRenderBox : RenderProxyBox
+    {
+        private Rect _paintClipRect;
+        private Rect _semanticsClipRect;
+
+        public DistinctSemanticsClipRenderBox(RenderBox child)
+        {
+            Child = child;
+        }
+
+        public Rect PaintClipRect
+        {
+            get => _paintClipRect;
+            set
+            {
+                if (_paintClipRect == value)
+                {
+                    return;
+                }
+
+                _paintClipRect = value;
+                MarkNeedsSemanticsUpdate();
+            }
+        }
+
+        public Rect SemanticsClipRect
+        {
+            get => _semanticsClipRect;
+            set
+            {
+                if (_semanticsClipRect == value)
+                {
+                    return;
+                }
+
+                _semanticsClipRect = value;
+                MarkNeedsSemanticsUpdate();
+            }
+        }
+
+        protected override Rect? DescribeApproximatePaintClip(RenderObject? child)
+        {
+            return _paintClipRect;
+        }
+
+        protected override Rect? DescribeSemanticsClip(RenderObject? child)
+        {
+            return _semanticsClipRect;
         }
     }
 }

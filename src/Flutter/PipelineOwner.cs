@@ -276,7 +276,7 @@ public sealed class PipelineOwner
             }
 
             // Phase 1/2: rebuild semantics fragments and propagate parent-data context.
-            Root.UpdateSemanticsChildren(Matrix.Identity, clipRect: null);
+            Root.UpdateSemanticsChildren(Matrix.Identity, semanticsClipRect: null, paintClipRect: null);
 
             // Phase 3: compute semantics geometry with final transforms/clips.
             Root.EnsureSemanticsGeometry();

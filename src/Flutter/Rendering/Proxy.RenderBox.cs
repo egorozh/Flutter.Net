@@ -345,6 +345,11 @@ public sealed class RenderClipRect : RenderProxyBox
 
     protected override Rect? DescribeSemanticsClip(RenderObject? child)
     {
+        return null;
+    }
+
+    protected override Rect? DescribeApproximatePaintClip(RenderObject? child)
+    {
         return _hasExplicitClipRect ? _clipRect : new Rect(new Point(0, 0), Size);
     }
 }

@@ -26,8 +26,10 @@ public abstract class RenderObject : IRenderObject
     private SemanticsConfiguration? _cachedSemanticsConfiguration;
     private Matrix _semanticsTransform = Matrix.Identity;
     private Rect? _semanticsClipRect;
+    private Rect? _semanticsPaintClipRect;
     private Rect _semanticsRect;
     private bool _semanticsRectClippedOut;
+    private bool _semanticsHidden;
     private bool _hasBlockingSemanticsCache;
     private bool _blocksPreviousSemanticsCache;
 
@@ -234,6 +236,7 @@ public abstract class RenderObject : IRenderObject
         _hasCachedSemanticsConfiguration = false;
         _cachedSemanticsConfiguration = null;
         _semanticsRectClippedOut = false;
+        _semanticsHidden = false;
         _hasBlockingSemanticsCache = false;
         _blocksPreviousSemanticsCache = false;
         Owner = null;
@@ -439,9 +442,20 @@ public abstract class RenderObject : IRenderObject
         }
 
         var boundary = this;
-        while (boundary.Parent != null && !boundary._isSemanticsBoundary)
+        if (!boundary._isSemanticsBoundary)
         {
-            boundary = boundary.Parent;
+            var ancestor = Parent;
+            while (ancestor != null)
+            {
+                ancestor.MarkSemanticsParentDataDirty();
+                boundary = ancestor;
+                if (boundary._isSemanticsBoundary)
+                {
+                    break;
+                }
+
+                ancestor = ancestor.Parent;
+            }
         }
 
         Owner.RequestSemanticsUpdateFor(boundary);
@@ -477,7 +491,7 @@ public abstract class RenderObject : IRenderObject
         }
     }
 
-    internal void UpdateSemanticsChildren(Matrix transform, Rect? clipRect)
+    internal void UpdateSemanticsChildren(Matrix transform, Rect? semanticsClipRect, Rect? paintClipRect)
     {
         if (_needsSemanticsUpdate)
         {
@@ -491,8 +505,10 @@ public abstract class RenderObject : IRenderObject
         _hasCachedSemanticsConfiguration = true;
         _isSemanticsBoundary = config.IsSemanticBoundary;
         _semanticsTransform = transform;
-        _semanticsClipRect = clipRect;
+        _semanticsClipRect = semanticsClipRect;
+        _semanticsPaintClipRect = paintClipRect;
         _semanticsRectClippedOut = false;
+        _semanticsHidden = false;
         _semanticsParentDataDirty = false;
         _hasBlockingSemanticsCache = false;
 
@@ -506,7 +522,7 @@ public abstract class RenderObject : IRenderObject
             return;
         }
 
-        var semanticsChildren = new List<(RenderObject child, Matrix transform, Rect? clipRect)>();
+        var semanticsChildren = new List<(RenderObject child, Matrix transform, Rect? semanticsClipRect, Rect? paintClipRect)>();
         VisitChildrenForSemantics((child, childOffset, childTransform) =>
         {
             var childMatrix =
@@ -514,13 +530,16 @@ public abstract class RenderObject : IRenderObject
                 * Matrix.CreateTranslation(childOffset.X, childOffset.Y)
                 * childTransform;
 
-            var clipForChild = IntersectClip(clipRect, DescribeSemanticsClip(child), transform);
-            semanticsChildren.Add((child, childMatrix, clipForChild));
+            var localPaintClip = DescribeApproximatePaintClip(child);
+            var localSemanticsClip = DescribeSemanticsClip(child) ?? localPaintClip;
+            var semanticsClipForChild = IntersectClip(semanticsClipRect, localSemanticsClip, transform);
+            var paintClipForChild = IntersectClip(paintClipRect, localPaintClip, transform);
+            semanticsChildren.Add((child, childMatrix, semanticsClipForChild, paintClipForChild));
         });
 
         foreach (var entry in semanticsChildren)
         {
-            entry.child.UpdateSemanticsChildren(entry.transform, entry.clipRect);
+            entry.child.UpdateSemanticsChildren(entry.transform, entry.semanticsClipRect, entry.paintClipRect);
         }
 
         var nonBlockedChildren = new List<RenderObject>();
@@ -551,6 +570,7 @@ public abstract class RenderObject : IRenderObject
         if (config.IsExcluded)
         {
             _semanticsRectClippedOut = true;
+            _semanticsHidden = false;
             return;
         }
 
@@ -561,6 +581,9 @@ public abstract class RenderObject : IRenderObject
             _semanticsRect = transformedRect;
             _semanticsRectClippedOut = _semanticsClipRect.HasValue
                                        && !_semanticsClipRect.Value.Intersects(transformedRect);
+            _semanticsHidden = !_semanticsRectClippedOut
+                               && _semanticsPaintClipRect.HasValue
+                               && !_semanticsPaintClipRect.Value.Intersects(transformedRect);
         }
 
         VisitChildrenForSemantics((child, _, _) => child.EnsureSemanticsGeometry());
@@ -618,6 +641,7 @@ public abstract class RenderObject : IRenderObject
         semanticsNode.Label = config.Label;
         semanticsNode.Flags = config.Flags;
         semanticsNode.Actions = config.Actions;
+        semanticsNode.IsHidden = _semanticsHidden;
         semanticsNode.BlocksPreviousNodes = config.IsBlockingSemanticsOfPreviouslyPaintedNodes;
         semanticsNode.ReplaceChildren(children);
         semanticsNode.SetActionHandlers(config.ActionHandlers);
@@ -760,6 +784,11 @@ public abstract class RenderObject : IRenderObject
     }
 
     protected virtual Rect? DescribeSemanticsClip(RenderObject? child)
+    {
+        return null;
+    }
+
+    protected virtual Rect? DescribeApproximatePaintClip(RenderObject? child)
     {
         return null;
     }
