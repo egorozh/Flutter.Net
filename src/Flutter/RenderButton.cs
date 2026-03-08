@@ -45,6 +45,7 @@ public sealed class RenderButton : RenderBox
 
             _label = value;
             MarkNeedsLayout();
+            MarkNeedsSemanticsUpdate();
         }
     }
 
@@ -166,7 +167,7 @@ public sealed class RenderButton : RenderBox
         if (OnPressed != null)
         {
             configuration.Flags |= SemanticsFlags.IsEnabled;
-            configuration.Actions |= SemanticsActions.Tap;
+            configuration.AddActionHandler(SemanticsActions.Tap, () => OnPressed?.Invoke());
         }
     }
 }

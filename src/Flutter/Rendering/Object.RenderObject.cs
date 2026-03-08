@@ -363,9 +363,6 @@ public abstract class RenderObject : IRenderObject
 
     internal void BuildSemantics(SemanticsOwner owner, Point offset, List<SemanticsNode> output)
     {
-        var children = new List<SemanticsNode>();
-        VisitChildrenForSemantics((child, childOffset) => child.BuildSemantics(owner, offset + childOffset, children));
-
         if (_needsSemanticsUpdate)
         {
             _needsSemanticsUpdate = false;
@@ -375,10 +372,27 @@ public abstract class RenderObject : IRenderObject
         var config = new SemanticsConfiguration();
         DescribeSemanticsConfiguration(config);
 
+        if (config.IsExcluded)
+        {
+            _semanticsNode = null;
+            return;
+        }
+
+        var children = new List<SemanticsNode>();
+        VisitChildrenForSemantics((child, childOffset) => child.BuildSemantics(owner, offset + childOffset, children));
+
+        if (config.IsMergingSemanticsOfDescendants && children.Count > 0)
+        {
+            MergeChildSemanticsIntoConfiguration(config, children);
+            children.Clear();
+        }
+
         var hasOwnSemantics = config.IsSemanticBoundary
+                              || config.IsMergingSemanticsOfDescendants
                               || !string.IsNullOrEmpty(config.Label)
                               || config.Flags != SemanticsFlags.None
-                              || config.Actions != SemanticsActions.None;
+                              || config.Actions != SemanticsActions.None
+                              || config.HasActionHandlers;
 
         if (!hasOwnSemantics)
         {
@@ -395,8 +409,41 @@ public abstract class RenderObject : IRenderObject
         semanticsNode.Flags = config.Flags;
         semanticsNode.Actions = config.Actions;
         semanticsNode.ReplaceChildren(children);
+        semanticsNode.SetActionHandlers(config.ActionHandlers);
 
         output.Add(semanticsNode);
+    }
+
+    private static void MergeChildSemanticsIntoConfiguration(
+        SemanticsConfiguration configuration,
+        List<SemanticsNode> children)
+    {
+        var labels = new List<string>();
+        if (!string.IsNullOrWhiteSpace(configuration.Label))
+        {
+            labels.Add(configuration.Label);
+        }
+
+        var mergedHandlers = new Dictionary<SemanticsActions, Action>();
+        foreach (var pair in configuration.ActionHandlers)
+        {
+            mergedHandlers[pair.Key] = pair.Value;
+        }
+
+        foreach (var child in children)
+        {
+            if (!string.IsNullOrWhiteSpace(child.Label))
+            {
+                labels.Add(child.Label);
+            }
+
+            configuration.Flags |= child.Flags;
+            configuration.Actions |= child.Actions;
+            child.CopyActionHandlersTo(mergedHandlers);
+        }
+
+        configuration.Label = labels.Count == 0 ? configuration.Label : string.Join(" ", labels);
+        configuration.ReplaceActionHandlers(mergedHandlers);
     }
 
     protected virtual void PerformUpdateCompositingBits()

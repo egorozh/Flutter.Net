@@ -1,4 +1,5 @@
 using Avalonia;
+using System.Text;
 
 namespace Flutter.Rendering;
 
@@ -20,15 +21,42 @@ public enum SemanticsActions
 public sealed class SemanticsConfiguration
 {
     public bool IsSemanticBoundary { get; set; }
+    public bool IsMergingSemanticsOfDescendants { get; set; }
+    public bool IsExcluded { get; set; }
     public string? Label { get; set; }
     public SemanticsFlags Flags { get; set; } = SemanticsFlags.None;
     public SemanticsActions Actions { get; set; } = SemanticsActions.None;
     public Rect? ExplicitRect { get; set; }
+
+    private Dictionary<SemanticsActions, Action>? _actionHandlers;
+    internal bool HasActionHandlers => _actionHandlers is { Count: > 0 };
+    internal IReadOnlyDictionary<SemanticsActions, Action> ActionHandlers => _actionHandlers ?? EmptyHandlers;
+
+    private static readonly IReadOnlyDictionary<SemanticsActions, Action> EmptyHandlers =
+        new Dictionary<SemanticsActions, Action>();
+
+    public void AddActionHandler(SemanticsActions action, Action handler)
+    {
+        if (action == SemanticsActions.None)
+        {
+            throw new ArgumentException("Action handler cannot be registered for SemanticsActions.None.");
+        }
+
+        _actionHandlers ??= [];
+        _actionHandlers[action] = handler;
+        Actions |= action;
+    }
+
+    internal void ReplaceActionHandlers(Dictionary<SemanticsActions, Action> handlers)
+    {
+        _actionHandlers = handlers.Count == 0 ? null : handlers;
+    }
 }
 
 public sealed class SemanticsNode
 {
     private readonly List<SemanticsNode> _children = [];
+    private readonly Dictionary<SemanticsActions, Action> _actionHandlers = [];
 
     internal SemanticsNode(int id)
     {
@@ -47,12 +75,41 @@ public sealed class SemanticsNode
         _children.Clear();
         _children.AddRange(children);
     }
+
+    internal void SetActionHandlers(IReadOnlyDictionary<SemanticsActions, Action> handlers)
+    {
+        _actionHandlers.Clear();
+        foreach (var pair in handlers)
+        {
+            _actionHandlers[pair.Key] = pair.Value;
+        }
+    }
+
+    internal void CopyActionHandlersTo(Dictionary<SemanticsActions, Action> target)
+    {
+        foreach (var pair in _actionHandlers)
+        {
+            target.TryAdd(pair.Key, pair.Value);
+        }
+    }
+
+    internal bool PerformAction(SemanticsActions action)
+    {
+        if (_actionHandlers.TryGetValue(action, out var handler))
+        {
+            handler();
+            return true;
+        }
+
+        return false;
+    }
 }
 
 public sealed class SemanticsOwner
 {
     private int _nextNodeId;
     private SemanticsNode? _syntheticRoot;
+    private readonly Dictionary<int, SemanticsNode> _index = [];
 
     public SemanticsNode? RootNode { get; private set; }
 
@@ -73,12 +130,14 @@ public sealed class SemanticsOwner
         if (roots.Count == 0)
         {
             RootNode = null;
+            _index.Clear();
             return;
         }
 
         if (roots.Count == 1)
         {
             RootNode = roots[0];
+            RebuildIndex();
             return;
         }
 
@@ -88,7 +147,81 @@ public sealed class SemanticsOwner
         _syntheticRoot.Label = null;
         _syntheticRoot.Flags = SemanticsFlags.None;
         _syntheticRoot.Actions = SemanticsActions.None;
+        _syntheticRoot.SetActionHandlers(new Dictionary<SemanticsActions, Action>());
         RootNode = _syntheticRoot;
+        RebuildIndex();
+        return;
+    }
+
+    public bool PerformAction(int nodeId, SemanticsActions action)
+    {
+        if (action == SemanticsActions.None)
+        {
+            return false;
+        }
+
+        return _index.TryGetValue(nodeId, out var node) && node.PerformAction(action);
+    }
+
+    public string DebugDumpTree()
+    {
+        if (RootNode == null)
+        {
+            return "<empty>";
+        }
+
+        var builder = new StringBuilder();
+        WriteNode(builder, RootNode, depth: 0);
+        return builder.ToString().TrimEnd();
+    }
+
+    private void RebuildIndex()
+    {
+        _index.Clear();
+        if (RootNode == null)
+        {
+            return;
+        }
+
+        VisitNode(RootNode, node => _index[node.Id] = node);
+    }
+
+    private static void VisitNode(SemanticsNode node, Action<SemanticsNode> visitor)
+    {
+        visitor(node);
+        foreach (var child in node.Children)
+        {
+            VisitNode(child, visitor);
+        }
+    }
+
+    private static void WriteNode(StringBuilder builder, SemanticsNode node, int depth)
+    {
+        builder.Append(' ', depth * 2);
+        builder.Append('#').Append(node.Id);
+        builder.Append(" rect=").Append(node.Rect);
+
+        if (!string.IsNullOrEmpty(node.Label))
+        {
+            builder.Append(" label=\"").Append(node.Label).Append('"');
+        }
+
+        if (node.Flags != SemanticsFlags.None)
+        {
+            builder.Append(" flags=").Append(node.Flags);
+        }
+
+        if (node.Actions != SemanticsActions.None)
+        {
+            builder.Append(" actions=").Append(node.Actions);
+        }
+
+        builder.AppendLine();
+
+        foreach (var child in node.Children)
+        {
+            WriteNode(builder, child, depth + 1);
+        }
     }
 
     private static Rect UnionBounds(List<SemanticsNode> nodes)
