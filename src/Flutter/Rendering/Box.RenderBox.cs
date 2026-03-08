@@ -12,6 +12,8 @@ public abstract class RenderBox : RenderObject
 {
     private Size? _size;
 
+    protected override Rect SemanticBounds => new(new Point(0, 0), HasSize ? Size : new Size());
+
     public Size Size
     {
         get => _size ??
@@ -23,6 +25,37 @@ public abstract class RenderBox : RenderObject
     public bool HasSize => _size != null;
 
     public new BoxConstraints Constraints => (BoxConstraints)base.Constraints;
+
+    public override bool HitTest(BoxHitTestResult result, Point position)
+    {
+        if (!HasSize)
+        {
+            return false;
+        }
+
+        if (position.X < 0 || position.Y < 0 || position.X > Size.Width || position.Y > Size.Height)
+        {
+            return false;
+        }
+
+        if (HitTestChildren(result, position) || HitTestSelf(position))
+        {
+            result.Add(new BoxHitTestEntry(this, position));
+            return true;
+        }
+
+        return false;
+    }
+
+    protected virtual bool HitTestChildren(BoxHitTestResult result, Point position)
+    {
+        return false;
+    }
+
+    protected virtual bool HitTestSelf(Point position)
+    {
+        return false;
+    }
 
 
     /// Returns the distance from the y-coordinate of the position of the box to

@@ -30,6 +30,15 @@ public sealed class RenderParagraph : RenderBox
 
     public override void Paint(PaintingContext ctx, Point offset)
     {
-        _layout?.Draw(ctx.Context, offset);
+        if (_layout != null)
+        {
+            ctx.DrawTextLayout(_layout, offset);
+        }
+    }
+
+    protected override void DescribeSemanticsConfiguration(SemanticsConfiguration configuration)
+    {
+        configuration.IsSemanticBoundary = true;
+        configuration.Label = Text;
     }
 }

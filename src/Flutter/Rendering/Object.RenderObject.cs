@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using Avalonia;
 using Avalonia.Media;
+using Flutter.UI;
 
 namespace Flutter.Rendering;
 
@@ -14,8 +15,17 @@ public interface IRenderObject
 public abstract class RenderObject : IRenderObject
 {
     internal bool _wasRepaintBoundary;
+    internal Layer? _layer;
+    internal SemanticsNode? _semanticsNode;
+    private readonly RenderObjectSemantics _semantics;
+    private bool _needsCompositingBitsUpdate = true;
+    private bool _needsCompositedLayerUpdate;
+    internal RenderObjectSemantics Semantics => _semantics;
 
-    bool _needsCompositedLayerUpdate = false;
+    protected RenderObject()
+    {
+        _semantics = new RenderObjectSemantics(this);
+    }
 
 
     /// Cause the entire subtree rooted at the given [RenderObject] to be marked
@@ -36,9 +46,9 @@ public abstract class RenderObject : IRenderObject
     public void Reassemble()
     {
         MarkNeedsLayout();
-        //MarkNeedsCompositingBitsUpdate();
+        MarkNeedsCompositingBitsUpdate();
         MarkNeedsPaint();
-        //MarkNeedsSemanticsUpdate();
+        MarkNeedsSemanticsUpdate();
 
         VisitChildren(child => child.Reassemble());
     }
@@ -129,8 +139,8 @@ public abstract class RenderObject : IRenderObject
     {
         SetupParentData(child);
         MarkNeedsLayout();
-        // MarkNeedsCompositingBitsUpdate();
-        // MarkNeedsSemanticsUpdate();
+        MarkNeedsCompositingBitsUpdate();
+        MarkNeedsSemanticsUpdate();
         child.Parent = this;
 
         if (Attached)
@@ -139,6 +149,26 @@ public abstract class RenderObject : IRenderObject
         }
 
         RedepthChild(child);
+    }
+
+    public void DropChild(RenderObject child)
+    {
+        if (!ReferenceEquals(child.Parent, this))
+        {
+            return;
+        }
+
+        child.Parent = null;
+
+        if (Attached && child.Attached)
+        {
+            child.Detach();
+        }
+
+        MarkNeedsLayout();
+        MarkNeedsCompositingBitsUpdate();
+        MarkNeedsPaint();
+        MarkNeedsSemanticsUpdate();
     }
 
     /// <summary>
@@ -160,22 +190,32 @@ public abstract class RenderObject : IRenderObject
 
         // If the node was dirtied in some way while unattached, make sure to add
         // it to the appropriate dirty list now that an owner is available
-        if (_needsLayout && _isRelayoutBoundary != null)
+        if (_needsLayout)
         {
-            // Don't enter this block if we've never laid out at all;
-            // scheduleInitialLayout() will handle it
-            _needsLayout = false;
-            MarkNeedsLayout();
+            if (Parent == null || _isRelayoutBoundary == true)
+            {
+                Owner.RequestLayoutFor(this);
+            }
+            else
+            {
+                Owner.RequestLayout();
+            }
         }
 
-        if (_needsPaint
-            //&& _layerHandle.layer != null
-           )
+        if (_needsCompositingBitsUpdate)
         {
-            // Don't enter this block if we've never painted at all;
-            // scheduleInitialPaint() will handle it
-            _needsPaint = false;
-            MarkNeedsPaint();
+            _needsCompositingBitsUpdate = false;
+            MarkNeedsCompositingBitsUpdate();
+        }
+
+        if (_needsPaint)
+        {
+            Owner.RequestPaint();
+        }
+
+        if (_semantics.NeedsSemanticsUpdate)
+        {
+            Owner.RequestSemanticsUpdateFor(this);
         }
     }
 
@@ -184,10 +224,14 @@ public abstract class RenderObject : IRenderObject
     /// </summary>
     public void Detach()
     {
+        _layer = null;
+        _semanticsNode = null;
+        _semantics.ResetForDetach();
         Owner = null;
     }
 
     private bool _needsLayout = true;
+    private bool _descendantNeedsLayout = true;
 
     /// <summary>
     /// Whether this [RenderObject] is a known relayout boundary.
@@ -219,6 +263,19 @@ public abstract class RenderObject : IRenderObject
     /// </summary>
     public virtual void Layout(BoxConstraints constraints, bool parentUsesSize = false)
     {
+        if (!constraints.IsNormalized)
+        {
+            throw new InvalidOperationException("RenderObject.layout requires normalized constraints.");
+        }
+
+        if (!_needsLayout
+            && !_descendantNeedsLayout
+            && _constraints is BoxConstraints previousConstraints
+            && previousConstraints.Equals(constraints))
+        {
+            return;
+        }
+
         _isRelayoutBoundary = !parentUsesSize || SizedByParent || constraints.IsTight || Parent == null;
 
         _constraints = constraints;
@@ -229,7 +286,7 @@ public abstract class RenderObject : IRenderObject
             {
                 PerformResize();
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 // ignored
             }
@@ -238,15 +295,17 @@ public abstract class RenderObject : IRenderObject
         try
         {
             PerformLayout();
-            //MarkNeedsSemanticsUpdate();
         }
-        catch (Exception e)
+        catch (Exception)
         {
             // ignored
         }
 
         _needsLayout = false;
+        _descendantNeedsLayout = false;
+        MarkNeedsCompositingBitsUpdate();
         MarkNeedsPaint();
+        MarkNeedsSemanticsUpdate();
     }
 
     protected bool SizedByParent { get; private set; } = false;
@@ -283,7 +342,21 @@ public abstract class RenderObject : IRenderObject
 
         _needsLayout = true;
 
-        Owner?.RequestLayout();
+        if (Parent != null)
+        {
+            Parent.MarkDescendantNeedsLayout();
+
+            if (_isRelayoutBoundary == true)
+            {
+                Owner?.RequestLayoutFor(this);
+                return;
+            }
+
+            Parent.MarkNeedsLayout();
+            return;
+        }
+
+        Owner?.RequestLayoutFor(this);
     }
 
     protected void MarkParentNeedsLayout()
@@ -292,11 +365,182 @@ public abstract class RenderObject : IRenderObject
 
         var parent = this.Parent!;
 
+        parent.MarkDescendantNeedsLayout();
+
         if (!DebugDoingThisLayoutWithCallback)
         {
             parent.MarkNeedsLayout();
         }
     }
+
+    private void MarkDescendantNeedsLayout()
+    {
+        if (_descendantNeedsLayout)
+        {
+            return;
+        }
+
+        _descendantNeedsLayout = true;
+
+        if (Parent != null)
+        {
+            Parent.MarkDescendantNeedsLayout();
+        }
+    }
+
+    public void MarkNeedsCompositingBitsUpdate()
+    {
+        if (_needsCompositingBitsUpdate)
+        {
+            return;
+        }
+
+        _needsCompositingBitsUpdate = true;
+        if (Parent != null)
+        {
+            if (Parent._needsCompositingBitsUpdate)
+            {
+                return;
+            }
+
+            if ((!_wasRepaintBoundary || !IsRepaintBoundary) && !Parent.IsRepaintBoundary)
+            {
+                Parent.MarkNeedsCompositingBitsUpdate();
+                return;
+            }
+        }
+
+        Owner?.RequestCompositingBitsUpdateFor(this);
+    }
+
+    public void MarkNeedsSemanticsUpdate()
+    {
+        _semantics.MarkNeedsSemanticsUpdate();
+    }
+
+    internal void UpdateCompositingBits()
+    {
+        if (!_needsCompositingBitsUpdate)
+        {
+            return;
+        }
+
+        VisitChildren(static child => child.UpdateCompositingBits());
+
+        var oldNeedsCompositing = NeedsCompositing;
+        PerformUpdateCompositingBits();
+
+        if (!IsRepaintBoundary && _wasRepaintBoundary)
+        {
+            _needsPaint = false;
+            _needsCompositedLayerUpdate = false;
+            Owner?.ForgetPaintFor(this);
+            _needsCompositingBitsUpdate = false;
+            MarkNeedsPaint();
+            return;
+        }
+
+        _needsCompositingBitsUpdate = false;
+
+        if (oldNeedsCompositing != NeedsCompositing)
+        {
+            MarkNeedsPaint();
+        }
+    }
+
+    internal void UpdateSemanticsChildren(Matrix transform, Rect? semanticsClipRect, Rect? paintClipRect)
+    {
+        _semantics.UpdateSemanticsChildren(transform, semanticsClipRect, paintClipRect);
+    }
+
+    internal void UpdateSemanticsChildrenFromCachedParentData()
+    {
+        _semantics.UpdateSemanticsChildrenFromCachedParentData();
+    }
+
+    internal void EnsureSemanticsGeometry()
+    {
+        _semantics.EnsureSemanticsGeometry();
+    }
+
+    internal void EnsureSemanticsNode(SemanticsOwner owner, List<SemanticsNode> output)
+    {
+        _semantics.EnsureSemanticsNode(owner, output, inheritedExplicitChildNodes: true);
+    }
+
+    protected virtual void PerformUpdateCompositingBits()
+    {
+        var needsCompositing = IsRepaintBoundary || AlwaysNeedsCompositing;
+
+        if (!needsCompositing)
+        {
+            VisitChildren(child =>
+            {
+                if (child.NeedsCompositing || child.IsRepaintBoundary || child.AlwaysNeedsCompositing)
+                {
+                    needsCompositing = true;
+                }
+            });
+        }
+
+        NeedsCompositing = needsCompositing;
+    }
+
+    protected virtual void PerformSemantics()
+    {
+    }
+
+    internal void InvokePerformSemantics()
+    {
+        PerformSemantics();
+    }
+
+    protected virtual void DescribeSemanticsConfiguration(SemanticsConfiguration configuration)
+    {
+    }
+
+    internal void InvokeDescribeSemanticsConfiguration(SemanticsConfiguration configuration)
+    {
+        DescribeSemanticsConfiguration(configuration);
+    }
+
+    protected virtual bool AlwaysNeedsCompositing => false;
+
+    protected virtual Rect SemanticBounds => new Rect();
+
+    internal Rect SemanticBoundsForSemantics => SemanticBounds;
+
+    internal virtual void VisitChildrenForSemantics(Action<RenderObject, Point, Matrix> visitor)
+    {
+        VisitChildren(child => visitor(child, new Point(0, 0), Matrix.Identity));
+    }
+
+    protected virtual Rect? DescribeSemanticsClip(RenderObject? child)
+    {
+        return null;
+    }
+
+    internal Rect? InvokeDescribeSemanticsClip(RenderObject? child)
+    {
+        return DescribeSemanticsClip(child);
+    }
+
+    protected virtual Rect? DescribeApproximatePaintClip(RenderObject? child)
+    {
+        return null;
+    }
+
+    internal Rect? InvokeDescribeApproximatePaintClip(RenderObject? child)
+    {
+        return DescribeApproximatePaintClip(child);
+    }
+
+    internal bool HasBoxConstraints => _constraints is BoxConstraints;
+    internal BoxConstraints CurrentBoxConstraints => (BoxConstraints)_constraints!;
+    internal bool NeedsLayoutOrDescendantNeedsLayout => _needsLayout || _descendantNeedsLayout;
+    internal bool NeedsLayout => _needsLayout;
+    internal bool NeedsCompositingBitsUpdate => _needsCompositingBitsUpdate;
+    internal bool SemanticsParentDataDirty => _semantics.ParentDataDirty;
 
     /// <summary>
     /// Whether this render object repaints separately from its parent.
@@ -305,6 +549,9 @@ public abstract class RenderObject : IRenderObject
 
 
     private bool _needsPaint = true;
+    internal bool NeedsPaint => _needsPaint;
+    internal bool NeedsCompositedLayerUpdate => _needsCompositedLayerUpdate;
+    internal bool NeedsCompositing { get; private set; }
 
     protected void MarkNeedsPaint()
     {
@@ -315,13 +562,157 @@ public abstract class RenderObject : IRenderObject
 
         _needsPaint = true;
 
-        Owner?.RequestPaint();
+        if (IsRepaintBoundary && _wasRepaintBoundary)
+        {
+            Owner?.RequestPaintFor(this);
+            return;
+        }
+
+        if (Parent != null)
+        {
+            Parent.MarkNeedsPaint();
+            return;
+        }
+
+        Owner?.RequestPaintFor(this);
+    }
+
+    protected void MarkNeedsCompositedLayerUpdate()
+    {
+        if (_needsCompositedLayerUpdate || _needsPaint)
+        {
+            return;
+        }
+
+        _needsCompositedLayerUpdate = true;
+
+        if (IsRepaintBoundary && _wasRepaintBoundary)
+        {
+            Owner?.RequestPaintFor(this);
+            return;
+        }
+
+        MarkNeedsPaint();
+    }
+
+    protected virtual OffsetLayer CreateCompositedLayer(OffsetLayer? oldLayer)
+    {
+        return oldLayer ?? new OffsetLayer();
+    }
+
+    protected virtual void UpdateCompositedLayer(OffsetLayer layer)
+    {
+    }
+
+    internal OffsetLayer EnsureCompositedLayer()
+    {
+        var oldLayer = _layer as OffsetLayer;
+        var layer = CreateCompositedLayer(oldLayer);
+
+        if (!ReferenceEquals(oldLayer, layer))
+        {
+            oldLayer?.Parent?.Remove(oldLayer);
+            _layer = layer;
+            _needsCompositedLayerUpdate = true;
+        }
+
+        return layer;
+    }
+
+    internal void UpdateCompositedLayerProperties()
+    {
+        if (!_needsCompositedLayerUpdate)
+        {
+            return;
+        }
+
+        if (IsRepaintBoundary && _layer is OffsetLayer layer)
+        {
+            UpdateCompositedLayer(layer);
+        }
+
+        _needsCompositedLayerUpdate = false;
+    }
+
+    internal void UpdateSemanticsSubtree()
+    {
+        _semantics.UpdateSemanticsSubtree();
+    }
+
+    internal void HandleSkippedPaintingOnDetachedLayer()
+    {
+        if (!Attached || !IsRepaintBoundary || _layer is not OffsetLayer layer || layer.Parent != null)
+        {
+            return;
+        }
+
+        RenderObject? node = Parent;
+        while (node != null)
+        {
+            if (node.IsRepaintBoundary)
+            {
+                node._needsPaint = true;
+                node.Owner?.RequestPaintFor(node);
+
+                if (node._layer is not OffsetLayer ancestorLayer || ancestorLayer.Parent != null)
+                {
+                    break;
+                }
+            }
+
+            node = node.Parent;
+        }
+    }
+
+    internal static Rect TransformRect(Matrix transform, Rect rect)
+    {
+        var p1 = transform.Transform(rect.TopLeft);
+        var p2 = transform.Transform(rect.TopRight);
+        var p3 = transform.Transform(rect.BottomLeft);
+        var p4 = transform.Transform(rect.BottomRight);
+
+        var minX = Math.Min(Math.Min(p1.X, p2.X), Math.Min(p3.X, p4.X));
+        var minY = Math.Min(Math.Min(p1.Y, p2.Y), Math.Min(p3.Y, p4.Y));
+        var maxX = Math.Max(Math.Max(p1.X, p2.X), Math.Max(p3.X, p4.X));
+        var maxY = Math.Max(Math.Max(p1.Y, p2.Y), Math.Max(p3.Y, p4.Y));
+        return new Rect(minX, minY, maxX - minX, maxY - minY);
+    }
+
+    internal static Rect? IntersectClip(Rect? inheritedClip, Rect? localClip, Matrix transform)
+    {
+        Rect? transformedLocalClip = null;
+        if (localClip.HasValue)
+        {
+            transformedLocalClip = TransformRect(transform, localClip.Value);
+        }
+
+        if (!inheritedClip.HasValue)
+        {
+            return transformedLocalClip;
+        }
+
+        if (!transformedLocalClip.HasValue)
+        {
+            return inheritedClip;
+        }
+
+        var intersection = inheritedClip.Value.Intersect(transformedLocalClip.Value);
+        return intersection.Width <= 0 || intersection.Height <= 0 ? null : intersection;
     }
 
     /// <summary>
     /// Paint this render object into the given context at the given offset.
     /// </summary>
     public abstract void Paint(PaintingContext ctx, Point offset);
+
+    public virtual bool HitTest(BoxHitTestResult result, Point position)
+    {
+        return false;
+    }
+
+    public virtual void HandleEvent(PointerEvent @event, HitTestEntry entry)
+    {
+    }
 
 
     internal void _paintWithContext(PaintingContext context, Point offset)
@@ -353,6 +744,12 @@ public abstract class RenderObject : IRenderObject
         if (_needsLayout)
         {
             return;
+        }
+
+        if (_needsCompositingBitsUpdate)
+        {
+            throw new InvalidOperationException(
+                "RenderObject.paint called before compositing bits were updated.");
         }
 
         // if (!kReleaseMode && debugProfilePaintsEnabled)
@@ -425,7 +822,6 @@ public abstract class RenderObject : IRenderObject
         //     return true;
         // }
         // ());
-        RenderObject? debugLastActivePaint;
         // assert(() {
         //     _debugDoingThisPaint = true;
         //     debugLastActivePaint = _debugActivePaint;
@@ -435,7 +831,6 @@ public abstract class RenderObject : IRenderObject
         // }
         // ());
         _needsPaint = false;
-
         _needsCompositedLayerUpdate = false;
 
         _wasRepaintBoundary = IsRepaintBoundary;
@@ -446,7 +841,7 @@ public abstract class RenderObject : IRenderObject
             Debug.Assert(!_needsLayout); // check that the paint() method didn't mark us dirty again
             Debug.Assert(!_needsPaint); // check that the paint() method didn't mark us dirty again
         }
-        catch (Exception e)
+        catch (Exception)
         {
             //_reportException('paint', e, stack);
         }

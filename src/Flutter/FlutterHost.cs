@@ -1,51 +1,242 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Media;
-using Avalonia.Threading;
+using Flutter.Gestures;
 using Flutter.Rendering;
+using Flutter.UI;
 
 namespace Flutter;
 
-public sealed class FlutterHost : Control
+public class FlutterHost : Control
 {
     private readonly RenderView _root = new();
-
     private readonly PipelineOwner _pipeline;
+    private readonly GestureBinding _gestureBinding = GestureBinding.Instance;
+    private bool _isSubscribedToScheduler;
 
     public FlutterHost()
     {
         _pipeline = new PipelineOwner(_root);
+        _pipeline.OnNeedVisualUpdate = ScheduleVisualUpdate;
+        _pipeline.Attach(_root);
 
         ClipToBounds = true;
-
-        // Simple vsync
-        var timer = new DispatcherTimer(
-            interval: TimeSpan.FromMilliseconds(16),
-            DispatcherPriority.Render,
-            (_, _) => InvalidateArrange());
-
-        timer.Start();
+        EnsureSchedulerSubscription();
     }
 
-    public void SetRootChild(RenderBox child)
+    internal RenderBox? RootChild => _root.Child;
+
+    public void SetRootChild(RenderBox? child)
     {
         _root.Child = child;
         _pipeline.RequestLayout();
-
-        InvalidateVisual();
+        _pipeline.RequestPaint();
+        ScheduleVisualUpdate();
     }
 
     protected override Size ArrangeOverride(Size finalSize)
     {
         _pipeline.RequestLayout();
-
         return base.ArrangeOverride(finalSize);
+    }
+
+    protected override void OnPointerPressed(PointerPressedEventArgs e)
+    {
+        base.OnPointerPressed(e);
+        e.Pointer.Capture(this);
+        DispatchPointerEvent(ToPointerDownEvent(e));
+    }
+
+    protected override void OnPointerMoved(PointerEventArgs e)
+    {
+        base.OnPointerMoved(e);
+
+        var pointer = e.GetCurrentPoint(this);
+        var position = pointer.Position;
+        var buttons = ToPointerButtons(pointer.Properties);
+        var kind = ToPointerKind(e.Pointer.Type);
+
+        if (buttons == PointerButtons.None)
+        {
+            DispatchPointerEvent(new PointerHoverEvent(
+                pointer: unchecked((int)e.Pointer.Id),
+                kind: kind,
+                position: position,
+                buttons: buttons,
+                timestampUtc: DateTime.UtcNow));
+            return;
+        }
+
+        DispatchPointerEvent(new PointerMoveEvent(
+            pointer: unchecked((int)e.Pointer.Id),
+            kind: kind,
+            position: position,
+            buttons: buttons,
+            down: true,
+            timestampUtc: DateTime.UtcNow));
+    }
+
+    protected override void OnPointerReleased(PointerReleasedEventArgs e)
+    {
+        base.OnPointerReleased(e);
+
+        DispatchPointerEvent(new PointerUpEvent(
+            pointer: unchecked((int)e.Pointer.Id),
+            kind: ToPointerKind(e.Pointer.Type),
+            position: e.GetPosition(this),
+            buttons: ToPointerButtons(e.GetCurrentPoint(this).Properties),
+            timestampUtc: DateTime.UtcNow));
+
+        if (e.Pointer.Captured == this)
+        {
+            e.Pointer.Capture(null);
+        }
+    }
+
+    protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
+    {
+        base.OnPointerWheelChanged(e);
+
+        DispatchPointerEvent(new PointerScrollEvent(
+            pointer: unchecked((int)e.Pointer.Id),
+            kind: ToPointerKind(e.Pointer.Type),
+            position: e.GetPosition(this),
+            buttons: ToPointerButtons(e.GetCurrentPoint(this).Properties),
+            scrollDelta: new Point(e.Delta.X, e.Delta.Y),
+            timestampUtc: DateTime.UtcNow));
+    }
+
+    protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
+    {
+        base.OnPointerCaptureLost(e);
+
+        DispatchPointerEvent(new PointerCancelEvent(
+            pointer: unchecked((int)e.Pointer.Id),
+            kind: ToPointerKind(e.Pointer.Type),
+            position: default,
+            buttons: PointerButtons.None,
+            timestampUtc: DateTime.UtcNow));
     }
 
     public override void Render(DrawingContext context)
     {
         _pipeline.FlushLayout(Bounds.Size);
+        _pipeline.FlushCompositingBits();
+        _pipeline.FlushPaint();
+        _pipeline.CompositeFrame(context);
+        _pipeline.FlushSemantics();
+    }
 
-        _pipeline.FlushPaint(new PaintingContext(context));
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        EnsureSchedulerSubscription();
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        RemoveSchedulerSubscription();
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    protected virtual void OnDrawFrame(TimeSpan timestamp)
+    {
+    }
+
+    protected void ScheduleVisualUpdate()
+    {
+        Scheduler.ScheduleFrame();
+    }
+
+    private void HandleSchedulerDrawFrame(TimeSpan timestamp)
+    {
+        if (!IsVisible)
+        {
+            return;
+        }
+
+        OnDrawFrame(timestamp);
+        _pipeline.FlushLayout(Bounds.Size);
+        _pipeline.FlushCompositingBits();
+
+        if (_pipeline.NeedsPaint)
+        {
+            InvalidateVisual();
+        }
+        else
+        {
+            _pipeline.FlushSemantics();
+        }
+    }
+
+    private void EnsureSchedulerSubscription()
+    {
+        if (_isSubscribedToScheduler)
+        {
+            return;
+        }
+
+        Scheduler.AddPersistentFrameCallback(HandleSchedulerDrawFrame);
+        _isSubscribedToScheduler = true;
+    }
+
+    private void RemoveSchedulerSubscription()
+    {
+        if (!_isSubscribedToScheduler)
+        {
+            return;
+        }
+
+        Scheduler.RemovePersistentFrameCallback(HandleSchedulerDrawFrame);
+        _isSubscribedToScheduler = false;
+    }
+
+    private void DispatchPointerEvent(PointerEvent @event)
+    {
+        _gestureBinding.HandlePointerEvent(_root, @event);
+    }
+
+    private PointerDownEvent ToPointerDownEvent(PointerPressedEventArgs e)
+    {
+        return new PointerDownEvent(
+            pointer: unchecked((int)e.Pointer.Id),
+            kind: ToPointerKind(e.Pointer.Type),
+            position: e.GetPosition(this),
+            buttons: ToPointerButtons(e.GetCurrentPoint(this).Properties),
+            timestampUtc: DateTime.UtcNow);
+    }
+
+    private static PointerButtons ToPointerButtons(PointerPointProperties properties)
+    {
+        var buttons = PointerButtons.None;
+
+        if (properties.IsLeftButtonPressed)
+        {
+            buttons |= PointerButtons.Primary;
+        }
+
+        if (properties.IsRightButtonPressed)
+        {
+            buttons |= PointerButtons.Secondary;
+        }
+
+        if (properties.IsMiddleButtonPressed)
+        {
+            buttons |= PointerButtons.Middle;
+        }
+
+        return buttons;
+    }
+
+    private static PointerDeviceKind ToPointerKind(PointerType type)
+    {
+        return type switch
+        {
+            PointerType.Mouse => PointerDeviceKind.Mouse,
+            PointerType.Touch => PointerDeviceKind.Touch,
+            PointerType.Pen => PointerDeviceKind.Stylus,
+            _ => PointerDeviceKind.Unknown
+        };
     }
 }

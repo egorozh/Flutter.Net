@@ -113,6 +113,36 @@ public readonly record struct BoxConstraints(
     public BoxConstraints Tighten(double? width = null, double? height = null) =>
         new BoxConstraints(width ?? MinWidth, width ?? MaxWidth, height ?? MinHeight, height ?? MaxHeight);
 
+    public BoxConstraints Enforce(BoxConstraints constraints) =>
+        new(
+            MinWidth: Math.Clamp(MinWidth, constraints.MinWidth, constraints.MaxWidth),
+            MaxWidth: Math.Clamp(MaxWidth, constraints.MinWidth, constraints.MaxWidth),
+            MinHeight: Math.Clamp(MinHeight, constraints.MinHeight, constraints.MaxHeight),
+            MaxHeight: Math.Clamp(MaxHeight, constraints.MinHeight, constraints.MaxHeight)
+        );
+
+    public BoxConstraints Deflate(Thickness edges)
+    {
+        var horizontal = edges.Left + edges.Right;
+        var vertical = edges.Top + edges.Bottom;
+
+        double deflatedMinWidth = Math.Max(0, MinWidth - horizontal);
+        double deflatedMaxWidth = double.IsPositiveInfinity(MaxWidth)
+            ? double.PositiveInfinity
+            : Math.Max(deflatedMinWidth, MaxWidth - horizontal);
+
+        double deflatedMinHeight = Math.Max(0, MinHeight - vertical);
+        double deflatedMaxHeight = double.IsPositiveInfinity(MaxHeight)
+            ? double.PositiveInfinity
+            : Math.Max(deflatedMinHeight, MaxHeight - vertical);
+
+        return new BoxConstraints(
+            MinWidth: deflatedMinWidth,
+            MaxWidth: deflatedMaxWidth,
+            MinHeight: deflatedMinHeight,
+            MaxHeight: deflatedMaxHeight);
+    }
+
     /// Returns the width that both satisfies the constraints and is as close as
     /// possible to the given width.
     public double ConstrainWidth(double width = double.PositiveInfinity)
