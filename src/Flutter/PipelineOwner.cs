@@ -8,12 +8,14 @@ public sealed class PipelineOwner
 {
     public RenderView Root { get; }
     public Action? OnNeedVisualUpdate { get; set; }
+    internal SemanticsOwner SemanticsOwner => _semanticsOwner;
     internal OffsetLayer RootLayer => _rootLayer;
 
     private bool _needsLayout;
     private bool _needsCompositingBitsUpdate;
     private bool _needsPaint;
     private bool _needsSemantics;
+    private readonly SemanticsOwner _semanticsOwner = new();
     private readonly OffsetLayer _rootLayer = new();
 
     internal bool NeedsPaint => _needsPaint;
@@ -121,6 +123,8 @@ public sealed class PipelineOwner
         }
 
         _needsSemantics = false;
-        Root.FlushSemantics();
+        var roots = new List<SemanticsNode>();
+        Root.BuildSemantics(_semanticsOwner, new Point(0, 0), roots);
+        _semanticsOwner.UpdateRoot(roots);
     }
 }

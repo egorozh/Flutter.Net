@@ -49,6 +49,14 @@ public sealed class RenderView : RenderBox
         }
     }
 
+    internal override void VisitChildrenForSemantics(Action<RenderObject, Point> visitor)
+    {
+        if (_child != null)
+        {
+            visitor(_child, new Point(0, 0));
+        }
+    }
+
     protected override void PerformLayout()
     {
         if (_child != null)
@@ -79,5 +87,10 @@ public sealed class RenderView : RenderBox
         }
 
         return _child.HitTest(result, position);
+    }
+
+    protected override void DescribeSemanticsConfiguration(SemanticsConfiguration configuration)
+    {
+        configuration.IsSemanticBoundary = true;
     }
 }

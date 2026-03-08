@@ -35,4 +35,10 @@ public sealed class RenderParagraph : RenderBox
             ctx.DrawTextLayout(_layout, offset);
         }
     }
+
+    protected override void DescribeSemanticsConfiguration(SemanticsConfiguration configuration)
+    {
+        configuration.IsSemanticBoundary = true;
+        configuration.Label = Text;
+    }
 }

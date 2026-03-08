@@ -16,6 +16,7 @@ public abstract class RenderObject : IRenderObject
 {
     internal bool _wasRepaintBoundary;
     internal Layer? _layer;
+    internal SemanticsNode? _semanticsNode;
     private bool _needsCompositingBitsUpdate = true;
     private bool _needsSemanticsUpdate = true;
 
@@ -209,6 +210,7 @@ public abstract class RenderObject : IRenderObject
     public void Detach()
     {
         _layer = null;
+        _semanticsNode = null;
         Owner = null;
     }
 
@@ -359,17 +361,42 @@ public abstract class RenderObject : IRenderObject
         PerformUpdateCompositingBits();
     }
 
-    internal void FlushSemantics()
+    internal void BuildSemantics(SemanticsOwner owner, Point offset, List<SemanticsNode> output)
     {
-        VisitChildren(static child => child.FlushSemantics());
+        var children = new List<SemanticsNode>();
+        VisitChildrenForSemantics((child, childOffset) => child.BuildSemantics(owner, offset + childOffset, children));
 
-        if (!_needsSemanticsUpdate)
+        if (_needsSemanticsUpdate)
         {
+            _needsSemanticsUpdate = false;
+            PerformSemantics();
+        }
+
+        var config = new SemanticsConfiguration();
+        DescribeSemanticsConfiguration(config);
+
+        var hasOwnSemantics = config.IsSemanticBoundary
+                              || !string.IsNullOrEmpty(config.Label)
+                              || config.Flags != SemanticsFlags.None
+                              || config.Actions != SemanticsActions.None;
+
+        if (!hasOwnSemantics)
+        {
+            _semanticsNode = null;
+            output.AddRange(children);
             return;
         }
 
-        _needsSemanticsUpdate = false;
-        PerformSemantics();
+        var semanticsNode = owner.EnsureNode(this);
+        var localBounds = config.ExplicitRect ?? SemanticBounds;
+
+        semanticsNode.Rect = new Rect(localBounds.Position + offset, localBounds.Size);
+        semanticsNode.Label = config.Label;
+        semanticsNode.Flags = config.Flags;
+        semanticsNode.Actions = config.Actions;
+        semanticsNode.ReplaceChildren(children);
+
+        output.Add(semanticsNode);
     }
 
     protected virtual void PerformUpdateCompositingBits()
@@ -392,6 +419,17 @@ public abstract class RenderObject : IRenderObject
 
     protected virtual void PerformSemantics()
     {
+    }
+
+    protected virtual void DescribeSemanticsConfiguration(SemanticsConfiguration configuration)
+    {
+    }
+
+    protected virtual Rect SemanticBounds => new Rect();
+
+    internal virtual void VisitChildrenForSemantics(Action<RenderObject, Point> visitor)
+    {
+        VisitChildren(child => visitor(child, new Point(0, 0)));
     }
 
     /// <summary>

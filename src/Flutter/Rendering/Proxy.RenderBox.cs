@@ -49,6 +49,15 @@ public abstract class RenderProxyBox : RenderBox
         }
     }
 
+    internal override void VisitChildrenForSemantics(Action<RenderObject, Point> visitor)
+    {
+        if (_child != null)
+        {
+            var childParentData = (BoxParentData)_child.parentData!;
+            visitor(_child, childParentData.offset);
+        }
+    }
+
     protected override void PerformLayout()
     {
         if (_child != null)

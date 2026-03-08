@@ -12,6 +12,8 @@ public abstract class RenderBox : RenderObject
 {
     private Size? _size;
 
+    protected override Rect SemanticBounds => new(new Point(0, 0), HasSize ? Size : new Size());
+
     public Size Size
     {
         get => _size ??

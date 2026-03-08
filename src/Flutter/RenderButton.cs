@@ -60,6 +60,7 @@ public sealed class RenderButton : RenderBox
 
             _onPressed = value;
             MarkNeedsPaint();
+            MarkNeedsSemanticsUpdate();
         }
     }
 
@@ -154,5 +155,18 @@ public sealed class RenderButton : RenderBox
     {
         OnPressed?.Invoke();
         @event.Handled = true;
+    }
+
+    protected override void DescribeSemanticsConfiguration(SemanticsConfiguration configuration)
+    {
+        configuration.IsSemanticBoundary = true;
+        configuration.Label = Label;
+        configuration.Flags |= SemanticsFlags.IsButton;
+
+        if (OnPressed != null)
+        {
+            configuration.Flags |= SemanticsFlags.IsEnabled;
+            configuration.Actions |= SemanticsActions.Tap;
+        }
     }
 }

@@ -301,6 +301,15 @@ public class RenderFlex : RenderBox, IRenderBoxContainerDefaultsMixin<RenderBox,
         }
     }
 
+    internal override void VisitChildrenForSemantics(Action<RenderObject, Point> visitor)
+    {
+        for (RenderBox? child = FirstChild; child != null; child = ChildAfter(child))
+        {
+            var childParentData = (FlexParentData)child.parentData!;
+            visitor(child, childParentData.offset);
+        }
+    }
+
     protected override bool HitTestChildren(BoxHitTestResult result, Point position)
     {
         return DefaultHitTestChildren(result, position);

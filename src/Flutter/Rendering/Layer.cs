@@ -1,6 +1,5 @@
 using Avalonia;
 using Avalonia.Media;
-using Avalonia.Media.TextFormatting;
 
 namespace Flutter.Rendering;
 
