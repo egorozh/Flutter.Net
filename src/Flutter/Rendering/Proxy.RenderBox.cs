@@ -1,10 +1,11 @@
 using Avalonia;
 using Avalonia.Media;
 using Flutter.UI;
+using Flutter.Widgets;
 
 namespace Flutter.Rendering;
 
-public abstract class RenderProxyBox : RenderBox
+public abstract class RenderProxyBox : RenderBox, IRenderObjectSingleChildContainer
 {
     private RenderBox? _child;
 
@@ -32,6 +33,12 @@ public abstract class RenderProxyBox : RenderBox
 
             MarkNeedsLayout();
         }
+    }
+
+    RenderObject? IRenderObjectSingleChildContainer.Child
+    {
+        get => Child;
+        set => Child = (RenderBox?)value;
     }
 
     public override void SetupParentData(RenderObject child)

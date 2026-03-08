@@ -10,6 +10,11 @@ internal interface IRenderObjectHost
     void RemoveRenderObjectChild(RenderObject child, object? slot);
 }
 
+public interface IRenderObjectSingleChildContainer
+{
+    RenderObject? Child { get; set; }
+}
+
 public abstract class RenderObjectWidget(Key? key = null) : Widget(key)
 {
     internal abstract RenderObject CreateRenderObject(BuildContext context);
@@ -253,12 +258,13 @@ public sealed class SingleChildRenderObjectElement : RenderObjectElement
             throw new InvalidOperationException("SingleChildRenderObjectElement expects null slot.");
         }
 
-        if (RequireRenderObject() is not RenderProxyBox proxy || child is not RenderBox childRenderBox)
+        if (RequireRenderObject() is not IRenderObjectSingleChildContainer container)
         {
-            throw new InvalidOperationException("SingleChildRenderObjectElement requires RenderProxyBox and RenderBox child.");
+            throw new InvalidOperationException(
+                "SingleChildRenderObjectElement requires render object implementing IRenderObjectSingleChildContainer.");
         }
 
-        proxy.Child = childRenderBox;
+        container.Child = child;
     }
 
     public override void MoveRenderObjectChild(RenderObject child, object? oldSlot, object? newSlot)
@@ -276,14 +282,15 @@ public sealed class SingleChildRenderObjectElement : RenderObjectElement
             throw new InvalidOperationException("SingleChildRenderObjectElement expects null slot.");
         }
 
-        if (RequireRenderObject() is not RenderProxyBox proxy || child is not RenderBox childRenderBox)
+        if (RequireRenderObject() is not IRenderObjectSingleChildContainer container)
         {
-            throw new InvalidOperationException("SingleChildRenderObjectElement requires RenderProxyBox and RenderBox child.");
+            throw new InvalidOperationException(
+                "SingleChildRenderObjectElement requires render object implementing IRenderObjectSingleChildContainer.");
         }
 
-        if (ReferenceEquals(proxy.Child, childRenderBox))
+        if (ReferenceEquals(container.Child, child))
         {
-            proxy.Child = null;
+            container.Child = null;
         }
     }
 

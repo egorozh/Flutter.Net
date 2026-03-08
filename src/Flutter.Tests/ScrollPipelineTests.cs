@@ -23,6 +23,27 @@ public sealed class ScrollPipelineTests
     }
 
     [Fact]
+    public void ScrollPosition_EndDrag_EntersBallisticActivity()
+    {
+        Scheduler.ResetForTests();
+        try
+        {
+            var position = new ScrollPosition(initialPixels: 40);
+            position.ApplyViewportDimension(120);
+            position.ApplyContentDimensions(0, 800);
+
+            position.BeginDrag();
+            position.EndDrag(primaryPointerVelocity: -1200);
+            Assert.IsType<BallisticScrollActivity>(position.Activity);
+            position.Dispose();
+        }
+        finally
+        {
+            Scheduler.ResetForTests();
+        }
+    }
+
+    [Fact]
     public void ScrollController_JumpTo_UpdatesAttachedPositions()
     {
         var controller = new ScrollController();
@@ -75,6 +96,33 @@ public sealed class ScrollPipelineTests
         Assert.Equal(200, viewportExtent);
         Assert.Equal(0, minExtent);
         Assert.Equal(400, maxExtent);
+    }
+
+    [Fact]
+    public void RenderViewport_LaysOutMultipleSlivers_AndAggregatesScrollExtent()
+    {
+        double maxExtent = -1;
+
+        var first = new RenderSliverToBoxAdapter(new FixedSizeBox(new Size(100, 120)));
+        var second = new RenderSliverToBoxAdapter(new FixedSizeBox(new Size(100, 160)));
+        var viewport = new RenderViewport(
+            axis: Axis.Vertical,
+            offsetPixels: 80,
+            onViewportMetricsChanged: (_, _, max) => maxExtent = max);
+        viewport.Insert(first);
+        viewport.Insert(second, after: first);
+
+        var root = new RenderView { Child = viewport };
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+        pipeline.FlushLayout(new Size(100, 150));
+
+        Assert.Equal(130, maxExtent);
+
+        var firstBoxOffset = ((BoxParentData)((RenderBox)first.Child!).parentData!).offset;
+        var secondBoxOffset = ((BoxParentData)((RenderBox)second.Child!).parentData!).offset;
+        Assert.Equal(new Point(0, -80), firstBoxOffset);
+        Assert.Equal(new Point(0, 0), secondBoxOffset);
     }
 
     private sealed class FixedSizeBox : RenderBox
