@@ -117,6 +117,35 @@ public sealed class SemanticsTreeTests
     }
 
     [Fact]
+    public void SemanticsOwner_PerformAction_InvokesLongPressHandler()
+    {
+        var longPressCount = 0;
+        var box = new MultiActionSemanticBox(
+            label: "LongPress",
+            size: new Size(16, 10),
+            action: SemanticsActions.LongPress,
+            handler: () => longPressCount += 1);
+
+        var renderView = new RenderView
+        {
+            Child = box
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+        pipeline.FlushLayout(new Size(220, 120));
+        pipeline.FlushSemantics();
+
+        var root = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(root);
+        var node = Assert.Single(root.Children);
+        Assert.True(node.Actions.HasFlag(SemanticsActions.LongPress));
+        Assert.True(pipeline.SemanticsOwner.PerformAction(node.Id, SemanticsActions.LongPress));
+        Assert.Equal(1, longPressCount);
+        Assert.False(pipeline.SemanticsOwner.PerformAction(node.Id, SemanticsActions.ShowOnScreen));
+    }
+
+    [Fact]
     public void MergeSemantics_MergesDescendantsIntoSingleNode()
     {
         var merge = new MergeSemanticsRenderBox(
@@ -1055,6 +1084,103 @@ public sealed class SemanticsTreeTests
     }
 
     [Fact]
+    public void ChildConfigurationsDelegate_IncompleteSiblingGroup_TransformUpdatesSyntheticNodeRect()
+    {
+        var delegated = new SyntheticGeometrySiblingRenderBox(
+            child: new RenderConstrainedBox(BoxConstraints.TightFor(width: 10, height: 10)),
+            label: "Synthetic Geo",
+            explicitRect: new Rect(0, 0, 10, 8));
+        var transform = new RenderTransform(Matrix.CreateTranslation(10, 6), delegated);
+
+        var renderView = new RenderView
+        {
+            Child = transform
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+        pipeline.FlushLayout(new Size(220, 120));
+        pipeline.FlushSemantics();
+
+        var firstRoot = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(firstRoot);
+        var firstNode = FindNodeByLabel(firstRoot, "Synthetic Geo");
+        Assert.NotNull(firstNode);
+        Assert.Equal(new Rect(10, 6, 10, 8), firstNode.Rect);
+        var firstId = firstNode.Id;
+
+        transform.Transform = Matrix.CreateTranslation(25, 3);
+        pipeline.FlushSemantics();
+
+        var updatedRoot = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(updatedRoot);
+        var updatedNode = FindNodeByLabel(updatedRoot, "Synthetic Geo");
+        Assert.NotNull(updatedNode);
+        Assert.Equal(firstId, updatedNode.Id);
+        Assert.Equal(new Rect(25, 3, 10, 8), updatedNode.Rect);
+    }
+
+    [Fact]
+    public void ChildConfigurationsDelegate_IncompleteSiblingGroup_ClipAndHiddenStateUpdate()
+    {
+        var delegated = new SyntheticGeometrySiblingRenderBox(
+            child: new RenderConstrainedBox(BoxConstraints.TightFor(width: 10, height: 10)),
+            label: "Synthetic Clip",
+            explicitRect: new Rect(0, 0, 12, 8));
+        var transform = new RenderTransform(Matrix.CreateTranslation(30, 0), delegated);
+        var clip = new DistinctSemanticsClipRenderBox(transform)
+        {
+            PaintClipRect = new Rect(0, 0, 120, 40),
+            SemanticsClipRect = new Rect(0, 0, 120, 40)
+        };
+
+        var renderView = new RenderView
+        {
+            Child = clip
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+        pipeline.FlushLayout(new Size(220, 120));
+        pipeline.FlushSemantics();
+
+        var initialRoot = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(initialRoot);
+        var initialNode = FindNodeByLabel(initialRoot, "Synthetic Clip");
+        Assert.NotNull(initialNode);
+        Assert.False(initialNode.IsHidden);
+        var initialId = initialNode.Id;
+
+        clip.PaintClipRect = new Rect(0, 0, 10, 10);
+        pipeline.FlushSemantics();
+
+        var hiddenRoot = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(hiddenRoot);
+        var hiddenNode = FindNodeByLabel(hiddenRoot, "Synthetic Clip");
+        Assert.NotNull(hiddenNode);
+        Assert.Equal(initialId, hiddenNode.Id);
+        Assert.True(hiddenNode.IsHidden);
+
+        clip.SemanticsClipRect = new Rect(0, 0, 10, 10);
+        pipeline.FlushSemantics();
+
+        var clippedOutRoot = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(clippedOutRoot);
+        Assert.Null(FindNodeByLabel(clippedOutRoot, "Synthetic Clip"));
+
+        clip.PaintClipRect = new Rect(0, 0, 120, 40);
+        clip.SemanticsClipRect = new Rect(0, 0, 120, 40);
+        pipeline.FlushSemantics();
+
+        var restoredRoot = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(restoredRoot);
+        var restoredNode = FindNodeByLabel(restoredRoot, "Synthetic Clip");
+        Assert.NotNull(restoredNode);
+        Assert.Equal(initialId, restoredNode.Id);
+        Assert.False(restoredNode.IsHidden);
+    }
+
+    [Fact]
     public void ChildConfigurationsDelegate_WithExplicitChildNodes_ThrowsInvalidOperation()
     {
         var row = new RenderFlex(children: [new FixedSemanticBox("One", new Size(12, 8))], direction: Axis.Horizontal);
@@ -1235,6 +1361,40 @@ public sealed class SemanticsTreeTests
                 return new ChildSemanticsConfigurationsResult(
                     new List<SemanticsConfiguration> { synthetic },
                     new List<List<SemanticsConfiguration>>());
+            };
+        }
+    }
+
+    private sealed class SyntheticGeometrySiblingRenderBox : RenderProxyBox
+    {
+        private readonly string _label;
+        private readonly Rect _explicitRect;
+
+        public SyntheticGeometrySiblingRenderBox(RenderBox child, string label, Rect explicitRect)
+        {
+            Child = child;
+            _label = label;
+            _explicitRect = explicitRect;
+        }
+
+        protected override void DescribeSemanticsConfiguration(SemanticsConfiguration configuration)
+        {
+            configuration.IsSemanticBoundary = true;
+            configuration.Label = "Parent";
+            configuration.ChildConfigurationsDelegate = _ =>
+            {
+                var synthetic = new SemanticsConfiguration
+                {
+                    Label = _label,
+                    ExplicitRect = _explicitRect
+                };
+
+                return new ChildSemanticsConfigurationsResult(
+                    new List<SemanticsConfiguration>(),
+                    new List<List<SemanticsConfiguration>>
+                    {
+                        new List<SemanticsConfiguration> { synthetic }
+                    });
             };
         }
     }
@@ -1502,6 +1662,42 @@ public sealed class SemanticsTreeTests
             configuration.IsSemanticBoundary = true;
             configuration.Label = _label;
             configuration.AddActionHandler(SemanticsActions.Tap, _onTap);
+        }
+    }
+
+    private sealed class MultiActionSemanticBox : RenderBox
+    {
+        private readonly string _label;
+        private readonly Size _size;
+        private readonly SemanticsActions _action;
+        private readonly Action _handler;
+
+        public MultiActionSemanticBox(
+            string label,
+            Size size,
+            SemanticsActions action,
+            Action handler)
+        {
+            _label = label;
+            _size = size;
+            _action = action;
+            _handler = handler;
+        }
+
+        protected override void PerformLayout()
+        {
+            Size = Constraints.Constrain(_size);
+        }
+
+        public override void Paint(PaintingContext ctx, Point offset)
+        {
+        }
+
+        protected override void DescribeSemanticsConfiguration(SemanticsConfiguration configuration)
+        {
+            configuration.IsSemanticBoundary = true;
+            configuration.Label = _label;
+            configuration.AddActionHandler(_action, _handler);
         }
     }
 

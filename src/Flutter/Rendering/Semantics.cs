@@ -9,6 +9,15 @@ public enum SemanticsFlags
     None = 0,
     IsButton = 1 << 0,
     IsEnabled = 1 << 1,
+    IsSelected = 1 << 2,
+    IsChecked = 1 << 3,
+    IsTextField = 1 << 4,
+    IsFocused = 1 << 5,
+    IsHeader = 1 << 6,
+    IsLink = 1 << 7,
+    IsImage = 1 << 8,
+    IsSlider = 1 << 9,
+    IsHidden = 1 << 10,
 }
 
 [Flags]
@@ -16,6 +25,16 @@ public enum SemanticsActions
 {
     None = 0,
     Tap = 1 << 0,
+    LongPress = 1 << 1,
+    ScrollLeft = 1 << 2,
+    ScrollRight = 1 << 3,
+    ScrollUp = 1 << 4,
+    ScrollDown = 1 << 5,
+    Increase = 1 << 6,
+    Decrease = 1 << 7,
+    Focus = 1 << 8,
+    Dismiss = 1 << 9,
+    ShowOnScreen = 1 << 10,
 }
 
 public delegate ChildSemanticsConfigurationsResult ChildSemanticsConfigurationsDelegate(
@@ -71,6 +90,30 @@ public sealed class SemanticsConfiguration
     internal void ReplaceActionHandlers(Dictionary<SemanticsActions, Action> handlers)
     {
         _actionHandlers = handlers.Count == 0 ? null : handlers;
+    }
+
+    internal SemanticsConfiguration Clone()
+    {
+        var clone = new SemanticsConfiguration
+        {
+            IsSemanticBoundary = IsSemanticBoundary,
+            IsMergingSemanticsOfDescendants = IsMergingSemanticsOfDescendants,
+            ExplicitChildNodes = ExplicitChildNodes,
+            IsBlockingSemanticsOfPreviouslyPaintedNodes = IsBlockingSemanticsOfPreviouslyPaintedNodes,
+            ChildConfigurationsDelegate = ChildConfigurationsDelegate,
+            IsExcluded = IsExcluded,
+            Label = Label,
+            Flags = Flags,
+            Actions = Actions,
+            ExplicitRect = ExplicitRect
+        };
+
+        if (_actionHandlers is { Count: > 0 })
+        {
+            clone._actionHandlers = new Dictionary<SemanticsActions, Action>(_actionHandlers);
+        }
+
+        return clone;
     }
 
     internal bool HasBeenAnnotated =>

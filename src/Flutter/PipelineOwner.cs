@@ -305,7 +305,20 @@ public sealed class PipelineOwner
                 node.EnsureSemanticsGeometry();
             }
 
-            // Phase 4: compile semantics nodes from staged semantics data.
+            // Phase 4: compile dirty semantics boundaries in reverse depth order first.
+            var scratchOutput = new List<SemanticsNode>();
+            foreach (var node in nodesToProcess.Reverse())
+            {
+                if (node.Parent != null && node.SemanticsParentDataDirty)
+                {
+                    continue;
+                }
+
+                scratchOutput.Clear();
+                node.EnsureSemanticsNode(_semanticsOwner, scratchOutput);
+            }
+
+            // Compile the final semantics root from staged data.
             var compiledRoots = new List<SemanticsNode>();
             Root.EnsureSemanticsNode(_semanticsOwner, compiledRoots);
             _semanticsOwner.UpdateRoot(compiledRoots);
