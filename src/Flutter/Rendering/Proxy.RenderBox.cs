@@ -195,3 +195,140 @@ public sealed class RenderColoredBox : RenderProxyBox
         base.Paint(ctx, offset);
     }
 }
+
+public sealed class RenderOpacity : RenderProxyBox
+{
+    private double _opacity;
+
+    public RenderOpacity(double opacity = 1.0, RenderBox? child = null)
+    {
+        _opacity = Math.Clamp(opacity, 0.0, 1.0);
+        Child = child;
+    }
+
+    public double Opacity
+    {
+        get => _opacity;
+        set
+        {
+            var clamped = Math.Clamp(value, 0.0, 1.0);
+            if (Math.Abs(_opacity - clamped) < 0.0001)
+            {
+                return;
+            }
+
+            _opacity = clamped;
+            if (Child != null)
+            {
+                MarkNeedsCompositedLayerUpdate();
+            }
+        }
+    }
+
+    public override bool IsRepaintBoundary => Child != null;
+    protected override bool AlwaysNeedsCompositing => Child != null && Opacity < 1.0;
+
+    protected override OffsetLayer CreateCompositedLayer(OffsetLayer? oldLayer)
+    {
+        return oldLayer as OpacityOffsetLayer ?? new OpacityOffsetLayer();
+    }
+
+    protected override void UpdateCompositedLayer(OffsetLayer layer)
+    {
+        if (layer is OpacityOffsetLayer opacityLayer)
+        {
+            opacityLayer.Opacity = Opacity;
+        }
+    }
+}
+
+public sealed class RenderTransform : RenderProxyBox
+{
+    private Matrix _transform;
+
+    public RenderTransform(Matrix transform, RenderBox? child = null)
+    {
+        _transform = transform;
+        Child = child;
+    }
+
+    public Matrix Transform
+    {
+        get => _transform;
+        set
+        {
+            if (_transform == value)
+            {
+                return;
+            }
+
+            _transform = value;
+            if (Child != null)
+            {
+                MarkNeedsCompositedLayerUpdate();
+            }
+        }
+    }
+
+    public override bool IsRepaintBoundary => Child != null;
+    protected override bool AlwaysNeedsCompositing => Child != null;
+
+    protected override OffsetLayer CreateCompositedLayer(OffsetLayer? oldLayer)
+    {
+        return oldLayer as TransformOffsetLayer ?? new TransformOffsetLayer();
+    }
+
+    protected override void UpdateCompositedLayer(OffsetLayer layer)
+    {
+        if (layer is TransformOffsetLayer transformLayer)
+        {
+            transformLayer.Transform = Transform;
+        }
+    }
+}
+
+public sealed class RenderClipRect : RenderProxyBox
+{
+    private Rect _clipRect;
+    private bool _hasExplicitClipRect;
+
+    public RenderClipRect(RenderBox? child = null)
+    {
+        Child = child;
+    }
+
+    public Rect ClipRect
+    {
+        get => _clipRect;
+        set
+        {
+            if (_hasExplicitClipRect && _clipRect == value)
+            {
+                return;
+            }
+
+            _clipRect = value;
+            _hasExplicitClipRect = true;
+            if (Child != null)
+            {
+                MarkNeedsCompositedLayerUpdate();
+            }
+        }
+    }
+
+    public override bool IsRepaintBoundary => Child != null;
+    protected override bool AlwaysNeedsCompositing => Child != null;
+
+    protected override OffsetLayer CreateCompositedLayer(OffsetLayer? oldLayer)
+    {
+        return oldLayer as ClipRectOffsetLayer ?? new ClipRectOffsetLayer();
+    }
+
+    protected override void UpdateCompositedLayer(OffsetLayer layer)
+    {
+        if (layer is ClipRectOffsetLayer clipLayer)
+        {
+            clipLayer.ClipRect = _hasExplicitClipRect ? _clipRect : new Rect(new Point(0, 0), Size);
+        }
+    }
+}

@@ -7,6 +7,8 @@ public sealed class RenderView : RenderBox
 {
     private RenderBox? _child;
 
+    public override bool IsRepaintBoundary => true;
+
     public RenderBox? Child
     {
         get => _child;
@@ -92,5 +94,16 @@ public sealed class RenderView : RenderBox
     protected override void DescribeSemanticsConfiguration(SemanticsConfiguration configuration)
     {
         configuration.IsSemanticBoundary = true;
+    }
+
+    internal void ScheduleInitialPaint(OffsetLayer rootLayer)
+    {
+        _layer = rootLayer;
+    }
+
+    internal void ReplaceRootLayer(OffsetLayer rootLayer)
+    {
+        _layer = rootLayer;
+        MarkNeedsPaint();
     }
 }

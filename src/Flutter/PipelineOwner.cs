@@ -20,11 +20,15 @@ public sealed class PipelineOwner
     private readonly HashSet<RenderObject> _nodesNeedingPaint = [];
     private readonly HashSet<RenderObject> _nodesNeedingSemantics = [];
     private readonly SemanticsOwner _semanticsOwner = new();
-    private readonly OffsetLayer _rootLayer = new();
+    private OffsetLayer _rootLayer = new();
 
     internal bool NeedsPaint => _needsPaint;
 
-    public PipelineOwner(RenderView root) => Root = root;
+    public PipelineOwner(RenderView root)
+    {
+        Root = root;
+        Root.ScheduleInitialPaint(_rootLayer);
+    }
 
     public void Attach(RenderObject obj)
     {
@@ -201,18 +205,14 @@ public sealed class PipelineOwner
                     continue;
                 }
 
-                if (!node.NeedsPaint && !node.NeedsCompositedLayerUpdate && !ReferenceEquals(node, Root))
+                if (!node.NeedsPaint && !node.NeedsCompositedLayerUpdate)
                 {
                     continue;
                 }
 
-                if (ReferenceEquals(node, Root))
-                {
-                    RepaintRoot();
-                    continue;
-                }
-
-                if (!node.IsRepaintBoundary || node._layer is not OffsetLayer layer || layer.Parent == null)
+                if (!node.IsRepaintBoundary
+                    || node._layer is not OffsetLayer layer
+                    || (layer.Parent == null && node.Parent != null))
                 {
                     RequestPaintFor(Root);
                     continue;
@@ -305,14 +305,14 @@ public sealed class PipelineOwner
         _needsSemantics = _nodesNeedingSemantics.Count > 0;
     }
 
-    private void RepaintRoot()
-    {
-        _rootLayer.RemoveAllChildren();
-        Root._paintWithContext(new PaintingContext(_rootLayer), new Point(0, 0));
-    }
-
     internal void ForgetPaintFor(RenderObject node)
     {
         _nodesNeedingPaint.Remove(node);
+    }
+
+    internal void ReplaceRootLayer(OffsetLayer rootLayer)
+    {
+        _rootLayer = rootLayer;
+        Root.ReplaceRootLayer(rootLayer);
     }
 }

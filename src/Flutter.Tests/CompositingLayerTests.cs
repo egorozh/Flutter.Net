@@ -8,6 +8,49 @@ namespace Flutter.Tests;
 public sealed class CompositingLayerTests
 {
     [Fact]
+    public void RenderView_UsesPipelineRootLayer_AsItsCompositedLayer()
+    {
+        var renderView = new RenderView
+        {
+            Child = new TestLeafRenderBox()
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+
+        pipeline.FlushLayout(new Size(300, 200));
+        pipeline.FlushCompositingBits();
+        pipeline.FlushPaint();
+
+        Assert.Same(pipeline.RootLayer, renderView._layer);
+    }
+
+    [Fact]
+    public void ReplaceRootLayer_RepaintsTreeIntoNewRootLayer()
+    {
+        var leaf = new TestLeafRenderBox();
+        var renderView = new RenderView
+        {
+            Child = leaf
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+
+        pipeline.FlushLayout(new Size(300, 200));
+        pipeline.FlushCompositingBits();
+        pipeline.FlushPaint();
+
+        var replacement = new OffsetLayer();
+        pipeline.ReplaceRootLayer(replacement);
+        pipeline.FlushCompositingBits();
+        pipeline.FlushPaint();
+
+        Assert.Same(replacement, pipeline.RootLayer);
+        Assert.NotEmpty(replacement.Children);
+    }
+
+    [Fact]
     public void RepaintBoundary_CreatesDedicatedOffsetLayer()
     {
         var leaf = new TestLeafRenderBox();
@@ -114,7 +157,7 @@ public sealed class CompositingLayerTests
 
         Assert.Equal(1, boundary.PaintCount);
         Assert.Equal(1, leaf.PaintCount);
-        Assert.Equal(0, boundary.LayerUpdateCount);
+        Assert.Equal(1, boundary.LayerUpdateCount);
 
         boundary.TriggerLayerPropertyUpdate();
         pipeline.FlushCompositingBits();
@@ -122,7 +165,94 @@ public sealed class CompositingLayerTests
 
         Assert.Equal(1, boundary.PaintCount);
         Assert.Equal(1, leaf.PaintCount);
-        Assert.Equal(1, boundary.LayerUpdateCount);
+        Assert.Equal(2, boundary.LayerUpdateCount);
+    }
+
+    [Fact]
+    public void RenderOpacity_UpdatesLayerOpacity_WithoutRepaintingChild()
+    {
+        var leaf = new TestLeafRenderBox();
+        var opacity = new RenderOpacity(opacity: 0.9, child: leaf);
+        var root = new RenderView
+        {
+            Child = opacity
+        };
+
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+
+        pipeline.FlushLayout(new Size(300, 200));
+        pipeline.FlushCompositingBits();
+        pipeline.FlushPaint();
+
+        Assert.Equal(1, leaf.PaintCount);
+        var opacityLayer = Assert.IsType<OpacityOffsetLayer>(Assert.Single(pipeline.RootLayer.Children));
+        Assert.Equal(0.9, opacityLayer.Opacity, 3);
+
+        opacity.Opacity = 0.25;
+        pipeline.FlushCompositingBits();
+        pipeline.FlushPaint();
+
+        Assert.Equal(1, leaf.PaintCount);
+        Assert.Equal(0.25, opacityLayer.Opacity, 3);
+    }
+
+    [Fact]
+    public void RenderTransform_UpdatesLayerTransform_WithoutRepaintingChild()
+    {
+        var leaf = new TestLeafRenderBox();
+        var transform = new RenderTransform(Matrix.CreateTranslation(8, 4), leaf);
+        var root = new RenderView
+        {
+            Child = transform
+        };
+
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+
+        pipeline.FlushLayout(new Size(300, 200));
+        pipeline.FlushCompositingBits();
+        pipeline.FlushPaint();
+
+        Assert.Equal(1, leaf.PaintCount);
+        var transformLayer = Assert.IsType<TransformOffsetLayer>(Assert.Single(pipeline.RootLayer.Children));
+        Assert.Equal(Matrix.CreateTranslation(8, 4), transformLayer.Transform);
+
+        transform.Transform = Matrix.CreateTranslation(21, 13);
+        pipeline.FlushCompositingBits();
+        pipeline.FlushPaint();
+
+        Assert.Equal(1, leaf.PaintCount);
+        Assert.Equal(Matrix.CreateTranslation(21, 13), transformLayer.Transform);
+    }
+
+    [Fact]
+    public void RenderClipRect_UpdatesLayerClip_WithoutRepaintingChild()
+    {
+        var leaf = new TestLeafRenderBox();
+        var clipRect = new RenderClipRect(leaf);
+        var root = new RenderView
+        {
+            Child = clipRect
+        };
+
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+
+        pipeline.FlushLayout(new Size(300, 200));
+        pipeline.FlushCompositingBits();
+        pipeline.FlushPaint();
+
+        Assert.Equal(1, leaf.PaintCount);
+        var clipLayer = Assert.IsType<ClipRectOffsetLayer>(Assert.Single(pipeline.RootLayer.Children));
+        Assert.Equal(new Rect(0, 0, 32, 32), clipLayer.ClipRect);
+
+        clipRect.ClipRect = new Rect(3, 5, 20, 12);
+        pipeline.FlushCompositingBits();
+        pipeline.FlushPaint();
+
+        Assert.Equal(1, leaf.PaintCount);
+        Assert.Equal(new Rect(3, 5, 20, 12), clipLayer.ClipRect);
     }
 
     private sealed class TestLeafRenderBox : RenderBox

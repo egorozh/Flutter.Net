@@ -20,18 +20,23 @@ public sealed class PaintingContext
         {
             StopRecordingIfNeeded();
 
-            var layer = child._layer as OffsetLayer;
-            var shouldRepaint = child.NeedsPaint || layer == null;
-            layer ??= new OffsetLayer();
+            var oldLayer = child._layer as OffsetLayer;
+            var layer = child.EnsureCompositedLayer();
+            var shouldRepaint = child.NeedsPaint || oldLayer == null || !ReferenceEquals(oldLayer, layer);
             layer.Offset = offset;
             _containerLayer.Append(layer);
             child._layer = layer;
 
             if (shouldRepaint)
             {
+                child.UpdateCompositedLayerProperties();
                 layer.RemoveAllChildren();
                 var childContext = new PaintingContext(layer);
                 child._paintWithContext(childContext, new Point(0, 0));
+            }
+            else if (child.NeedsCompositedLayerUpdate)
+            {
+                child.UpdateCompositedLayerProperties();
             }
         }
         else if (child._wasRepaintBoundary)

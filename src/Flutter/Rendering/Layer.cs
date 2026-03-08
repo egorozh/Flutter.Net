@@ -58,6 +58,11 @@ public class ContainerLayer : Layer
 
     internal override void AddToScene(DrawingContext context, Point offset)
     {
+        AddChildrenToScene(context, offset);
+    }
+
+    protected void AddChildrenToScene(DrawingContext context, Point offset)
+    {
         for (var index = 0; index < _children.Count; index++)
         {
             _children[index].AddToScene(context, offset);
@@ -65,13 +70,62 @@ public class ContainerLayer : Layer
     }
 }
 
-public sealed class OffsetLayer : ContainerLayer
+public class OffsetLayer : ContainerLayer
 {
     public Point Offset { get; set; }
 
     internal override void AddToScene(DrawingContext context, Point offset)
     {
         base.AddToScene(context, offset + Offset);
+    }
+}
+
+public sealed class OpacityOffsetLayer : OffsetLayer
+{
+    private double _opacity = 1.0;
+
+    public double Opacity
+    {
+        get => _opacity;
+        set => _opacity = Math.Clamp(value, 0.0, 1.0);
+    }
+
+    internal override void AddToScene(DrawingContext context, Point offset)
+    {
+        using (context.PushOpacity(Opacity))
+        {
+            base.AddToScene(context, offset);
+        }
+    }
+}
+
+public sealed class TransformOffsetLayer : OffsetLayer
+{
+    public Matrix Transform { get; set; } = Matrix.Identity;
+
+    internal override void AddToScene(DrawingContext context, Point offset)
+    {
+        var sceneOffset = offset + Offset;
+        using (context.PushTransform(Matrix.CreateTranslation(sceneOffset.X, sceneOffset.Y)))
+        using (context.PushTransform(Transform))
+        {
+            AddChildrenToScene(context, new Point(0, 0));
+        }
+    }
+}
+
+public sealed class ClipRectOffsetLayer : OffsetLayer
+{
+    public Rect ClipRect { get; set; }
+
+    internal override void AddToScene(DrawingContext context, Point offset)
+    {
+        var sceneOffset = offset + Offset;
+        var translatedRect = new Rect(ClipRect.Position + sceneOffset, ClipRect.Size);
+        using (context.PushClip(translatedRect))
+        {
+            AddChildrenToScene(context, sceneOffset);
+        }
     }
 }
 

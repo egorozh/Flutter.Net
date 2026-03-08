@@ -639,8 +639,28 @@ public abstract class RenderObject : IRenderObject
         MarkNeedsPaint();
     }
 
+    protected virtual OffsetLayer CreateCompositedLayer(OffsetLayer? oldLayer)
+    {
+        return oldLayer ?? new OffsetLayer();
+    }
+
     protected virtual void UpdateCompositedLayer(OffsetLayer layer)
     {
+    }
+
+    internal OffsetLayer EnsureCompositedLayer()
+    {
+        var oldLayer = _layer as OffsetLayer;
+        var layer = CreateCompositedLayer(oldLayer);
+
+        if (!ReferenceEquals(oldLayer, layer))
+        {
+            oldLayer?.Parent?.Remove(oldLayer);
+            _layer = layer;
+            _needsCompositedLayerUpdate = true;
+        }
+
+        return layer;
     }
 
     internal void UpdateCompositedLayerProperties()
