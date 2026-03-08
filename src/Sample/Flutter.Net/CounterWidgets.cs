@@ -116,3 +116,65 @@ internal sealed class MovableBadgeState : State
             padding: new Thickness(10, 8));
     }
 }
+
+internal sealed class KeepAliveListItem : StatefulWidget
+{
+    public KeepAliveListItem(
+        int index,
+        bool keepAlive,
+        Action? onTap,
+        Key? key = null) : base(key)
+    {
+        Index = index;
+        KeepAlive = keepAlive;
+        OnTap = onTap;
+    }
+
+    public int Index { get; }
+
+    public bool KeepAlive { get; }
+
+    public Action? OnTap { get; }
+
+    public override State CreateState()
+    {
+        return new KeepAliveListItemState(
+            index: Index,
+            keepAlive: KeepAlive,
+            onTap: OnTap);
+    }
+}
+
+internal sealed class KeepAliveListItemState : AutomaticKeepAliveClientMixin
+{
+    private readonly int _index;
+    private readonly bool _keepAlive;
+    private readonly Action? _onTap;
+    private readonly int _token = Random.Shared.Next(1000, 9999);
+    private int _localTaps;
+
+    public KeepAliveListItemState(int index, bool keepAlive, Action? onTap)
+    {
+        _index = index;
+        _keepAlive = keepAlive;
+        _onTap = onTap;
+    }
+
+    protected override bool WantKeepAlive => _keepAlive;
+
+    public override Widget Build(BuildContext context)
+    {
+        var keepAlive = _keepAlive;
+        return new CounterTapButton(
+            label: $"row #{_index} keepAlive={(keepAlive ? "on" : "off")} token={_token} local taps={_localTaps}",
+            onTap: () =>
+            {
+                SetState(() => _localTaps += 1);
+                _onTap?.Invoke();
+            },
+            background: keepAlive ? Color.Parse("#FFE8F5E9") : Colors.White,
+            foreground: Colors.Black,
+            fontSize: 13,
+            padding: new Thickness(10, 8));
+    }
+}
