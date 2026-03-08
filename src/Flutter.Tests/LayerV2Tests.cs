@@ -20,6 +20,7 @@ public sealed class LayerV2Tests
         pipeline.Attach(renderView);
 
         pipeline.FlushLayout(new Size(300, 200));
+        pipeline.FlushCompositingBits();
         pipeline.FlushPaint();
 
         var clipLayer = Assert.IsType<ClipRectLayer>(Assert.Single(pipeline.RootLayer.Children));
@@ -40,6 +41,7 @@ public sealed class LayerV2Tests
         pipeline.Attach(renderView);
 
         pipeline.FlushLayout(new Size(300, 200));
+        pipeline.FlushCompositingBits();
         pipeline.FlushPaint();
 
         var opacityLayer = Assert.IsType<OpacityLayer>(Assert.Single(pipeline.RootLayer.Children));

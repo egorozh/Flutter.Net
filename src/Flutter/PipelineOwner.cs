@@ -15,6 +15,9 @@ public sealed class PipelineOwner
     private bool _needsCompositingBitsUpdate;
     private bool _needsPaint;
     private bool _needsSemantics;
+    private readonly HashSet<RenderObject> _nodesNeedingLayout = [];
+    private readonly HashSet<RenderObject> _nodesNeedingPaint = [];
+    private readonly HashSet<RenderObject> _nodesNeedingSemantics = [];
     private readonly SemanticsOwner _semanticsOwner = new();
     private readonly OffsetLayer _rootLayer = new();
 
@@ -31,7 +34,12 @@ public sealed class PipelineOwner
 
     public void RequestLayout()
     {
-        if (_needsLayout)
+        RequestLayoutFor(Root);
+    }
+
+    internal void RequestLayoutFor(RenderObject node)
+    {
+        if (!_nodesNeedingLayout.Add(node))
         {
             return;
         }
@@ -53,7 +61,12 @@ public sealed class PipelineOwner
 
     public void RequestPaint()
     {
-        if (_needsPaint)
+        RequestPaintFor(Root);
+    }
+
+    internal void RequestPaintFor(RenderObject node)
+    {
+        if (!_nodesNeedingPaint.Add(node))
         {
             return;
         }
@@ -64,7 +77,12 @@ public sealed class PipelineOwner
 
     public void RequestSemanticsUpdate()
     {
-        if (_needsSemantics)
+        RequestSemanticsUpdateFor(Root);
+    }
+
+    internal void RequestSemanticsUpdateFor(RenderObject node)
+    {
+        if (!_nodesNeedingSemantics.Add(node))
         {
             return;
         }
@@ -77,16 +95,46 @@ public sealed class PipelineOwner
     {
         if (!_needsLayout) return;
 
-        _needsLayout = false;
-
         var constraints = new BoxConstraints(0, rootSize.Width, 0, rootSize.Height);
+        
+        while (_nodesNeedingLayout.Count > 0)
+        {
+            var dirtyNodes = _nodesNeedingLayout
+                .OrderBy(static node => node.Depth)
+                .ToArray();
 
-        Root.Layout(constraints);
+            _nodesNeedingLayout.Clear();
+            _needsLayout = false;
 
-        // A completed layout pass invalidates downstream pipeline stages.
-        _needsCompositingBitsUpdate = true;
-        _needsPaint = true;
-        _needsSemantics = true;
+            foreach (var node in dirtyNodes)
+            {
+                if (!node.Attached || !ReferenceEquals(node.Owner, this))
+                {
+                    continue;
+                }
+
+                if (ReferenceEquals(node, Root))
+                {
+                    Root.Layout(constraints);
+                    continue;
+                }
+
+                if (!node.NeedsLayoutOrDescendantNeedsLayout)
+                {
+                    continue;
+                }
+
+                if (!node.HasBoxConstraints)
+                {
+                    RequestLayout();
+                    continue;
+                }
+
+                node.Layout(node.CurrentBoxConstraints);
+            }
+        }
+
+        _needsLayout = false;
     }
 
     public void FlushCompositingBits()
@@ -102,12 +150,50 @@ public sealed class PipelineOwner
 
     public void FlushPaint()
     {
-        if (!_needsPaint) return;
+        if (!_needsPaint)
+        {
+            return;
+        }
+
+        while (_nodesNeedingPaint.Count > 0)
+        {
+            var dirtyNodes = _nodesNeedingPaint
+                .OrderByDescending(static node => node.Depth)
+                .ToArray();
+
+            _nodesNeedingPaint.Clear();
+            _needsPaint = false;
+
+            foreach (var node in dirtyNodes)
+            {
+                if (!node.Attached || !ReferenceEquals(node.Owner, this))
+                {
+                    continue;
+                }
+
+                if (!node.NeedsPaint && !ReferenceEquals(node, Root))
+                {
+                    continue;
+                }
+
+                if (ReferenceEquals(node, Root))
+                {
+                    RepaintRoot();
+                    continue;
+                }
+
+                if (!node.IsRepaintBoundary || node._layer is not OffsetLayer layer || layer.Parent == null)
+                {
+                    RequestPaintFor(Root);
+                    continue;
+                }
+
+                layer.RemoveAllChildren();
+                node._paintWithContext(new PaintingContext(layer), new Point(0, 0));
+            }
+        }
 
         _needsPaint = false;
-
-        _rootLayer.RemoveAllChildren();
-        Root.Paint(new PaintingContext(_rootLayer), new Point(0, 0));
     }
 
     public void CompositeFrame(DrawingContext context)
@@ -122,9 +208,30 @@ public sealed class PipelineOwner
             return;
         }
 
+        while (_nodesNeedingSemantics.Count > 0)
+        {
+            var hasOwnedDirtyNodes = _nodesNeedingSemantics.Any(node =>
+                node.Attached && ReferenceEquals(node.Owner, this));
+
+            _nodesNeedingSemantics.Clear();
+            _needsSemantics = false;
+
+            if (!hasOwnedDirtyNodes)
+            {
+                continue;
+            }
+
+            var roots = new List<SemanticsNode>();
+            Root.BuildSemantics(_semanticsOwner, new Point(0, 0), roots);
+            _semanticsOwner.UpdateRoot(roots);
+        }
+
         _needsSemantics = false;
-        var roots = new List<SemanticsNode>();
-        Root.BuildSemantics(_semanticsOwner, new Point(0, 0), roots);
-        _semanticsOwner.UpdateRoot(roots);
+    }
+
+    private void RepaintRoot()
+    {
+        _rootLayer.RemoveAllChildren();
+        Root._paintWithContext(new PaintingContext(_rootLayer), new Point(0, 0));
     }
 }

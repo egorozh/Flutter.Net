@@ -185,7 +185,14 @@ public abstract class RenderObject : IRenderObject
         // it to the appropriate dirty list now that an owner is available
         if (_needsLayout)
         {
-            Owner.RequestLayout();
+            if (Parent == null || _isRelayoutBoundary == true)
+            {
+                Owner.RequestLayoutFor(this);
+            }
+            else
+            {
+                Owner.RequestLayout();
+            }
         }
 
         if (_needsCompositingBitsUpdate)
@@ -215,6 +222,7 @@ public abstract class RenderObject : IRenderObject
     }
 
     private bool _needsLayout = true;
+    private bool _descendantNeedsLayout = true;
 
     /// <summary>
     /// Whether this [RenderObject] is a known relayout boundary.
@@ -246,6 +254,19 @@ public abstract class RenderObject : IRenderObject
     /// </summary>
     public virtual void Layout(BoxConstraints constraints, bool parentUsesSize = false)
     {
+        if (!constraints.IsNormalized)
+        {
+            throw new InvalidOperationException("RenderObject.layout requires normalized constraints.");
+        }
+
+        if (!_needsLayout
+            && !_descendantNeedsLayout
+            && _constraints is BoxConstraints previousConstraints
+            && previousConstraints.Equals(constraints))
+        {
+            return;
+        }
+
         _isRelayoutBoundary = !parentUsesSize || SizedByParent || constraints.IsTight || Parent == null;
 
         _constraints = constraints;
@@ -272,6 +293,7 @@ public abstract class RenderObject : IRenderObject
         }
 
         _needsLayout = false;
+        _descendantNeedsLayout = false;
         MarkNeedsCompositingBitsUpdate();
         MarkNeedsPaint();
         MarkNeedsSemanticsUpdate();
@@ -311,7 +333,21 @@ public abstract class RenderObject : IRenderObject
 
         _needsLayout = true;
 
-        Owner?.RequestLayout();
+        if (Parent != null)
+        {
+            Parent.MarkDescendantNeedsLayout();
+
+            if (_isRelayoutBoundary == true)
+            {
+                Owner?.RequestLayoutFor(this);
+                return;
+            }
+
+            Parent.MarkNeedsLayout();
+            return;
+        }
+
+        Owner?.RequestLayoutFor(this);
     }
 
     protected void MarkParentNeedsLayout()
@@ -320,9 +356,26 @@ public abstract class RenderObject : IRenderObject
 
         var parent = this.Parent!;
 
+        parent.MarkDescendantNeedsLayout();
+
         if (!DebugDoingThisLayoutWithCallback)
         {
             parent.MarkNeedsLayout();
+        }
+    }
+
+    private void MarkDescendantNeedsLayout()
+    {
+        if (_descendantNeedsLayout)
+        {
+            return;
+        }
+
+        _descendantNeedsLayout = true;
+
+        if (Parent != null)
+        {
+            Parent.MarkDescendantNeedsLayout();
         }
     }
 
@@ -345,7 +398,14 @@ public abstract class RenderObject : IRenderObject
         }
 
         _needsSemanticsUpdate = true;
-        Owner?.RequestSemanticsUpdate();
+
+        if (Parent != null)
+        {
+            Parent.MarkNeedsSemanticsUpdate();
+            return;
+        }
+
+        Owner?.RequestSemanticsUpdateFor(this);
     }
 
     internal void FlushCompositingBits()
@@ -479,6 +539,10 @@ public abstract class RenderObject : IRenderObject
         VisitChildren(child => visitor(child, new Point(0, 0)));
     }
 
+    internal bool HasBoxConstraints => _constraints is BoxConstraints;
+    internal BoxConstraints CurrentBoxConstraints => (BoxConstraints)_constraints!;
+    internal bool NeedsLayoutOrDescendantNeedsLayout => _needsLayout || _descendantNeedsLayout;
+
     /// <summary>
     /// Whether this render object repaints separately from its parent.
     /// </summary>
@@ -498,7 +562,19 @@ public abstract class RenderObject : IRenderObject
 
         _needsPaint = true;
 
-        Owner?.RequestPaint();
+        if (IsRepaintBoundary && _wasRepaintBoundary)
+        {
+            Owner?.RequestPaintFor(this);
+            return;
+        }
+
+        if (Parent != null)
+        {
+            Parent.MarkNeedsPaint();
+            return;
+        }
+
+        Owner?.RequestPaintFor(this);
     }
 
     /// <summary>
@@ -545,6 +621,12 @@ public abstract class RenderObject : IRenderObject
         if (_needsLayout)
         {
             return;
+        }
+
+        if (_needsCompositingBitsUpdate)
+        {
+            throw new InvalidOperationException(
+                "RenderObject.paint called before compositing bits were updated.");
         }
 
         // if (!kReleaseMode && debugProfilePaintsEnabled)
