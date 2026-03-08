@@ -564,28 +564,212 @@ public sealed class SemanticsTreeTests
     }
 
     [Fact]
-    public void SemanticsParentDataDirty_ClearsAfterFlush_AndReappearsOnDirty()
+    public void SemanticsParentDataDirty_BoundaryStaysClean_NonBoundaryCanBecomeDirty()
     {
         var leaf = new FixedSemanticBox("State", new Size(12, 8));
+        var transform = new RenderTransform(Matrix.Identity, leaf);
         var renderView = new RenderView
         {
-            Child = leaf
+            Child = transform
         };
 
         var pipeline = new PipelineOwner(renderView);
         pipeline.Attach(renderView);
 
         Assert.True(leaf.SemanticsParentDataDirty);
+        Assert.True(transform.SemanticsParentDataDirty);
 
         pipeline.FlushLayout(new Size(220, 120));
         pipeline.FlushSemantics();
         Assert.False(leaf.SemanticsParentDataDirty);
+        Assert.False(transform.SemanticsParentDataDirty);
 
         leaf.MarkNeedsSemanticsUpdate();
-        Assert.True(leaf.SemanticsParentDataDirty);
+        Assert.False(leaf.SemanticsParentDataDirty);
+
+        transform.Transform = Matrix.CreateTranslation(1, 0);
+        Assert.True(transform.SemanticsParentDataDirty);
 
         pipeline.FlushSemantics();
         Assert.False(leaf.SemanticsParentDataDirty);
+        Assert.False(transform.SemanticsParentDataDirty);
+    }
+
+    [Fact]
+    public void MarkNeedsSemanticsUpdate_WhenAncestorAlreadyQueued_DoesNotGrowPendingQueue()
+    {
+        var descendant = new RenderTransform(Matrix.Identity, new FixedSemanticBox("Leaf", new Size(12, 8)));
+        var ancestor = new MutableSemanticBoundaryRenderBox("Ancestor", descendant);
+        var renderView = new RenderView
+        {
+            Child = ancestor
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+
+        pipeline.FlushLayout(new Size(220, 120));
+        pipeline.FlushSemantics();
+
+        ancestor.Label = "Ancestor 2";
+        Assert.Equal(1, pipeline.PendingSemanticsNodeCount);
+
+        descendant.Transform = Matrix.CreateTranslation(4, 0);
+        Assert.Equal(1, pipeline.PendingSemanticsNodeCount);
+
+        pipeline.FlushSemantics();
+        Assert.False(descendant.SemanticsParentDataDirty);
+    }
+
+    [Fact]
+    public void MarkNeedsSemanticsUpdate_BoundaryWithoutChildDelegate_DoesNotDirtyAncestorParentData()
+    {
+        var boundary = new DelegatingSemanticBoundaryRenderBox(
+            label: "Child",
+            child: new FixedSemanticBox("Leaf", new Size(12, 8)),
+            hasChildConfigurationsDelegate: false);
+        var ancestor = new MutableSemanticBoundaryRenderBox("Ancestor", boundary);
+        var renderView = new RenderView
+        {
+            Child = ancestor
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+        pipeline.FlushLayout(new Size(220, 120));
+        pipeline.FlushSemantics();
+
+        Assert.False(boundary.SemanticsParentDataDirty);
+        Assert.False(ancestor.SemanticsParentDataDirty);
+
+        boundary.Label = "Child 2";
+
+        Assert.False(boundary.SemanticsParentDataDirty);
+        Assert.False(ancestor.SemanticsParentDataDirty);
+    }
+
+    [Fact]
+    public void MarkNeedsSemanticsUpdate_BoundaryWithChildDelegate_DirtiesAncestorParentData()
+    {
+        var boundary = new DelegatingSemanticBoundaryRenderBox(
+            label: "Child",
+            child: new FixedSemanticBox("Leaf", new Size(12, 8)),
+            hasChildConfigurationsDelegate: true);
+        var ancestor = new MutableSemanticBoundaryRenderBox("Ancestor", boundary);
+        var renderView = new RenderView
+        {
+            Child = ancestor
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+        pipeline.FlushLayout(new Size(220, 120));
+        pipeline.FlushSemantics();
+
+        Assert.False(boundary.SemanticsParentDataDirty);
+        Assert.False(ancestor.SemanticsParentDataDirty);
+
+        boundary.Label = "Child 2";
+
+        Assert.True(boundary.SemanticsParentDataDirty);
+        Assert.True(ancestor.SemanticsParentDataDirty);
+
+        pipeline.FlushSemantics();
+        Assert.False(boundary.SemanticsParentDataDirty);
+        Assert.False(ancestor.SemanticsParentDataDirty);
+    }
+
+    private sealed class MutableSemanticBoundaryRenderBox : RenderProxyBox
+    {
+        private string _label;
+
+        public MutableSemanticBoundaryRenderBox(string label, RenderBox child)
+        {
+            _label = label;
+            Child = child;
+        }
+
+        public string Label
+        {
+            get => _label;
+            set
+            {
+                if (_label == value)
+                {
+                    return;
+                }
+
+                _label = value;
+                MarkNeedsSemanticsUpdate();
+            }
+        }
+
+        protected override void DescribeSemanticsConfiguration(SemanticsConfiguration configuration)
+        {
+            configuration.IsSemanticBoundary = true;
+            configuration.Label = _label;
+        }
+    }
+
+    private sealed class DelegatingSemanticBoundaryRenderBox : RenderProxyBox
+    {
+        private static readonly ChildSemanticsConfigurationsDelegate MergeAllDelegate = static childConfigurations =>
+            new ChildSemanticsConfigurationsResult(
+                new List<SemanticsConfiguration>(childConfigurations),
+                new List<List<SemanticsConfiguration>>());
+
+        private string _label;
+        private bool _hasChildConfigurationsDelegate;
+
+        public DelegatingSemanticBoundaryRenderBox(
+            string label,
+            RenderBox child,
+            bool hasChildConfigurationsDelegate)
+        {
+            _label = label;
+            _hasChildConfigurationsDelegate = hasChildConfigurationsDelegate;
+            Child = child;
+        }
+
+        public string Label
+        {
+            get => _label;
+            set
+            {
+                if (_label == value)
+                {
+                    return;
+                }
+
+                _label = value;
+                MarkNeedsSemanticsUpdate();
+            }
+        }
+
+        public bool HasChildConfigurationsDelegate
+        {
+            get => _hasChildConfigurationsDelegate;
+            set
+            {
+                if (_hasChildConfigurationsDelegate == value)
+                {
+                    return;
+                }
+
+                _hasChildConfigurationsDelegate = value;
+                MarkNeedsSemanticsUpdate();
+            }
+        }
+
+        protected override void DescribeSemanticsConfiguration(SemanticsConfiguration configuration)
+        {
+            configuration.IsSemanticBoundary = true;
+            configuration.Label = _label;
+            if (_hasChildConfigurationsDelegate)
+            {
+                configuration.ChildConfigurationsDelegate = MergeAllDelegate;
+            }
+        }
     }
 
     private sealed class MergeSemanticsRenderBox : RenderProxyBox

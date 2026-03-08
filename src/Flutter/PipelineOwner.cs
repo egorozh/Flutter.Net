@@ -101,6 +101,14 @@ public sealed class PipelineOwner
         OnNeedVisualUpdate?.Invoke();
     }
 
+    internal void ForgetSemanticsUpdateFor(RenderObject node)
+    {
+        _nodesNeedingSemantics.Remove(node);
+        _needsSemantics = _nodesNeedingSemantics.Count > 0;
+    }
+
+    internal int PendingSemanticsNodeCount => _nodesNeedingSemantics.Count;
+
     public void FlushLayout(Size rootSize)
     {
         if (!_needsLayout) return;

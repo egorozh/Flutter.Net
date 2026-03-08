@@ -18,11 +18,30 @@ public enum SemanticsActions
     Tap = 1 << 0,
 }
 
+public delegate ChildSemanticsConfigurationsResult ChildSemanticsConfigurationsDelegate(
+    List<SemanticsConfiguration> childConfigurations);
+
+public sealed class ChildSemanticsConfigurationsResult
+{
+    public ChildSemanticsConfigurationsResult(
+        List<SemanticsConfiguration> mergeUp,
+        List<List<SemanticsConfiguration>> siblingMergeGroups)
+    {
+        MergeUp = mergeUp;
+        SiblingMergeGroups = siblingMergeGroups;
+    }
+
+    public List<SemanticsConfiguration> MergeUp { get; }
+
+    public List<List<SemanticsConfiguration>> SiblingMergeGroups { get; }
+}
+
 public sealed class SemanticsConfiguration
 {
     public bool IsSemanticBoundary { get; set; }
     public bool IsMergingSemanticsOfDescendants { get; set; }
     public bool IsBlockingSemanticsOfPreviouslyPaintedNodes { get; set; }
+    public ChildSemanticsConfigurationsDelegate? ChildConfigurationsDelegate { get; set; }
     public bool IsExcluded { get; set; }
     public string? Label { get; set; }
     public SemanticsFlags Flags { get; set; } = SemanticsFlags.None;

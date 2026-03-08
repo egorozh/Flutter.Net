@@ -427,38 +427,50 @@ public abstract class RenderObject : IRenderObject
 
     public void MarkNeedsSemanticsUpdate()
     {
-        _semanticsParentDataDirty = true;
-        _hasBlockingSemanticsCache = false;
-
-        if (_needsSemanticsUpdate)
-        {
-            return;
-        }
+        var hadProducedSemanticsNode = _semanticsNode != null;
+        var wasEffectiveSemanticsBoundary = hadProducedSemanticsNode && _isSemanticsBoundary && !_semanticsParentDataDirty;
 
         _needsSemanticsUpdate = true;
+        _hasBlockingSemanticsCache = false;
+
         if (!Attached || Owner == null)
         {
             return;
         }
 
-        var boundary = this;
-        if (!boundary._isSemanticsBoundary)
-        {
-            var ancestor = Parent;
-            while (ancestor != null)
-            {
-                ancestor.MarkSemanticsParentDataDirty();
-                boundary = ancestor;
-                if (boundary._isSemanticsBoundary)
-                {
-                    break;
-                }
+        var mayProduceSiblingNodes = HasChildSemanticsConfigurationsDelegate();
+        RenderObject node = this;
+        var isEffectiveSemanticsBoundary = wasEffectiveSemanticsBoundary;
 
-                ancestor = ancestor.Parent;
+        while (node.Parent != null && (mayProduceSiblingNodes || !isEffectiveSemanticsBoundary))
+        {
+            if (!ReferenceEquals(node, this) && node.SemanticsParentDataDirty && !mayProduceSiblingNodes)
+            {
+                break;
             }
+
+            node.MarkSemanticsParentDataDirty();
+
+            if (isEffectiveSemanticsBoundary)
+            {
+                mayProduceSiblingNodes = false;
+            }
+
+            mayProduceSiblingNodes |= node.HasChildSemanticsConfigurationsDelegate();
+
+            node = node.Parent!;
+            isEffectiveSemanticsBoundary = node._isSemanticsBoundary && !node.SemanticsParentDataDirty;
         }
 
-        Owner.RequestSemanticsUpdateFor(boundary);
+        if (!ReferenceEquals(node, this) && hadProducedSemanticsNode && node.SemanticsParentDataDirty)
+        {
+            Owner.ForgetSemanticsUpdateFor(this);
+        }
+
+        if (!node.SemanticsParentDataDirty)
+        {
+            Owner.RequestSemanticsUpdateFor(node);
+        }
     }
 
     internal void UpdateCompositingBits()
@@ -663,6 +675,18 @@ public abstract class RenderObject : IRenderObject
     {
         _semanticsParentDataDirty = true;
         _hasBlockingSemanticsCache = false;
+    }
+
+    private bool HasChildSemanticsConfigurationsDelegate()
+    {
+        if (_hasCachedSemanticsConfiguration && _cachedSemanticsConfiguration != null)
+        {
+            return _cachedSemanticsConfiguration.ChildConfigurationsDelegate != null;
+        }
+
+        var configuration = new SemanticsConfiguration();
+        DescribeSemanticsConfiguration(configuration);
+        return configuration.ChildConfigurationsDelegate != null;
     }
 
     private bool BlocksPreviousSemanticsSibling()
