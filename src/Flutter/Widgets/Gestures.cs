@@ -3,6 +3,8 @@ using Flutter.Gestures;
 using Flutter.Rendering;
 using Flutter.UI;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/widgets/gesture_detector.dart (approximate)
+
 namespace Flutter.Widgets;
 
 public sealed class Listener : SingleChildRenderObjectWidget

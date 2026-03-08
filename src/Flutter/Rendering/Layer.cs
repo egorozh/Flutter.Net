@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Media;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/rendering/layer.dart (approximate)
+
 namespace Flutter.Rendering;
 
 public abstract class Layer

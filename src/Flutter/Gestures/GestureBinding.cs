@@ -2,6 +2,8 @@ using Avalonia;
 using Flutter.Rendering;
 using Flutter.UI;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/gestures/binding.dart (approximate)
+
 namespace Flutter.Gestures;
 
 public sealed class GestureBinding

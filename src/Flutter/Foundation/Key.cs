@@ -1,5 +1,7 @@
 ﻿using Flutter.Widgets;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/foundation/key.dart (approximate)
+
 namespace Flutter.Foundation;
 
 /// <summary>

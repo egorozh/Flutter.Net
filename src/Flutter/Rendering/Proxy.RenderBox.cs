@@ -3,6 +3,8 @@ using Avalonia.Media;
 using Flutter.UI;
 using Flutter.Widgets;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/rendering/proxy_box.dart (approximate)
+
 namespace Flutter.Rendering;
 
 public abstract class RenderProxyBox : RenderBox, IRenderObjectSingleChildContainer

@@ -3,6 +3,8 @@ using Avalonia;
 using Flutter.Foundation;
 using Flutter.UI;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/rendering/box.dart (approximate)
+
 namespace Flutter.Rendering;
 
 /// <summary>

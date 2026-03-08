@@ -5,6 +5,8 @@ using Avalonia.Controls;
 using Avalonia.iOS;
 using Avalonia.Media;
 
+// Dart parity source (reference): dart_sample/lib/main.dart (platform host bootstrap, adapted)
+
 namespace Flutter.Net.iOS;
 
 // The UIApplicationDelegate for the application. This class is responsible for launching the 

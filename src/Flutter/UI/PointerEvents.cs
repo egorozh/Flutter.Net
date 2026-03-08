@@ -1,5 +1,7 @@
 using Avalonia;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/gestures/events.dart (approximate)
+
 namespace Flutter.UI;
 
 public enum PointerDeviceKind

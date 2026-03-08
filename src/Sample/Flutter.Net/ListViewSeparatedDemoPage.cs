@@ -4,6 +4,8 @@ using Flutter.Foundation;
 using Flutter.Rendering;
 using Flutter.Widgets;
 
+// Dart parity source (reference): dart_sample/lib/list_view_separated_demo_page.dart (exact sample parity)
+
 namespace Flutter.Net;
 
 public sealed class ListViewSeparatedDemoPage : StatelessWidget

@@ -1,3 +1,5 @@
+// Dart parity source (reference): flutter/packages/flutter/lib/src/rendering/flex.dart (approximate)
+
 namespace Flutter.Rendering;
 
 public enum MainAxisSize

@@ -3,6 +3,8 @@ using Avalonia.Media;
 using Avalonia.Media.TextFormatting;
 using Flutter.Rendering;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/rendering/paragraph.dart (approximate)
+
 namespace Flutter;
 
 public sealed class RenderParagraph : RenderBox

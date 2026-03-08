@@ -3,6 +3,8 @@ using Avalonia.Media;
 using Flutter.Foundation;
 using Flutter.Rendering;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/widgets/basic.dart; flutter/packages/flutter/lib/src/material/text_button.dart (adapted)
+
 namespace Flutter.Widgets;
 
 public sealed class Button : LeafRenderObjectWidget

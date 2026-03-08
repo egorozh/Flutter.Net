@@ -18,3 +18,5 @@ public enum TextDirection
     /// The text flows from left to right (e.g., English, French).
     Ltr
 }
+
+// Dart parity source (reference): flutter/engine/src/flutter/lib/ui/text.dart (engine parity, approximate)

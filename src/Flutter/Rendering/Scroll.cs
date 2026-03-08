@@ -1,6 +1,8 @@
 using Flutter;
 using Flutter.Foundation;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/widgets/scroll_position.dart; flutter/packages/flutter/lib/src/widgets/scroll_physics.dart; flutter/packages/flutter/lib/src/widgets/scroll_activity.dart (adapted)
+
 namespace Flutter.Rendering;
 
 public interface IScrollMetrics

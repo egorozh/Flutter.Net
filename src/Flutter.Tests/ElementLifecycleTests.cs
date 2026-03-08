@@ -3,6 +3,8 @@ using Flutter.Rendering;
 using Flutter.Widgets;
 using Xunit;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/widgets/framework.dart (parity regression tests)
+
 namespace Flutter.Tests;
 
 public sealed class ElementLifecycleTests

@@ -2,6 +2,8 @@
 using Avalonia.Controls.ApplicationLifetimes;
 using Flutter.Widgets;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/widgets/binding.dart; flutter/packages/flutter/lib/src/rendering/binding.dart (host integration, adapted)
+
 namespace Flutter;
 
 public static class FlutterExtensions

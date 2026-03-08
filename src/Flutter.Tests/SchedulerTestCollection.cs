@@ -1,5 +1,7 @@
 using Xunit;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/scheduler/binding.dart; flutter/packages/flutter/lib/src/rendering/object.dart (parity regression tests)
+
 namespace Flutter.Tests;
 
 [CollectionDefinition(Name, DisableParallelization = true)]

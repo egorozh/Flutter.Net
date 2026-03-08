@@ -2,6 +2,8 @@ using Avalonia;
 using Avalonia.Media;
 using Flutter.Widgets;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/rendering/sliver.dart (approximate)
+
 namespace Flutter.Rendering;
 
 public readonly record struct SliverConstraints(

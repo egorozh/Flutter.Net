@@ -2,6 +2,8 @@ using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.TextFormatting;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/rendering/object.dart (approximate)
+
 namespace Flutter.Rendering;
 
 public sealed class PaintingContext

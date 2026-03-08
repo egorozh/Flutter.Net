@@ -1,5 +1,7 @@
 ﻿using Avalonia;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/rendering/box.dart (approximate)
+
 namespace Flutter.Rendering;
 
 /// Parent data used by [RenderBox] and its subclasses.

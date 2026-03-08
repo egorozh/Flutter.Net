@@ -1,3 +1,5 @@
+// Dart parity source (reference): dart_sample/lib/main.dart (platform host bootstrap, adapted)
+
 ﻿using System.Runtime.Versioning;
 using System.Threading.Tasks;
 using Avalonia;

@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Flutter.Foundation;
 
+// Dart parity source (reference): dart_sample/lib/counter_app_model.dart (exact sample parity)
+
 namespace Flutter.Net;
 
 public sealed class CounterAppModel : ChangeNotifier

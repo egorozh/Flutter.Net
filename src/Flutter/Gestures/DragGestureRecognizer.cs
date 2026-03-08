@@ -1,6 +1,8 @@
 using Avalonia;
 using Flutter.UI;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/gestures/monodrag.dart (approximate)
+
 namespace Flutter.Gestures;
 
 public abstract class DragGestureRecognizer : GestureRecognizer, IGestureArenaMember

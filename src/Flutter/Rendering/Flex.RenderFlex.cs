@@ -5,6 +5,8 @@ using Flutter.Foundation;
 using Flutter.Painting;
 using Flutter.UI;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/rendering/flex.dart (approximate)
+
 namespace Flutter.Rendering;
 
 /// <summary>

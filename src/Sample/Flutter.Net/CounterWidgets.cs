@@ -5,6 +5,8 @@ using Flutter.Foundation;
 using Flutter.Rendering;
 using Flutter.Widgets;
 
+// Dart parity source (reference): dart_sample/lib/counter_widgets.dart (exact sample parity)
+
 namespace Flutter.Net;
 
 internal sealed class CounterTapButton : StatelessWidget

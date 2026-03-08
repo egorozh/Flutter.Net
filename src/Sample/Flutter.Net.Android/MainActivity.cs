@@ -3,6 +3,8 @@ using Android.Content.PM;
 using Avalonia;
 using Avalonia.Android;
 
+// Dart parity source (reference): dart_sample/lib/main.dart (platform host bootstrap, adapted)
+
 namespace Flutter.Net.Android;
 
 [Activity(

@@ -3,6 +3,8 @@ using Flutter.Rendering;
 using Flutter.Widgets;
 using Xunit;
 
+// Dart parity source (reference): dart_sample/lib/counter_app_model.dart; dart_sample/lib/counter_scope.dart (sample parity regression tests)
+
 namespace Flutter.Tests;
 
 public sealed class SampleCounterStateTests

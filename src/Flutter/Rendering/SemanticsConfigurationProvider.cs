@@ -1,3 +1,5 @@
+// Dart parity source (reference): flutter/packages/flutter/lib/src/rendering/semantics.dart (approximate)
+
 namespace Flutter.Rendering;
 
 internal sealed class SemanticsConfigurationProvider

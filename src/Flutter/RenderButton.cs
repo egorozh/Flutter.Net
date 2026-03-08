@@ -4,6 +4,8 @@ using Avalonia.Media.TextFormatting;
 using Flutter.Rendering;
 using Flutter.UI;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/rendering/proxy_box.dart (custom adaptation)
+
 namespace Flutter;
 
 public sealed class RenderButton : RenderBox

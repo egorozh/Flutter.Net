@@ -1,6 +1,8 @@
 using Avalonia;
 using Flutter.UI;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/rendering/object.dart; flutter/packages/flutter/lib/src/rendering/box.dart (approximate)
+
 namespace Flutter.Rendering;
 
 public enum HitTestBehavior

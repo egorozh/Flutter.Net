@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using Avalonia.Threading;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/scheduler/binding.dart; flutter/packages/flutter/lib/src/scheduler/scheduler.dart (approximate)
+
 namespace Flutter;
 
 public static class Scheduler

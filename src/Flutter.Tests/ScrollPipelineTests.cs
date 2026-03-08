@@ -3,6 +3,8 @@ using Flutter.Rendering;
 using Flutter.Widgets;
 using Xunit;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/rendering/sliver.dart; flutter/packages/flutter/lib/src/rendering/viewport.dart; flutter/packages/flutter/lib/src/widgets/scrollable.dart (parity regression tests)
+
 namespace Flutter.Tests;
 
 [Collection(SchedulerTestCollection.Name)]

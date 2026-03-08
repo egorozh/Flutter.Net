@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Flutter.Foundation;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/widgets/navigator.dart; flutter/packages/flutter/lib/src/widgets/routes.dart (approximate)
+
 namespace Flutter.Widgets;
 
 public sealed record RouteSettings(string? Name = null, object? Arguments = null);

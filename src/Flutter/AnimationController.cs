@@ -1,5 +1,7 @@
 ﻿using Avalonia.Media;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/animation/animation_controller.dart (approximate)
+
 namespace Flutter;
 
 // ---------- Animation primitives ----------

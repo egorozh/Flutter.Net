@@ -1,6 +1,8 @@
 using Flutter.Rendering;
 using Flutter.Widgets;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/widgets/binding.dart; flutter/packages/flutter/lib/src/rendering/binding.dart (host integration, adapted)
+
 namespace Flutter;
 
 public sealed class WidgetHost : FlutterHost

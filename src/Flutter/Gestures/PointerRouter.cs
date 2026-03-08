@@ -1,5 +1,7 @@
 using Flutter.UI;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/gestures/pointer_router.dart (approximate)
+
 namespace Flutter.Gestures;
 
 public delegate void PointerRoute(PointerEvent @event);

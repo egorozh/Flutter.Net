@@ -5,6 +5,8 @@ using Flutter.Gestures;
 using Flutter.Rendering;
 using Flutter.UI;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/widgets/scrollable.dart; flutter/packages/flutter/lib/src/widgets/scroll_view.dart; flutter/packages/flutter/lib/src/widgets/sliver.dart (approximate)
+
 namespace Flutter.Widgets;
 
 public delegate Widget IndexedWidgetBuilder(BuildContext context, int index);

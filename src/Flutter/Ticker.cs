@@ -38,3 +38,5 @@ public sealed class Ticker
         _onTick(TimeSpan.FromSeconds(delta));
     }
 }
+
+// Dart parity source (reference): flutter/packages/flutter/lib/src/scheduler/ticker.dart (approximate)

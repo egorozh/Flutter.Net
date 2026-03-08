@@ -1,3 +1,5 @@
+// Dart parity source (reference): flutter/packages/flutter/lib/src/gestures/arena.dart (approximate)
+
 namespace Flutter.Gestures;
 
 public enum GestureDisposition

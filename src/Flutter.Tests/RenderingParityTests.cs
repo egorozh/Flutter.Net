@@ -2,6 +2,8 @@ using Avalonia;
 using Flutter.Rendering;
 using Xunit;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/rendering/object.dart; flutter/packages/flutter/lib/src/rendering/box.dart (parity regression tests)
+
 namespace Flutter.Tests;
 
 public sealed class RenderingParityTests

@@ -1,6 +1,8 @@
 using Avalonia;
 using Flutter.UI;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/gestures/recognizer.dart (approximate)
+
 namespace Flutter.Gestures;
 
 public abstract class GestureRecognizer : IDisposable

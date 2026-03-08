@@ -2,6 +2,8 @@ using Flutter.Rendering;
 using Flutter.Widgets;
 using Xunit;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/widgets/navigator.dart; flutter/packages/flutter/lib/src/widgets/routes.dart (parity regression tests)
+
 namespace Flutter.Tests;
 
 public sealed class NavigationTests

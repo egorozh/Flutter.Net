@@ -3,6 +3,8 @@ using Avalonia.Media;
 using Flutter.Rendering;
 using Xunit;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/rendering/semantics.dart (parity regression tests)
+
 namespace Flutter.Tests;
 
 public sealed class SemanticsTreeTests

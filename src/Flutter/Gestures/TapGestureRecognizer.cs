@@ -1,6 +1,8 @@
 using Avalonia;
 using Flutter.UI;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/gestures/tap.dart (approximate)
+
 namespace Flutter.Gestures;
 
 public sealed class TapGestureRecognizer : GestureRecognizer, IGestureArenaMember

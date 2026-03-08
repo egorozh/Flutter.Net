@@ -1,6 +1,8 @@
 using System;
 using Flutter.Widgets;
 
+// Dart parity source (reference): dart_sample/lib/counter_scope.dart (exact sample parity)
+
 namespace Flutter.Net;
 
 public sealed class CounterScope : InheritedNotifier<CounterAppModel>

@@ -5,6 +5,8 @@ using Flutter.Foundation;
 using Flutter.Rendering;
 using Flutter.Widgets;
 
+// Dart parity source (reference): dart_sample/lib/grid_view_demo_page.dart (exact sample parity)
+
 namespace Flutter.Net;
 
 public sealed class GridViewDemoPage : StatelessWidget

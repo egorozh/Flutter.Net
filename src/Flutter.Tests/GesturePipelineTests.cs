@@ -5,6 +5,8 @@ using Flutter.Rendering;
 using Flutter.UI;
 using Xunit;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/gestures/binding.dart; flutter/packages/flutter/lib/src/gestures/arena.dart; flutter/packages/flutter/lib/src/gestures/recognizer.dart (parity regression tests)
+
 namespace Flutter.Tests;
 
 public sealed class GesturePipelineTests

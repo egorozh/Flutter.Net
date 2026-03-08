@@ -3,6 +3,8 @@ using Avalonia.Media;
 using Flutter.Rendering;
 using Flutter.Widgets;
 
+// Dart parity source (reference): dart_sample/lib/scrollbar_demo_page.dart (exact sample parity)
+
 namespace Flutter.Net;
 
 public sealed class ScrollbarDemoPage : StatefulWidget

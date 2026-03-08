@@ -1,3 +1,5 @@
+// Dart parity source (reference): flutter/packages/flutter/lib/src/foundation/change_notifier.dart (approximate)
+
 namespace Flutter.Foundation;
 
 public interface IListenable

@@ -9,3 +9,5 @@ public static class Constants
     /// disregard.
     public const double PrecisionErrorTolerance = 1e-10;
 }
+
+// Dart parity source (reference): flutter/packages/flutter/lib/src/foundation/constants.dart (approximate)

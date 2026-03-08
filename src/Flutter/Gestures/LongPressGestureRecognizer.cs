@@ -2,6 +2,8 @@ using Avalonia;
 using Avalonia.Threading;
 using Flutter.UI;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/gestures/long_press.dart (approximate)
+
 namespace Flutter.Gestures;
 
 public sealed class LongPressGestureRecognizer : GestureRecognizer, IGestureArenaMember

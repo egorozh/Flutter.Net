@@ -23,3 +23,5 @@ public enum VerticalDirection
     /// The "start" is at the top, the "end" is at the bottom.
     Down
 }
+
+// Dart parity source (reference): flutter/packages/flutter/lib/src/painting/basic_types.dart (approximate)

@@ -13,3 +13,5 @@ public static class Diagnostics
         return masked.ToString("x5");
     }
 }
+
+// Dart parity source (reference): flutter/packages/flutter/lib/src/foundation/diagnostics.dart (approximate)

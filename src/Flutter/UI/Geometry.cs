@@ -1,5 +1,7 @@
 ﻿using Avalonia;
 
+// Dart parity source (reference): flutter/engine/src/flutter/lib/ui/geometry.dart (engine parity, approximate)
+
 namespace Flutter.UI;
 
 public static class SizeExtensions

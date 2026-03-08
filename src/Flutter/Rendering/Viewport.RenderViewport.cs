@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Media;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/rendering/viewport.dart (approximate)
+
 namespace Flutter.Rendering;
 
 public sealed class RenderViewport : RenderBox, IRenderObjectContainer

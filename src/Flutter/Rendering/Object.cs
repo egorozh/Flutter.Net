@@ -2,6 +2,8 @@
 using Avalonia;
 using Avalonia.Media;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/rendering/object.dart (approximate)
+
 namespace Flutter.Rendering;
 
 /// Base class for data associated with a [RenderObject] by its parent.

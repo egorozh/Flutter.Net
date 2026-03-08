@@ -6,6 +6,8 @@ using Avalonia.Media;
 using Flutter.Rendering;
 using Flutter.Widgets;
 
+// Dart parity source (reference): dart_sample/lib/sample_gallery_screen.dart; dart_sample/lib/sample_routes.dart (exact sample parity)
+
 namespace Flutter.Net;
 
 internal static class SampleNavigationObservers

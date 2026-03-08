@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Markup.Xaml;
 
+// Dart parity source (reference): dart_sample/lib/main.dart (sample app bootstrap, adapted)
+
 namespace Flutter.Net;
 
 public class App : Application

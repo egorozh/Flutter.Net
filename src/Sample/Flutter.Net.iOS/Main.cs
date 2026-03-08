@@ -1,5 +1,7 @@
 using UIKit;
 
+// Dart parity source (reference): dart_sample/lib/main.dart (platform host bootstrap, adapted)
+
 namespace Flutter.Net.iOS;
 
 public class Application

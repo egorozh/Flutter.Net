@@ -2,6 +2,8 @@
 using Avalonia;
 using Flutter.UI;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/rendering/box.dart (adapted helper logic)
+
 namespace Flutter.Rendering;
 
 /// A collection of static functions to layout a [RenderBox] child with the

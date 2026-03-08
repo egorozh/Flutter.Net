@@ -1,5 +1,7 @@
 using Flutter.Foundation;
 
+// Dart parity source (reference): flutter/packages/flutter/lib/src/widgets/notification_listener.dart (approximate)
+
 namespace Flutter.Widgets;
 
 public abstract class Notification
