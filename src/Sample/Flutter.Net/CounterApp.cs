@@ -9,6 +9,7 @@ public sealed class CounterApp : StatefulWidget
     private sealed class CounterAppState : State
     {
         private CounterAppModel _model = null!;
+        private SamplePageId _currentPage = SamplePageId.Counter;
 
         public override void InitState()
         {
@@ -22,7 +23,21 @@ public sealed class CounterApp : StatefulWidget
 
         public override Widget Build(BuildContext context)
         {
-            return new CounterScope(_model, new CounterScreen());
+            return new CounterScope(
+                _model,
+                new SampleGalleryScreen(
+                    currentPage: _currentPage,
+                    onPageSelected: HandlePageSelected));
+        }
+
+        private void HandlePageSelected(SamplePageId page)
+        {
+            if (page == _currentPage)
+            {
+                return;
+            }
+
+            SetState(() => _currentPage = page);
         }
     }
 }
