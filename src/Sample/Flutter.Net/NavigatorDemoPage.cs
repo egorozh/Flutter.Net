@@ -20,6 +20,7 @@ public sealed class NavigatorDemoPage : StatelessWidget
                     "Uses static Navigator methods and RouteData query parsing.",
                     fontSize: 14,
                     color: Colors.DimGray),
+                new NavigatorRouteAwareProbe(),
                 BuildAction(
                     "PushNamed('/navigator/details?id=42&mode=string')",
                     () => Navigator.PushNamed(
@@ -62,6 +63,81 @@ public sealed class NavigatorDemoPage : StatelessWidget
             foreground: Colors.Black,
             fontSize: 12,
             padding: new Thickness(10, 8));
+    }
+}
+
+internal sealed class NavigatorRouteAwareProbe : StatefulWidget
+{
+    public override State CreateState()
+    {
+        return new NavigatorRouteAwareProbeState();
+    }
+}
+
+internal sealed class NavigatorRouteAwareProbeState : State, RouteAware
+{
+    private PageRoute? _route;
+    private int _didPushCount;
+    private int _didPopCount;
+    private int _didPopNextCount;
+    private int _didPushNextCount;
+
+    public override void DidChangeDependencies()
+    {
+        base.DidChangeDependencies();
+
+        var modalRoute = ModalRoute.MaybeOf(Context);
+        if (modalRoute is not PageRoute pageRoute)
+        {
+            return;
+        }
+
+        if (ReferenceEquals(_route, pageRoute))
+        {
+            return;
+        }
+
+        SampleNavigationObservers.PageRoutes.Unsubscribe(this);
+        _route = pageRoute;
+        SampleNavigationObservers.PageRoutes.Subscribe(this, pageRoute);
+    }
+
+    public override void Dispose()
+    {
+        SampleNavigationObservers.PageRoutes.Unsubscribe(this);
+        base.Dispose();
+    }
+
+    public override Widget Build(BuildContext context)
+    {
+        var routeName = ModalRoute.MaybeOf(context)?.Settings.Name ?? "(null)";
+        return new Container(
+            color: Color.Parse("#FFF1F8FF"),
+            padding: new Thickness(10, 8),
+            child: new Text(
+                $"RouteAware: name={routeName} didPush={_didPushCount} didPushNext={_didPushNextCount} didPopNext={_didPopNextCount} didPop={_didPopCount}",
+                fontSize: 12,
+                color: Colors.Black));
+    }
+
+    public void DidPush()
+    {
+        _didPushCount += 1;
+    }
+
+    public void DidPop()
+    {
+        _didPopCount += 1;
+    }
+
+    public void DidPopNext()
+    {
+        SetState(() => _didPopNextCount += 1);
+    }
+
+    public void DidPushNext()
+    {
+        _didPushNextCount += 1;
     }
 }
 

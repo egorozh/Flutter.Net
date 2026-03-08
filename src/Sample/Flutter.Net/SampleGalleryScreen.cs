@@ -8,6 +8,11 @@ using Flutter.Widgets;
 
 namespace Flutter.Net;
 
+internal static class SampleNavigationObservers
+{
+    public static RouteObserver<PageRoute> PageRoutes { get; } = new();
+}
+
 internal static class SampleRoutes
 {
     public const string Menu = "/";
@@ -49,6 +54,7 @@ internal sealed class SampleGalleryScreen : StatelessWidget
     {
         return new Navigator(
             onGenerateRoute: BuildRoute,
+            observers: [SampleNavigationObservers.PageRoutes],
             initialRouteName: SampleRoutes.Menu);
     }
 

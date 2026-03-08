@@ -168,7 +168,25 @@ public abstract class Route
     public abstract Widget BuildPage(BuildContext context);
 }
 
-public abstract class PageRoute : Route
+public abstract class ModalRoute : Route
+{
+    protected ModalRoute(RouteSettings? settings = null) : base(settings)
+    {
+    }
+
+    public static ModalRoute Of(BuildContext context)
+    {
+        return MaybeOf(context)
+               ?? throw new InvalidOperationException("ModalRoute not found in context.");
+    }
+
+    public static ModalRoute? MaybeOf(BuildContext context)
+    {
+        return context.DependOnInherited<RouteScope>()?.Route as ModalRoute;
+    }
+}
+
+public abstract class PageRoute : ModalRoute
 {
     protected PageRoute(RouteSettings? settings = null) : base(settings)
     {
@@ -204,6 +222,140 @@ public abstract class NavigatorObserver
 
     public virtual void DidReplace(Route newRoute, Route? oldRoute)
     {
+    }
+}
+
+public interface RouteAware
+{
+    void DidPush();
+
+    void DidPop();
+
+    void DidPopNext();
+
+    void DidPushNext();
+}
+
+public class RouteObserver<TRoute> : NavigatorObserver where TRoute : Route
+{
+    private readonly Dictionary<TRoute, HashSet<RouteAware>> _listeners = [];
+
+    public void Subscribe(RouteAware routeAware, TRoute route)
+    {
+        if (routeAware == null)
+        {
+            throw new ArgumentNullException(nameof(routeAware));
+        }
+
+        if (route == null)
+        {
+            throw new ArgumentNullException(nameof(route));
+        }
+
+        if (!_listeners.TryGetValue(route, out var subscribers))
+        {
+            subscribers = [];
+            _listeners[route] = subscribers;
+        }
+
+        if (subscribers.Add(routeAware))
+        {
+            routeAware.DidPush();
+        }
+    }
+
+    public void Unsubscribe(RouteAware routeAware)
+    {
+        if (routeAware == null)
+        {
+            throw new ArgumentNullException(nameof(routeAware));
+        }
+
+        foreach (var entry in _listeners.ToArray())
+        {
+            var subscribers = entry.Value;
+            subscribers.Remove(routeAware);
+            if (subscribers.Count == 0)
+            {
+                _listeners.Remove(entry.Key);
+            }
+        }
+    }
+
+    public override void DidPush(Route route, Route? previousRoute)
+    {
+        if (previousRoute is not TRoute previousTypedRoute)
+        {
+            return;
+        }
+
+        if (!_listeners.TryGetValue(previousTypedRoute, out var subscribers))
+        {
+            return;
+        }
+
+        foreach (var subscriber in subscribers.ToArray())
+        {
+            subscriber.DidPushNext();
+        }
+    }
+
+    public override void DidPop(Route route, Route? previousRoute)
+    {
+        if (previousRoute is TRoute previousTypedRoute
+            && _listeners.TryGetValue(previousTypedRoute, out var previousSubscribers))
+        {
+            foreach (var subscriber in previousSubscribers.ToArray())
+            {
+                subscriber.DidPopNext();
+            }
+        }
+
+        if (route is not TRoute typedRoute)
+        {
+            return;
+        }
+
+        if (!_listeners.TryGetValue(typedRoute, out var subscribers))
+        {
+            return;
+        }
+
+        foreach (var subscriber in subscribers.ToArray())
+        {
+            subscriber.DidPop();
+        }
+    }
+
+    public override void DidReplace(Route newRoute, Route? oldRoute)
+    {
+        if (oldRoute is not TRoute oldTypedRoute)
+        {
+            return;
+        }
+
+        if (!_listeners.TryGetValue(oldTypedRoute, out var oldSubscribers))
+        {
+            return;
+        }
+
+        _listeners.Remove(oldTypedRoute);
+
+        if (newRoute is not TRoute newTypedRoute)
+        {
+            return;
+        }
+
+        if (!_listeners.TryGetValue(newTypedRoute, out var newSubscribers))
+        {
+            _listeners[newTypedRoute] = oldSubscribers;
+            return;
+        }
+
+        foreach (var subscriber in oldSubscribers)
+        {
+            newSubscribers.Add(subscriber);
+        }
     }
 }
 
@@ -855,11 +1007,54 @@ internal sealed class NavigatorScope : InheritedWidget
     }
 }
 
+internal sealed class RouteScope : InheritedWidget
+{
+    public RouteScope(
+        Route route,
+        Widget child,
+        Key? key = null) : base(key)
+    {
+        Route = route;
+        Child = child;
+    }
+
+    public Route Route { get; }
+
+    public Widget Child { get; }
+
+    public override Widget Build(BuildContext context)
+    {
+        return Child;
+    }
+
+    protected internal override bool UpdateShouldNotify(InheritedWidget oldWidget)
+    {
+        return !ReferenceEquals(((RouteScope)oldWidget).Route, Route);
+    }
+}
+
 internal sealed class ActiveRouteHost : StatelessWidget
 {
     private readonly Route _route;
 
     public ActiveRouteHost(Route route)
+    {
+        _route = route;
+    }
+
+    public override Widget Build(BuildContext context)
+    {
+        return new RouteScope(
+            route: _route,
+            child: new RoutePageHost(_route));
+    }
+}
+
+internal sealed class RoutePageHost : StatelessWidget
+{
+    private readonly Route _route;
+
+    public RoutePageHost(Route route)
     {
         _route = route;
     }

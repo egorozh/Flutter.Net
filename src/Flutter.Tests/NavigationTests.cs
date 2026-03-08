@@ -120,6 +120,230 @@ public sealed class NavigationTests
     }
 
     [Fact]
+    public void ModalRoute_Of_ReturnsCurrentRouteInsidePageBuilder()
+    {
+        var owner = new BuildOwner();
+        ModalRoute? capturedRoute = null;
+
+        var initialRoute = new BuilderPageRoute(
+            builder: context =>
+            {
+                capturedRoute = ModalRoute.Of(context);
+                return new SizedBox(width: 1, height: 1);
+            },
+            settings: new RouteSettings(Name: "/root"));
+
+        var root = new TestRootElement(
+            new Navigator(initialRoute: initialRoute));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.NotNull(capturedRoute);
+        Assert.Same(initialRoute, capturedRoute);
+        Assert.Equal("/root", capturedRoute!.Settings.Name);
+    }
+
+    [Fact]
+    public void RouteObserver_Subscribe_ReceivesPushNextPopNextAndPop()
+    {
+        var owner = new BuildOwner();
+        var routeObserver = new RouteObserver<PageRoute>();
+        NavigatorState? navigatorState = null;
+        PageRoute? rootRoute = null;
+        PageRoute? detailsRoute = null;
+
+        Route CreateRoute(string routeName, RouteSettings settings)
+        {
+            var route = new BuilderPageRoute(
+                builder: context =>
+                {
+                    navigatorState ??= Navigator.Of(context);
+                    return new SizedBox(width: 1, height: 1);
+                },
+                settings: settings);
+
+            if (routeName == "/")
+            {
+                rootRoute = route;
+            }
+            else if (routeName == "/details")
+            {
+                detailsRoute = route;
+            }
+
+            return route;
+        }
+
+        Route? OnGenerateRoute(RouteSettings settings)
+        {
+            return settings.Name switch
+            {
+                "/" => CreateRoute("/", settings),
+                "/details" => CreateRoute("/details", settings),
+                _ => null
+            };
+        }
+
+        var root = new TestRootElement(
+            new Navigator(
+                onGenerateRoute: OnGenerateRoute,
+                initialRouteName: "/",
+                observers: [routeObserver]));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.NotNull(navigatorState);
+        Assert.NotNull(rootRoute);
+
+        var rootAware = new RecordingRouteAware();
+        routeObserver.Subscribe(rootAware, rootRoute!);
+        Assert.Equal(["didPush"], rootAware.Events);
+
+        navigatorState!.PushNamed("/details");
+        owner.FlushBuild();
+
+        Assert.NotNull(detailsRoute);
+        Assert.Equal(["didPush", "didPushNext"], rootAware.Events);
+
+        var detailsAware = new RecordingRouteAware();
+        routeObserver.Subscribe(detailsAware, detailsRoute!);
+        Assert.Equal(["didPush"], detailsAware.Events);
+
+        navigatorState.Pop();
+        owner.FlushBuild();
+
+        Assert.Equal(["didPush", "didPushNext", "didPopNext"], rootAware.Events);
+        Assert.Equal(["didPush", "didPop"], detailsAware.Events);
+    }
+
+    [Fact]
+    public void RouteObserver_DidReplace_RebindsSubscribersToReplacementRoute()
+    {
+        var owner = new BuildOwner();
+        var routeObserver = new RouteObserver<PageRoute>();
+        NavigatorState? navigatorState = null;
+        PageRoute? detailsRoute = null;
+
+        Route CreateRoute(string routeName, RouteSettings settings)
+        {
+            var route = new BuilderPageRoute(
+                builder: context =>
+                {
+                    navigatorState ??= Navigator.Of(context);
+                    return new SizedBox(width: 1, height: 1);
+                },
+                settings: settings);
+
+            if (routeName == "/details")
+            {
+                detailsRoute = route;
+            }
+
+            return route;
+        }
+
+        Route? OnGenerateRoute(RouteSettings settings)
+        {
+            return settings.Name switch
+            {
+                "/" => CreateRoute("/", settings),
+                "/details" => CreateRoute("/details", settings),
+                "/replacement" => CreateRoute("/replacement", settings),
+                _ => null
+            };
+        }
+
+        var root = new TestRootElement(
+            new Navigator(
+                onGenerateRoute: OnGenerateRoute,
+                initialRouteName: "/",
+                observers: [routeObserver]));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        navigatorState!.PushNamed("/details");
+        owner.FlushBuild();
+        Assert.NotNull(detailsRoute);
+
+        var aware = new RecordingRouteAware();
+        routeObserver.Subscribe(aware, detailsRoute!);
+        Assert.Equal(["didPush"], aware.Events);
+
+        navigatorState.PushReplacementNamed("/replacement");
+        owner.FlushBuild();
+
+        navigatorState.Pop();
+        owner.FlushBuild();
+
+        Assert.Equal(["didPush", "didPop"], aware.Events);
+    }
+
+    [Fact]
+    public void RouteObserver_Unsubscribe_StopsFurtherNotifications()
+    {
+        var owner = new BuildOwner();
+        var routeObserver = new RouteObserver<PageRoute>();
+        NavigatorState? navigatorState = null;
+        PageRoute? rootRoute = null;
+
+        Route CreateRoute(string routeName, RouteSettings settings)
+        {
+            var route = new BuilderPageRoute(
+                builder: context =>
+                {
+                    navigatorState ??= Navigator.Of(context);
+                    return new SizedBox(width: 1, height: 1);
+                },
+                settings: settings);
+
+            if (routeName == "/")
+            {
+                rootRoute = route;
+            }
+
+            return route;
+        }
+
+        Route? OnGenerateRoute(RouteSettings settings)
+        {
+            return settings.Name switch
+            {
+                "/" => CreateRoute("/", settings),
+                "/details" => CreateRoute("/details", settings),
+                _ => null
+            };
+        }
+
+        var root = new TestRootElement(
+            new Navigator(
+                onGenerateRoute: OnGenerateRoute,
+                initialRouteName: "/",
+                observers: [routeObserver]));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.NotNull(rootRoute);
+        Assert.NotNull(navigatorState);
+
+        var aware = new RecordingRouteAware();
+        routeObserver.Subscribe(aware, rootRoute!);
+        routeObserver.Unsubscribe(aware);
+
+        navigatorState!.PushNamed("/details");
+        owner.FlushBuild();
+
+        Assert.Equal(["didPush"], aware.Events);
+    }
+
+    [Fact]
     public void Navigator_TryHandleBackButton_PopsWhenPossible()
     {
         var owner = new BuildOwner();
@@ -482,6 +706,31 @@ public sealed class NavigationTests
         public override void DidReplace(Route newRoute, Route? oldRoute)
         {
             Events.Add($"replace:{newRoute.Settings.Name}:{oldRoute?.Settings.Name ?? "null"}");
+        }
+    }
+
+    private sealed class RecordingRouteAware : RouteAware
+    {
+        public List<string> Events { get; } = [];
+
+        public void DidPush()
+        {
+            Events.Add("didPush");
+        }
+
+        public void DidPop()
+        {
+            Events.Add("didPop");
+        }
+
+        public void DidPopNext()
+        {
+            Events.Add("didPopNext");
+        }
+
+        public void DidPushNext()
+        {
+            Events.Add("didPushNext");
         }
     }
 
