@@ -17,6 +17,45 @@ public enum CacheExtentStyle
     Viewport
 }
 
+public enum AxisDirection
+{
+    Up,
+    Right,
+    Down,
+    Left
+}
+
+public enum GrowthDirection
+{
+    Forward,
+    Reverse
+}
+
+public static class ScrollDirectionUtils
+{
+    public static Axis AxisDirectionToAxis(AxisDirection direction)
+    {
+        return direction switch
+        {
+            AxisDirection.Up => Axis.Vertical,
+            AxisDirection.Down => Axis.Vertical,
+            AxisDirection.Left => Axis.Horizontal,
+            AxisDirection.Right => Axis.Horizontal,
+            _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, null)
+        };
+    }
+
+    public static bool AxisDirectionIsReversed(AxisDirection direction)
+    {
+        return direction == AxisDirection.Up || direction == AxisDirection.Left;
+    }
+
+    public static AxisDirection DefaultAxisDirection(Axis axis)
+    {
+        return axis == Axis.Vertical ? AxisDirection.Down : AxisDirection.Right;
+    }
+}
+
 public abstract class Simulation
 {
     public abstract double X(double timeSeconds);

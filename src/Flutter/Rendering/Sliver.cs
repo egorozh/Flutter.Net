@@ -11,7 +11,9 @@ public readonly record struct SliverConstraints(
     double CrossAxisExtent,
     double ViewportMainAxisExtent,
     double CacheOrigin = 0,
-    double RemainingCacheExtent = 0);
+    double RemainingCacheExtent = 0,
+    AxisDirection AxisDirection = AxisDirection.Down,
+    GrowthDirection GrowthDirection = GrowthDirection.Forward);
 
 public readonly record struct SliverGeometry(
     double ScrollExtent = 0,
@@ -244,6 +246,255 @@ public class RenderSliverToBoxAdapter : RenderSliverSingleBoxAdapter
             MaxPaintExtent: childExtent,
             CacheExtent: cacheExtent,
             HasVisualOverflow: remaining > constraints.RemainingPaintExtent);
+    }
+}
+
+public sealed class RenderSliverPadding : RenderSliver, IRenderObjectSingleChildContainer
+{
+    private RenderSliver? _child;
+    private Thickness _padding;
+
+    public RenderSliverPadding(Thickness padding, RenderSliver? child = null)
+    {
+        _padding = padding;
+        Child = child;
+    }
+
+    public Thickness Padding
+    {
+        get => _padding;
+        set
+        {
+            if (_padding.Equals(value))
+            {
+                return;
+            }
+
+            _padding = value;
+            MarkNeedsLayout();
+        }
+    }
+
+    public RenderSliver? Child
+    {
+        get => _child;
+        set
+        {
+            if (ReferenceEquals(_child, value))
+            {
+                return;
+            }
+
+            if (_child != null)
+            {
+                DropChild(_child);
+            }
+
+            _child = value;
+            if (_child != null)
+            {
+                AdoptChild(_child);
+            }
+
+            MarkNeedsLayout();
+        }
+    }
+
+    RenderObject? IRenderObjectSingleChildContainer.Child
+    {
+        get => Child;
+        set => Child = (RenderSliver?)value;
+    }
+
+    public override void SetupParentData(RenderObject child)
+    {
+        if (child.parentData is not SliverPhysicalParentData)
+        {
+            child.parentData = new SliverPhysicalParentData();
+        }
+    }
+
+    public override void VisitChildren(Action<RenderObject> visitor)
+    {
+        if (_child != null)
+        {
+            visitor(_child);
+        }
+    }
+
+    public override void Paint(PaintingContext ctx, Point offset)
+    {
+        if (_child == null || Geometry.PaintExtent <= 0)
+        {
+            return;
+        }
+
+        var childParentData = (SliverPhysicalParentData)_child.parentData!;
+        ctx.PaintChild(_child, offset + childParentData.offset);
+    }
+
+    protected override bool HitTestChildren(BoxHitTestResult result, Point position)
+    {
+        if (_child == null || Geometry.PaintExtent <= 0)
+        {
+            return false;
+        }
+
+        var childParentData = (SliverPhysicalParentData)_child.parentData!;
+        return _child.HitTest(result, position - childParentData.offset);
+    }
+
+    internal override void VisitChildrenForSemantics(Action<RenderObject, Point, Matrix> visitor)
+    {
+        if (_child == null)
+        {
+            return;
+        }
+
+        var childParentData = (SliverPhysicalParentData)_child.parentData!;
+        visitor(_child, childParentData.offset, Matrix.Identity);
+    }
+
+    protected override void PerformSliverLayout(SliverConstraints constraints)
+    {
+        var (mainStartPadding, mainEndPadding, crossStartPadding, crossEndPadding) = ResolvePadding(_padding, constraints);
+        var mainAxisPadding = mainStartPadding + mainEndPadding;
+        var crossAxisPadding = crossStartPadding + crossEndPadding;
+        var remainingCacheExtent = constraints.RemainingCacheExtent > 0
+            ? constraints.RemainingCacheExtent
+            : constraints.RemainingPaintExtent;
+
+        if (_child == null)
+        {
+            var paddedPaintExtent = CalculatePaintExtent(
+                from: 0,
+                to: mainAxisPadding,
+                scrollOffset: constraints.ScrollOffset,
+                remainingPaintExtent: constraints.RemainingPaintExtent);
+            var paddedLayoutExtent = Math.Min(paddedPaintExtent, constraints.ViewportMainAxisExtent);
+            var paddedCacheExtent = CalculatePaintExtent(
+                from: 0,
+                to: mainAxisPadding,
+                scrollOffset: constraints.ScrollOffset + constraints.CacheOrigin,
+                remainingPaintExtent: remainingCacheExtent);
+            var paddedTargetEndScrollOffsetForPaint = constraints.ScrollOffset + constraints.RemainingPaintExtent;
+
+            Geometry = new SliverGeometry(
+                ScrollExtent: mainAxisPadding,
+                PaintExtent: paddedPaintExtent,
+                LayoutExtent: paddedLayoutExtent,
+                MaxPaintExtent: mainAxisPadding,
+                CacheExtent: paddedCacheExtent,
+                HasVisualOverflow: mainAxisPadding > paddedTargetEndScrollOffsetForPaint || constraints.ScrollOffset > 0);
+            return;
+        }
+
+        var cacheStart = constraints.ScrollOffset + constraints.CacheOrigin;
+        var cacheEnd = cacheStart + Math.Max(0, remainingCacheExtent);
+        var childScrollOffset = Math.Max(0, constraints.ScrollOffset - mainStartPadding);
+        var childCacheStart = Math.Max(0, cacheStart - mainStartPadding);
+        var childCacheEnd = Math.Max(childCacheStart, cacheEnd - mainStartPadding);
+        var childRemainingCacheExtent = Math.Max(0, childCacheEnd - childCacheStart);
+        var childCacheOrigin = childCacheStart - childScrollOffset;
+        var beforePaddingPaintExtent = CalculatePaintExtent(
+            from: 0,
+            to: mainStartPadding,
+            scrollOffset: constraints.ScrollOffset,
+            remainingPaintExtent: constraints.RemainingPaintExtent);
+        var childRemainingPaintExtent = Math.Max(0, constraints.RemainingPaintExtent - beforePaddingPaintExtent);
+        var childCrossAxisExtent = Math.Max(0, constraints.CrossAxisExtent - crossAxisPadding);
+
+        _child.LayoutWithSliverConstraints(new SliverConstraints(
+            constraints.Axis,
+            childScrollOffset,
+            childRemainingPaintExtent,
+            childCrossAxisExtent,
+            constraints.ViewportMainAxisExtent,
+            CacheOrigin: childCacheOrigin,
+            RemainingCacheExtent: childRemainingCacheExtent,
+            AxisDirection: constraints.AxisDirection,
+            GrowthDirection: constraints.GrowthDirection));
+
+        if (Math.Abs(_child.Geometry.ScrollOffsetCorrection) > 0.0001)
+        {
+            Geometry = new SliverGeometry(ScrollOffsetCorrection: _child.Geometry.ScrollOffsetCorrection);
+            return;
+        }
+
+        var childParentData = (SliverPhysicalParentData)_child.parentData!;
+        var childMainAxisOffset = mainStartPadding - constraints.ScrollOffset;
+        childParentData.offset = constraints.Axis == Axis.Vertical
+            ? new Point(crossStartPadding, childMainAxisOffset)
+            : new Point(childMainAxisOffset, crossStartPadding);
+
+        var totalScrollExtent = mainStartPadding + _child.Geometry.ScrollExtent + mainEndPadding;
+        var maxPaintExtent = mainStartPadding + _child.Geometry.MaxPaintExtent + mainEndPadding;
+        var paintExtent = CalculatePaintExtent(
+            from: 0,
+            to: totalScrollExtent,
+            scrollOffset: constraints.ScrollOffset,
+            remainingPaintExtent: constraints.RemainingPaintExtent);
+        var layoutExtent = Math.Min(paintExtent, constraints.ViewportMainAxisExtent);
+        var cacheExtent = CalculatePaintExtent(
+            from: 0,
+            to: totalScrollExtent,
+            scrollOffset: constraints.ScrollOffset + constraints.CacheOrigin,
+            remainingPaintExtent: remainingCacheExtent);
+        var targetEndScrollOffsetForPaint = constraints.ScrollOffset + constraints.RemainingPaintExtent;
+
+        Geometry = new SliverGeometry(
+            ScrollExtent: totalScrollExtent,
+            PaintExtent: paintExtent,
+            LayoutExtent: layoutExtent,
+            MaxPaintExtent: maxPaintExtent,
+            CacheExtent: cacheExtent,
+            HasVisualOverflow:
+            _child.Geometry.HasVisualOverflow
+            || totalScrollExtent > targetEndScrollOffsetForPaint
+            || constraints.ScrollOffset > 0);
+    }
+
+    private static (double mainStart, double mainEnd, double crossStart, double crossEnd) ResolvePadding(
+        Thickness padding,
+        SliverConstraints constraints)
+    {
+        double mainStart;
+        double mainEnd;
+        double crossStart;
+        double crossEnd;
+
+        if (constraints.Axis == Axis.Vertical)
+        {
+            mainStart = constraints.AxisDirection == AxisDirection.Up ? padding.Bottom : padding.Top;
+            mainEnd = constraints.AxisDirection == AxisDirection.Up ? padding.Top : padding.Bottom;
+            crossStart = padding.Left;
+            crossEnd = padding.Right;
+        }
+        else
+        {
+            mainStart = constraints.AxisDirection == AxisDirection.Left ? padding.Right : padding.Left;
+            mainEnd = constraints.AxisDirection == AxisDirection.Left ? padding.Left : padding.Right;
+            crossStart = padding.Top;
+            crossEnd = padding.Bottom;
+        }
+
+        if (constraints.GrowthDirection == GrowthDirection.Reverse)
+        {
+            (mainStart, mainEnd) = (mainEnd, mainStart);
+        }
+
+        return (mainStart, mainEnd, crossStart, crossEnd);
+    }
+
+    private static double CalculatePaintExtent(
+        double from,
+        double to,
+        double scrollOffset,
+        double remainingPaintExtent)
+    {
+        var visibleStart = Math.Max(from, scrollOffset);
+        var visibleEnd = Math.Min(to, scrollOffset + remainingPaintExtent);
+        return Math.Max(0, visibleEnd - visibleStart);
     }
 }
 

@@ -183,6 +183,39 @@ public sealed class ScrollInfrastructureTests
         Assert.Null(sampledChildren[3]);
     }
 
+    [Fact]
+    public void ListView_WithPadding_WrapsSliverIntoSliverPadding()
+    {
+        var owner = new BuildOwner();
+        var expectedPadding = new Avalonia.Thickness(4, 8, 12, 16);
+        Widget? rootSliver = null;
+        Widget? childSliver = null;
+
+        var root = new TestRootElement(
+            new ListViewBuildProbe(
+                listViewFactory: () => ListView.Builder(
+                    itemCount: 2,
+                    itemBuilder: (_, index) => new ItemMarker(index),
+                    padding: expectedPadding,
+                    addAutomaticKeepAlives: false),
+                onBuilt: (scrollViewWidget, _) =>
+                {
+                    var scrollView = Assert.IsType<CustomScrollView>(scrollViewWidget);
+                    rootSliver = Assert.Single(scrollView.Slivers);
+                    var sliverPadding = Assert.IsType<SliverPadding>(rootSliver);
+                    childSliver = sliverPadding.Child;
+                    Assert.Equal(expectedPadding, sliverPadding.Padding);
+                }));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.NotNull(rootSliver);
+        Assert.NotNull(childSliver);
+        Assert.IsType<SliverList>(childSliver);
+    }
+
     private sealed class NotificationEmitterWidget : StatelessWidget
     {
         public override Widget Build(BuildContext context)

@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Media;
 using Flutter.Foundation;
 using Flutter.Gestures;
@@ -296,6 +297,7 @@ public sealed class Scrollable : StatefulWidget
         Widget? child = null,
         IReadOnlyList<Widget>? slivers = null,
         Axis axis = Axis.Vertical,
+        bool reverse = false,
         ScrollController? controller = null,
         ScrollPhysics? physics = null,
         double cacheExtent = 250.0,
@@ -306,6 +308,7 @@ public sealed class Scrollable : StatefulWidget
         Child = child;
         Slivers = slivers;
         Axis = axis;
+        Reverse = reverse;
         Controller = controller;
         Physics = physics;
         CacheExtent = cacheExtent;
@@ -318,6 +321,8 @@ public sealed class Scrollable : StatefulWidget
     public IReadOnlyList<Widget>? Slivers { get; }
 
     public Axis Axis { get; }
+
+    public bool Reverse { get; }
 
     public ScrollController? Controller { get; }
 
@@ -379,6 +384,7 @@ public sealed class Scrollable : StatefulWidget
         {
             var widget = CurrentWidget;
             var slivers = ResolveSlivers(widget);
+            var axisDirection = ResolveAxisDirection(widget.Axis, widget.Reverse);
 
             return new Listener(
                 behavior: widget.HitTestBehavior,
@@ -393,6 +399,8 @@ public sealed class Scrollable : StatefulWidget
                     onVerticalDragEnd: widget.Axis == Axis.Vertical ? HandleDragEnd : null,
                     child: new Viewport(
                         axis: widget.Axis,
+                        axisDirection: axisDirection,
+                        growthDirection: GrowthDirection.Forward,
                         offsetPixels: _position.Pixels,
                         cacheExtent: widget.CacheExtent,
                         cacheExtentStyle: widget.CacheExtentStyle,
@@ -433,17 +441,26 @@ public sealed class Scrollable : StatefulWidget
 
         private void HandleHorizontalDragUpdate(DragUpdateDetails details)
         {
-            _position.ApplyUserOffset(details.PrimaryDelta);
+            var delta = IsReversedAxisDirection()
+                ? -details.PrimaryDelta
+                : details.PrimaryDelta;
+            _position.ApplyUserOffset(delta);
         }
 
         private void HandleVerticalDragUpdate(DragUpdateDetails details)
         {
-            _position.ApplyUserOffset(details.PrimaryDelta);
+            var delta = IsReversedAxisDirection()
+                ? -details.PrimaryDelta
+                : details.PrimaryDelta;
+            _position.ApplyUserOffset(delta);
         }
 
         private void HandleDragEnd(DragEndDetails details)
         {
-            _position.EndDrag(details.PrimaryVelocity);
+            var velocity = IsReversedAxisDirection()
+                ? -details.PrimaryVelocity
+                : details.PrimaryVelocity;
+            _position.EndDrag(velocity);
             new ScrollEndNotification(CurrentMetrics()).Dispatch(Context);
         }
 
@@ -455,8 +472,9 @@ public sealed class Scrollable : StatefulWidget
             }
 
             var rawDelta = CurrentWidget.Axis == Axis.Vertical ? scroll.ScrollDelta.Y : scroll.ScrollDelta.X;
+            var delta = IsReversedAxisDirection() ? rawDelta : -rawDelta;
             new ScrollStartNotification(CurrentMetrics()).Dispatch(Context);
-            _position.ApplyPointerScrollDelta(-rawDelta * 40.0);
+            _position.ApplyPointerScrollDelta(delta * 40.0);
             new ScrollEndNotification(CurrentMetrics()).Dispatch(Context);
         }
 
@@ -474,6 +492,22 @@ public sealed class Scrollable : StatefulWidget
                 MaxScrollExtent: _position.MaxScrollExtent,
                 ViewportDimension: _position.ViewportDimension);
         }
+
+        private bool IsReversedAxisDirection()
+        {
+            var axisDirection = ResolveAxisDirection(CurrentWidget.Axis, CurrentWidget.Reverse);
+            return ScrollDirectionUtils.AxisDirectionIsReversed(axisDirection);
+        }
+
+        private static AxisDirection ResolveAxisDirection(Axis axis, bool reverse)
+        {
+            if (axis == Axis.Vertical)
+            {
+                return reverse ? AxisDirection.Up : AxisDirection.Down;
+            }
+
+            return reverse ? AxisDirection.Left : AxisDirection.Right;
+        }
     }
 }
 
@@ -481,6 +515,8 @@ public sealed class Viewport : MultiChildRenderObjectWidget
 {
     public Viewport(
         Axis axis,
+        AxisDirection axisDirection,
+        GrowthDirection growthDirection,
         double offsetPixels,
         double cacheExtent,
         CacheExtentStyle cacheExtentStyle,
@@ -489,6 +525,8 @@ public sealed class Viewport : MultiChildRenderObjectWidget
         Key? key = null) : base(slivers, key)
     {
         Axis = axis;
+        AxisDirection = axisDirection;
+        GrowthDirection = growthDirection;
         OffsetPixels = offsetPixels;
         CacheExtent = cacheExtent;
         CacheExtentStyle = cacheExtentStyle;
@@ -496,6 +534,10 @@ public sealed class Viewport : MultiChildRenderObjectWidget
     }
 
     public Axis Axis { get; }
+
+    public AxisDirection AxisDirection { get; }
+
+    public GrowthDirection GrowthDirection { get; }
 
     public double OffsetPixels { get; }
 
@@ -509,6 +551,8 @@ public sealed class Viewport : MultiChildRenderObjectWidget
     {
         return new RenderViewport(
             axis: Axis,
+            axisDirection: AxisDirection,
+            growthDirection: GrowthDirection,
             offsetPixels: OffsetPixels,
             cacheExtent: CacheExtent,
             cacheExtentStyle: CacheExtentStyle,
@@ -519,6 +563,8 @@ public sealed class Viewport : MultiChildRenderObjectWidget
     {
         var viewport = (RenderViewport)renderObject;
         viewport.Axis = Axis;
+        viewport.AxisDirection = AxisDirection;
+        viewport.GrowthDirection = GrowthDirection;
         viewport.OffsetPixels = OffsetPixels;
         viewport.CacheExtent = CacheExtent;
         viewport.CacheExtentStyle = CacheExtentStyle;
@@ -603,6 +649,26 @@ public sealed class SliverToBoxAdapter : SingleChildRenderObjectWidget
     internal override RenderObject CreateRenderObject(BuildContext context)
     {
         return new RenderSliverToBoxAdapter();
+    }
+}
+
+public sealed class SliverPadding : SingleChildRenderObjectWidget
+{
+    public SliverPadding(Thickness padding, Widget? sliver = null, Key? key = null) : base(sliver, key)
+    {
+        Padding = padding;
+    }
+
+    public Thickness Padding { get; }
+
+    internal override RenderObject CreateRenderObject(BuildContext context)
+    {
+        return new RenderSliverPadding(Padding);
+    }
+
+    internal override void UpdateRenderObject(BuildContext context, RenderObject renderObject)
+    {
+        ((RenderSliverPadding)renderObject).Padding = Padding;
     }
 }
 
@@ -1042,6 +1108,7 @@ public sealed class CustomScrollView : StatelessWidget
     public CustomScrollView(
         IReadOnlyList<Widget> slivers,
         Axis scrollDirection = Axis.Vertical,
+        bool reverse = false,
         ScrollController? controller = null,
         bool? primary = null,
         ScrollPhysics? physics = null,
@@ -1051,6 +1118,7 @@ public sealed class CustomScrollView : StatelessWidget
     {
         Slivers = slivers;
         ScrollDirection = scrollDirection;
+        Reverse = reverse;
         Controller = controller;
         Primary = primary;
         Physics = physics;
@@ -1061,6 +1129,8 @@ public sealed class CustomScrollView : StatelessWidget
     public IReadOnlyList<Widget> Slivers { get; }
 
     public Axis ScrollDirection { get; }
+
+    public bool Reverse { get; }
 
     public ScrollController? Controller { get; }
 
@@ -1084,6 +1154,7 @@ public sealed class CustomScrollView : StatelessWidget
         return new Scrollable(
             slivers: Slivers,
             axis: ScrollDirection,
+            reverse: Reverse,
             controller: effectiveController,
             physics: Physics,
             cacheExtent: CacheExtent,
@@ -1096,6 +1167,7 @@ public sealed class SingleChildScrollView : StatelessWidget
     public SingleChildScrollView(
         Widget child,
         Axis scrollDirection = Axis.Vertical,
+        bool reverse = false,
         ScrollController? controller = null,
         ScrollPhysics? physics = null,
         double cacheExtent = 250.0,
@@ -1104,6 +1176,7 @@ public sealed class SingleChildScrollView : StatelessWidget
     {
         Child = child;
         ScrollDirection = scrollDirection;
+        Reverse = reverse;
         Controller = controller;
         Physics = physics;
         CacheExtent = cacheExtent;
@@ -1113,6 +1186,8 @@ public sealed class SingleChildScrollView : StatelessWidget
     public Widget Child { get; }
 
     public Axis ScrollDirection { get; }
+
+    public bool Reverse { get; }
 
     public ScrollController? Controller { get; }
 
@@ -1127,6 +1202,7 @@ public sealed class SingleChildScrollView : StatelessWidget
         return new CustomScrollView(
             slivers: [new SliverToBoxAdapter(Child)],
             scrollDirection: ScrollDirection,
+            reverse: Reverse,
             controller: Controller,
             physics: Physics,
             cacheExtent: CacheExtent,
@@ -1248,6 +1324,7 @@ public sealed class ListView : StatelessWidget
     private readonly IndexedWidgetBuilder? _separatorBuilder;
     private readonly int _itemCount;
     private readonly double? _itemExtent;
+    private readonly Thickness _padding;
     private readonly bool _addAutomaticKeepAlives;
     private readonly double _cacheExtent;
     private readonly CacheExtentStyle _cacheExtentStyle;
@@ -1255,9 +1332,11 @@ public sealed class ListView : StatelessWidget
     public ListView(
         IReadOnlyList<Widget>? children = null,
         Axis scrollDirection = Axis.Vertical,
+        bool reverse = false,
         ScrollController? controller = null,
         ScrollPhysics? physics = null,
         double? itemExtent = null,
+        Thickness? padding = null,
         bool addAutomaticKeepAlives = true,
         double cacheExtent = 250.0,
         CacheExtentStyle cacheExtentStyle = CacheExtentStyle.Pixel,
@@ -1270,9 +1349,11 @@ public sealed class ListView : StatelessWidget
 
         _children = children ?? [];
         ScrollDirection = scrollDirection;
+        Reverse = reverse;
         Controller = controller;
         Physics = physics;
         _itemExtent = itemExtent;
+        _padding = padding ?? default;
         _addAutomaticKeepAlives = addAutomaticKeepAlives;
         _cacheExtent = cacheExtent;
         _cacheExtentStyle = cacheExtentStyle;
@@ -1283,9 +1364,11 @@ public sealed class ListView : StatelessWidget
         IndexedWidgetBuilder itemBuilder,
         IndexedWidgetBuilder? separatorBuilder,
         Axis scrollDirection,
+        bool reverse,
         ScrollController? controller,
         ScrollPhysics? physics,
         double? itemExtent,
+        Thickness? padding,
         bool addAutomaticKeepAlives,
         double cacheExtent,
         CacheExtentStyle cacheExtentStyle,
@@ -1305,15 +1388,19 @@ public sealed class ListView : StatelessWidget
         _itemBuilder = itemBuilder;
         _separatorBuilder = separatorBuilder;
         ScrollDirection = scrollDirection;
+        Reverse = reverse;
         Controller = controller;
         Physics = physics;
         _itemExtent = itemExtent;
+        _padding = padding ?? default;
         _addAutomaticKeepAlives = addAutomaticKeepAlives;
         _cacheExtent = cacheExtent;
         _cacheExtentStyle = cacheExtentStyle;
     }
 
     public Axis ScrollDirection { get; }
+
+    public bool Reverse { get; }
 
     public ScrollController? Controller { get; }
 
@@ -1323,9 +1410,11 @@ public sealed class ListView : StatelessWidget
         int itemCount,
         IndexedWidgetBuilder itemBuilder,
         Axis scrollDirection = Axis.Vertical,
+        bool reverse = false,
         ScrollController? controller = null,
         ScrollPhysics? physics = null,
         double? itemExtent = null,
+        Thickness? padding = null,
         bool addAutomaticKeepAlives = true,
         double cacheExtent = 250.0,
         CacheExtentStyle cacheExtentStyle = CacheExtentStyle.Pixel,
@@ -1336,9 +1425,11 @@ public sealed class ListView : StatelessWidget
             itemBuilder: itemBuilder,
             separatorBuilder: null,
             scrollDirection: scrollDirection,
+            reverse: reverse,
             controller: controller,
             physics: physics,
             itemExtent: itemExtent,
+            padding: padding,
             addAutomaticKeepAlives: addAutomaticKeepAlives,
             cacheExtent: cacheExtent,
             cacheExtentStyle: cacheExtentStyle,
@@ -1350,9 +1441,11 @@ public sealed class ListView : StatelessWidget
         IndexedWidgetBuilder itemBuilder,
         IndexedWidgetBuilder separatorBuilder,
         Axis scrollDirection = Axis.Vertical,
+        bool reverse = false,
         ScrollController? controller = null,
         ScrollPhysics? physics = null,
         double? itemExtent = null,
+        Thickness? padding = null,
         bool addAutomaticKeepAlives = true,
         double cacheExtent = 250.0,
         CacheExtentStyle cacheExtentStyle = CacheExtentStyle.Pixel,
@@ -1363,9 +1456,11 @@ public sealed class ListView : StatelessWidget
             itemBuilder: itemBuilder,
             separatorBuilder: separatorBuilder,
             scrollDirection: scrollDirection,
+            reverse: reverse,
             controller: controller,
             physics: physics,
             itemExtent: itemExtent,
+            padding: padding,
             addAutomaticKeepAlives: addAutomaticKeepAlives,
             cacheExtent: cacheExtent,
             cacheExtentStyle: cacheExtentStyle,
@@ -1417,9 +1512,15 @@ public sealed class ListView : StatelessWidget
                     addAutomaticKeepAlives: _addAutomaticKeepAlives);
         }
 
+        if (HasNonZeroPadding(_padding))
+        {
+            sliver = new SliverPadding(_padding, sliver);
+        }
+
         return new CustomScrollView(
             slivers: [sliver],
             scrollDirection: ScrollDirection,
+            reverse: Reverse,
             controller: Controller,
             physics: Physics,
             cacheExtent: _cacheExtent,
@@ -1434,5 +1535,13 @@ public sealed class ListView : StatelessWidget
         }
 
         return itemCount * 2 - 1;
+    }
+
+    private static bool HasNonZeroPadding(Thickness padding)
+    {
+        return Math.Abs(padding.Left) > 0.0001
+               || Math.Abs(padding.Top) > 0.0001
+               || Math.Abs(padding.Right) > 0.0001
+               || Math.Abs(padding.Bottom) > 0.0001;
     }
 }

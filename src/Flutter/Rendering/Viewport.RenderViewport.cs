@@ -7,6 +7,8 @@ public sealed class RenderViewport : RenderBox, IRenderObjectContainer
 {
     private readonly RenderBoxContainerDefaultsMixin<RenderSliver, SliverPhysicalParentData> _container;
     private Axis _axis;
+    private AxisDirection _axisDirection;
+    private GrowthDirection _growthDirection;
     private double _offsetPixels;
     private double _cacheExtent;
     private CacheExtentStyle _cacheExtentStyle;
@@ -15,6 +17,8 @@ public sealed class RenderViewport : RenderBox, IRenderObjectContainer
 
     public RenderViewport(
         Axis axis = Axis.Vertical,
+        AxisDirection? axisDirection = null,
+        GrowthDirection growthDirection = GrowthDirection.Forward,
         double offsetPixels = 0.0,
         double cacheExtent = 0.0,
         CacheExtentStyle cacheExtentStyle = CacheExtentStyle.Pixel,
@@ -22,7 +26,9 @@ public sealed class RenderViewport : RenderBox, IRenderObjectContainer
         RenderBox? child = null)
     {
         _container = new RenderBoxContainerDefaultsMixin<RenderSliver, SliverPhysicalParentData>(this);
-        _axis = axis;
+        _axisDirection = axisDirection ?? ScrollDirectionUtils.DefaultAxisDirection(axis);
+        _axis = ScrollDirectionUtils.AxisDirectionToAxis(_axisDirection);
+        _growthDirection = growthDirection;
         _offsetPixels = offsetPixels;
         _cacheExtent = Math.Max(0, cacheExtent);
         _cacheExtentStyle = cacheExtentStyle;
@@ -45,6 +51,42 @@ public sealed class RenderViewport : RenderBox, IRenderObjectContainer
             }
 
             _axis = value;
+            if (ScrollDirectionUtils.AxisDirectionToAxis(_axisDirection) != value)
+            {
+                _axisDirection = ScrollDirectionUtils.DefaultAxisDirection(value);
+            }
+
+            MarkNeedsLayout();
+        }
+    }
+
+    public AxisDirection AxisDirection
+    {
+        get => _axisDirection;
+        set
+        {
+            if (_axisDirection == value)
+            {
+                return;
+            }
+
+            _axisDirection = value;
+            _axis = ScrollDirectionUtils.AxisDirectionToAxis(value);
+            MarkNeedsLayout();
+        }
+    }
+
+    public GrowthDirection GrowthDirection
+    {
+        get => _growthDirection;
+        set
+        {
+            if (_growthDirection == value)
+            {
+                return;
+            }
+
+            _growthDirection = value;
             MarkNeedsLayout();
         }
     }
@@ -186,18 +228,30 @@ public sealed class RenderViewport : RenderBox, IRenderObjectContainer
         var viewportMainAxisExtent = Axis == Axis.Vertical ? Size.Height : Size.Width;
         var crossAxisExtent = Axis == Axis.Vertical ? Size.Width : Size.Height;
         var currentOffset = Math.Max(0, _offsetPixels);
+        var currentMaxScrollExtent = Math.Max(0, _maxScrollExtent);
         const double precisionErrorTolerance = 0.0001;
 
-        for (var pass = 0; pass < 4; pass++)
+        for (var pass = 0; pass < 6; pass++)
         {
+            var effectiveScrollOffset = EffectiveScrollOffsetForLayout(currentOffset, currentMaxScrollExtent);
             var layout = LayoutWithCorrections(
-                scrollOffset: currentOffset,
+                scrollOffset: effectiveScrollOffset,
                 viewportMainAxisExtent: viewportMainAxisExtent,
                 crossAxisExtent: crossAxisExtent);
 
             var maxScrollExtent = Math.Max(0, layout.totalScrollExtent - viewportMainAxisExtent);
-            var clampedOffset = Math.Clamp(layout.scrollOffset, 0, maxScrollExtent);
-            if (Math.Abs(clampedOffset - currentOffset) <= precisionErrorTolerance)
+            var clampedOffset = Math.Clamp(currentOffset, 0, maxScrollExtent);
+            if (Math.Abs(layout.scrollOffset - effectiveScrollOffset) > precisionErrorTolerance)
+            {
+                clampedOffset = UserOffsetFromEffective(layout.scrollOffset, maxScrollExtent);
+            }
+
+            var targetEffectiveScrollOffset = EffectiveScrollOffsetForLayout(clampedOffset, maxScrollExtent);
+            var offsetStable = Math.Abs(clampedOffset - currentOffset) <= precisionErrorTolerance;
+            var effectiveOffsetStable = Math.Abs(targetEffectiveScrollOffset - effectiveScrollOffset) <= precisionErrorTolerance;
+            var maxExtentStable = Math.Abs(maxScrollExtent - currentMaxScrollExtent) <= precisionErrorTolerance;
+
+            if (offsetStable && effectiveOffsetStable && maxExtentStable)
             {
                 currentOffset = clampedOffset;
                 _offsetPixels = currentOffset;
@@ -207,14 +261,16 @@ public sealed class RenderViewport : RenderBox, IRenderObjectContainer
             }
 
             currentOffset = clampedOffset;
+            currentMaxScrollExtent = maxScrollExtent;
         }
 
+        var finalEffectiveScrollOffset = EffectiveScrollOffsetForLayout(currentOffset, currentMaxScrollExtent);
         var finalLayout = LayoutWithCorrections(
-            scrollOffset: currentOffset,
+            scrollOffset: finalEffectiveScrollOffset,
             viewportMainAxisExtent: viewportMainAxisExtent,
             crossAxisExtent: crossAxisExtent);
         _maxScrollExtent = Math.Max(0, finalLayout.totalScrollExtent - viewportMainAxisExtent);
-        _offsetPixels = Math.Clamp(finalLayout.scrollOffset, 0, _maxScrollExtent);
+        _offsetPixels = UserOffsetFromEffective(finalLayout.scrollOffset, _maxScrollExtent);
         OnViewportMetricsChanged?.Invoke(viewportMainAxisExtent, 0, _maxScrollExtent);
     }
 
@@ -312,7 +368,9 @@ public sealed class RenderViewport : RenderBox, IRenderObjectContainer
                 crossAxisExtent,
                 viewportMainAxisExtent,
                 CacheOrigin: cacheOrigin,
-                RemainingCacheExtent: remainingCacheExtent));
+                RemainingCacheExtent: remainingCacheExtent,
+                AxisDirection: _axisDirection,
+                GrowthDirection: _growthDirection));
 
             if (Math.Abs(child.Geometry.ScrollOffsetCorrection) > 0.0001)
             {
@@ -329,5 +387,27 @@ public sealed class RenderViewport : RenderBox, IRenderObjectContainer
         }
 
         return (precedingScrollExtent, paintedExtent, null);
+    }
+
+    private double EffectiveScrollOffsetForLayout(double userOffset, double maxScrollExtent)
+    {
+        var clampedOffset = Math.Clamp(userOffset, 0, Math.Max(0, maxScrollExtent));
+        if (!ScrollDirectionUtils.AxisDirectionIsReversed(_axisDirection))
+        {
+            return clampedOffset;
+        }
+
+        return Math.Max(0, maxScrollExtent - clampedOffset);
+    }
+
+    private double UserOffsetFromEffective(double effectiveOffset, double maxScrollExtent)
+    {
+        var clampedEffectiveOffset = Math.Clamp(effectiveOffset, 0, Math.Max(0, maxScrollExtent));
+        if (!ScrollDirectionUtils.AxisDirectionIsReversed(_axisDirection))
+        {
+            return clampedEffectiveOffset;
+        }
+
+        return Math.Max(0, maxScrollExtent - clampedEffectiveOffset);
     }
 }

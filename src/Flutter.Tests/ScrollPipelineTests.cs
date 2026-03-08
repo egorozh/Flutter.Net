@@ -148,6 +148,74 @@ public sealed class ScrollPipelineTests
     }
 
     [Fact]
+    public void RenderSliverPadding_ContributesPaddingToScrollExtent()
+    {
+        double maxExtent = -1;
+        var innerSliver = new RenderSliverToBoxAdapter(new FixedSizeBox(new Size(100, 120)));
+        var sliverPadding = new RenderSliverPadding(new Thickness(0, 10, 0, 20), innerSliver);
+        var viewport = new RenderViewport(
+            axis: Axis.Vertical,
+            offsetPixels: 0,
+            onViewportMetricsChanged: (_, _, max) => maxExtent = max);
+        viewport.Insert(sliverPadding);
+
+        var root = new RenderView { Child = viewport };
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+        pipeline.FlushLayout(new Size(100, 100));
+
+        Assert.Equal(50, maxExtent);
+        var sliverParentData = (SliverPhysicalParentData)innerSliver.parentData!;
+        Assert.Equal(new Point(0, 10), sliverParentData.offset);
+
+        viewport.OffsetPixels = 15;
+        pipeline.FlushLayout(new Size(100, 100));
+
+        Assert.Equal(new Point(0, -5), sliverParentData.offset);
+    }
+
+    [Fact]
+    public void RenderViewport_AxisDirectionUp_MapsUserOffsetFromTrailingEdge()
+    {
+        var child = new FixedSizeBox(new Size(80, 600));
+        var viewport = new RenderViewport(
+            axisDirection: AxisDirection.Up,
+            offsetPixels: 0,
+            child: child);
+        var root = new RenderView { Child = viewport };
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+
+        pipeline.FlushLayout(new Size(100, 200));
+        var childParentData = (BoxParentData)child.parentData!;
+        Assert.Equal(new Point(0, -400), childParentData.offset);
+
+        viewport.OffsetPixels = 400;
+        pipeline.FlushLayout(new Size(100, 200));
+        Assert.Equal(new Point(0, 0), childParentData.offset);
+    }
+
+    [Fact]
+    public void RenderViewport_PropagatesAxisAndGrowthDirectionToSlivers()
+    {
+        var sliver = new ConstraintCapturingSliver(scrollExtent: 300);
+        var viewport = new RenderViewport(
+            axisDirection: AxisDirection.Up,
+            growthDirection: GrowthDirection.Reverse,
+            offsetPixels: 0);
+        viewport.Insert(sliver);
+
+        var root = new RenderView { Child = viewport };
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+        pipeline.FlushLayout(new Size(100, 120));
+
+        Assert.Equal(AxisDirection.Up, sliver.LastConstraints.AxisDirection);
+        Assert.Equal(GrowthDirection.Reverse, sliver.LastConstraints.GrowthDirection);
+        Assert.Equal(Axis.Vertical, sliver.LastConstraints.Axis);
+    }
+
+    [Fact]
     public void RenderSliverList_CreatesOnlyNeededChildren_AndTrimsTrailingOnReverseScroll()
     {
         var manager = new TestSliverChildManager(childCount: 200, childExtent: 50);
@@ -382,6 +450,37 @@ public sealed class ScrollPipelineTests
                 return;
             }
 
+            var remaining = Math.Max(0, _scrollExtent - constraints.ScrollOffset);
+            var paintExtent = Math.Min(remaining, constraints.RemainingPaintExtent);
+            var layoutExtent = Math.Min(paintExtent, constraints.ViewportMainAxisExtent);
+            Geometry = new SliverGeometry(
+                ScrollExtent: _scrollExtent,
+                PaintExtent: paintExtent,
+                LayoutExtent: layoutExtent,
+                MaxPaintExtent: _scrollExtent,
+                CacheExtent: paintExtent,
+                HasVisualOverflow: constraints.ScrollOffset > 0 || remaining > constraints.RemainingPaintExtent);
+        }
+
+        public override void Paint(PaintingContext ctx, Point offset)
+        {
+        }
+    }
+
+    private sealed class ConstraintCapturingSliver : RenderSliver
+    {
+        private readonly double _scrollExtent;
+
+        public ConstraintCapturingSliver(double scrollExtent)
+        {
+            _scrollExtent = scrollExtent;
+        }
+
+        public SliverConstraints LastConstraints { get; private set; }
+
+        protected override void PerformSliverLayout(SliverConstraints constraints)
+        {
+            LastConstraints = constraints;
             var remaining = Math.Max(0, _scrollExtent - constraints.ScrollOffset);
             var paintExtent = Math.Min(remaining, constraints.RemainingPaintExtent);
             var layoutExtent = Math.Min(paintExtent, constraints.ViewportMainAxisExtent);
