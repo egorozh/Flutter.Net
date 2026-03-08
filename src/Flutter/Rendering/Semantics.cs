@@ -40,6 +40,7 @@ public sealed class SemanticsConfiguration
 {
     public bool IsSemanticBoundary { get; set; }
     public bool IsMergingSemanticsOfDescendants { get; set; }
+    public bool ExplicitChildNodes { get; set; }
     public bool IsBlockingSemanticsOfPreviouslyPaintedNodes { get; set; }
     public ChildSemanticsConfigurationsDelegate? ChildConfigurationsDelegate { get; set; }
     public bool IsExcluded { get; set; }
@@ -100,6 +101,11 @@ public sealed class SemanticsConfiguration
 
     internal void Absorb(SemanticsConfiguration child)
     {
+        if (ExplicitChildNodes)
+        {
+            return;
+        }
+
         if (!child.HasBeenAnnotated)
         {
             return;
@@ -212,6 +218,11 @@ public sealed class SemanticsOwner
         renderObject._semanticsNode = node;
         _nodesByRenderObject[renderObject] = node;
         return node;
+    }
+
+    internal SemanticsNode CreateDetachedNode()
+    {
+        return new SemanticsNode(++_nextNodeId);
     }
 
     internal void UpdateRoot(List<SemanticsNode> roots)

@@ -429,9 +429,19 @@ public abstract class RenderObject : IRenderObject
     {
         var hadProducedSemanticsNode = _semanticsNode != null;
         var wasEffectiveSemanticsBoundary = hadProducedSemanticsNode && _isSemanticsBoundary && !_semanticsParentDataDirty;
+        var wasBlockingSiblings = _hasCachedSemanticsConfiguration
+                                  && _cachedSemanticsConfiguration != null
+                                  && !_cachedSemanticsConfiguration.IsExcluded
+                                  && _cachedSemanticsConfiguration.IsBlockingSemanticsOfPreviouslyPaintedNodes;
 
         _needsSemanticsUpdate = true;
         _hasBlockingSemanticsCache = false;
+
+        var updatedConfiguration = new SemanticsConfiguration();
+        DescribeSemanticsConfiguration(updatedConfiguration);
+        var blocksSiblingsNow = !updatedConfiguration.IsExcluded
+                                && updatedConfiguration.IsBlockingSemanticsOfPreviouslyPaintedNodes;
+        var mayAffectSiblingOrdering = wasBlockingSiblings || blocksSiblingsNow;
 
         if (!Attached || Owner == null)
         {
@@ -440,7 +450,7 @@ public abstract class RenderObject : IRenderObject
 
         var mayProduceSiblingNodes = HasChildSemanticsConfigurationsDelegate();
         RenderObject node = this;
-        var isEffectiveSemanticsBoundary = wasEffectiveSemanticsBoundary;
+        var isEffectiveSemanticsBoundary = wasEffectiveSemanticsBoundary && !mayAffectSiblingOrdering;
 
         while (node.Parent != null && (mayProduceSiblingNodes || !isEffectiveSemanticsBoundary))
         {
@@ -513,6 +523,7 @@ public abstract class RenderObject : IRenderObject
 
         var config = new SemanticsConfiguration();
         DescribeSemanticsConfiguration(config);
+        ValidateSemanticsConfiguration(config);
         _cachedSemanticsConfiguration = config;
         _hasCachedSemanticsConfiguration = true;
         _isSemanticsBoundary = config.IsSemanticBoundary;
@@ -549,26 +560,37 @@ public abstract class RenderObject : IRenderObject
             semanticsChildren.Add((child, childMatrix, semanticsClipForChild, paintClipForChild));
         });
 
-        foreach (var entry in semanticsChildren)
-        {
-            entry.child.UpdateSemanticsChildren(entry.transform, entry.semanticsClipRect, entry.paintClipRect);
-        }
-
-        var nonBlockedChildren = new List<RenderObject>();
+        var nonBlockedChildren = new List<(RenderObject child, Matrix transform, Rect? semanticsClipRect, Rect? paintClipRect)>();
         foreach (var entry in semanticsChildren)
         {
             if (entry.child.BlocksPreviousSemanticsSibling())
             {
                 foreach (var droppedSibling in nonBlockedChildren)
                 {
-                    droppedSibling.MarkSemanticsParentDataDirty();
+                    droppedSibling.child.MarkSemanticsParentDataDirty();
                 }
 
                 nonBlockedChildren.Clear();
             }
 
-            nonBlockedChildren.Add(entry.child);
+            nonBlockedChildren.Add(entry);
         }
+
+        foreach (var entry in nonBlockedChildren)
+        {
+            entry.child.UpdateSemanticsChildren(entry.transform, entry.semanticsClipRect, entry.paintClipRect);
+        }
+    }
+
+    internal void UpdateSemanticsChildrenFromCachedParentData()
+    {
+        if (Parent == null)
+        {
+            UpdateSemanticsChildren(Matrix.Identity, semanticsClipRect: null, paintClipRect: null);
+            return;
+        }
+
+        UpdateSemanticsChildren(_semanticsTransform, _semanticsClipRect, _semanticsPaintClipRect);
     }
 
     internal void EnsureSemanticsGeometry()
@@ -603,6 +625,14 @@ public abstract class RenderObject : IRenderObject
 
     internal void EnsureSemanticsNode(SemanticsOwner owner, List<SemanticsNode> output)
     {
+        EnsureSemanticsNode(owner, output, inheritedExplicitChildNodes: true);
+    }
+
+    private void EnsureSemanticsNode(
+        SemanticsOwner owner,
+        List<SemanticsNode> output,
+        bool inheritedExplicitChildNodes)
+    {
         if (_semanticsParentDataDirty || !_hasCachedSemanticsConfiguration || _cachedSemanticsConfiguration == null)
         {
             return;
@@ -615,11 +645,16 @@ public abstract class RenderObject : IRenderObject
             return;
         }
 
+        var contributesToSemanticsTree = ContributesToSemanticsTree(config);
+        var explicitChildNodesForChildren = Parent == null
+                                            || config.ExplicitChildNodes
+                                            || (!contributesToSemanticsTree && inheritedExplicitChildNodes);
+
         var children = new List<SemanticsNode>();
         VisitChildrenForSemantics((child, _, _) =>
         {
             var childNodes = new List<SemanticsNode>();
-            child.EnsureSemanticsNode(owner, childNodes);
+            child.EnsureSemanticsNode(owner, childNodes, explicitChildNodesForChildren);
 
             if (childNodes.Any(static node => node.BlocksPreviousNodes))
             {
@@ -629,7 +664,9 @@ public abstract class RenderObject : IRenderObject
             children.AddRange(childNodes);
         });
 
-        if (config.IsMergingSemanticsOfDescendants && children.Count > 0)
+        var siblingNodes = ApplyChildConfigurationsDelegate(owner, config, children, explicitChildNodesForChildren);
+
+        if (config.IsMergingSemanticsOfDescendants && !explicitChildNodesForChildren && children.Count > 0)
         {
             MergeChildSemanticsIntoConfiguration(config, children);
         }
@@ -638,6 +675,7 @@ public abstract class RenderObject : IRenderObject
         {
             _semanticsNode = null;
             output.AddRange(children);
+            output.AddRange(siblingNodes);
             return;
         }
 
@@ -648,16 +686,16 @@ public abstract class RenderObject : IRenderObject
         }
 
         var semanticsNode = owner.EnsureNode(this);
-        semanticsNode.Rect = _semanticsRect;
-        semanticsNode.Label = config.Label;
-        semanticsNode.Flags = config.Flags;
-        semanticsNode.Actions = config.Actions;
-        semanticsNode.IsHidden = _semanticsHidden;
-        semanticsNode.BlocksPreviousNodes = config.IsBlockingSemanticsOfPreviouslyPaintedNodes;
-        semanticsNode.ReplaceChildren(children);
-        semanticsNode.SetActionHandlers(config.ActionHandlers);
+        ApplySemanticsConfigurationToNode(
+            semanticsNode,
+            config,
+            _semanticsRect,
+            _semanticsHidden,
+            config.IsBlockingSemanticsOfPreviouslyPaintedNodes,
+            children);
 
         output.Add(semanticsNode);
+        output.AddRange(siblingNodes);
     }
 
     private static bool HasOwnSemantics(SemanticsConfiguration config)
@@ -679,14 +717,7 @@ public abstract class RenderObject : IRenderObject
 
     private bool HasChildSemanticsConfigurationsDelegate()
     {
-        if (_hasCachedSemanticsConfiguration && _cachedSemanticsConfiguration != null)
-        {
-            return _cachedSemanticsConfiguration.ChildConfigurationsDelegate != null;
-        }
-
-        var configuration = new SemanticsConfiguration();
-        DescribeSemanticsConfiguration(configuration);
-        return configuration.ChildConfigurationsDelegate != null;
+        return GetEffectiveSemanticsConfigurationForQueries().ChildConfigurationsDelegate != null;
     }
 
     private bool BlocksPreviousSemanticsSibling()
@@ -696,14 +727,7 @@ public abstract class RenderObject : IRenderObject
             return _blocksPreviousSemanticsCache;
         }
 
-        if (!_hasCachedSemanticsConfiguration || _cachedSemanticsConfiguration == null)
-        {
-            _hasBlockingSemanticsCache = true;
-            _blocksPreviousSemanticsCache = false;
-            return false;
-        }
-
-        var config = _cachedSemanticsConfiguration;
+        var config = GetEffectiveSemanticsConfigurationForQueries();
         if (config.IsExcluded)
         {
             _hasBlockingSemanticsCache = true;
@@ -739,6 +763,19 @@ public abstract class RenderObject : IRenderObject
         return blocksPreviousSibling;
     }
 
+    private SemanticsConfiguration GetEffectiveSemanticsConfigurationForQueries()
+    {
+        if (_hasCachedSemanticsConfiguration && _cachedSemanticsConfiguration != null && !_needsSemanticsUpdate)
+        {
+            return _cachedSemanticsConfiguration;
+        }
+
+        var configuration = new SemanticsConfiguration();
+        DescribeSemanticsConfiguration(configuration);
+        ValidateSemanticsConfiguration(configuration);
+        return configuration;
+    }
+
     private static void MergeChildSemanticsIntoConfiguration(
         SemanticsConfiguration configuration,
         List<SemanticsNode> children)
@@ -766,6 +803,283 @@ public abstract class RenderObject : IRenderObject
         children.AddRange(childrenToKeep);
     }
 
+    private List<SemanticsNode> ApplyChildConfigurationsDelegate(
+        SemanticsOwner owner,
+        SemanticsConfiguration configuration,
+        List<SemanticsNode> children,
+        bool forceExplicitChildNodes)
+    {
+        if (configuration.ChildConfigurationsDelegate == null)
+        {
+            return [];
+        }
+
+        var childConfigurations = new List<SemanticsConfiguration>(children.Count);
+        var configurationToChildNode = new Dictionary<SemanticsConfiguration, SemanticsNode>(children.Count);
+
+        foreach (var child in children)
+        {
+            var childConfiguration = CreateConfigurationFromSemanticsNode(child);
+            childConfigurations.Add(childConfiguration);
+            configurationToChildNode[childConfiguration] = child;
+        }
+
+        var result = configuration.ChildConfigurationsDelegate(childConfigurations);
+        var consumedChildren = new HashSet<SemanticsNode>();
+        var consumedIncompleteConfigurations = new HashSet<SemanticsConfiguration>();
+        var incompleteConfigurationNodes = new Dictionary<SemanticsConfiguration, SemanticsNode>();
+        var siblingNodes = new List<SemanticsNode>();
+
+        foreach (var mergeConfiguration in result.MergeUp)
+        {
+            if (!TryResolveDelegateNode(
+                    owner,
+                    mergeConfiguration,
+                    configurationToChildNode,
+                    incompleteConfigurationNodes,
+                    out var node,
+                    out var fromChild))
+            {
+                continue;
+            }
+
+            if (fromChild)
+            {
+                if (consumedChildren.Contains(node))
+                {
+                    continue;
+                }
+            }
+            else
+            {
+                if (consumedIncompleteConfigurations.Contains(mergeConfiguration))
+                {
+                    continue;
+                }
+            }
+
+            if (forceExplicitChildNodes)
+            {
+                if (fromChild)
+                {
+                    continue;
+                }
+
+                children.Add(node);
+                consumedIncompleteConfigurations.Add(mergeConfiguration);
+                continue;
+            }
+
+            if (!configuration.IsCompatibleWith(mergeConfiguration))
+            {
+                if (!fromChild)
+                {
+                    siblingNodes.Add(node);
+                    consumedIncompleteConfigurations.Add(mergeConfiguration);
+                }
+
+                continue;
+            }
+
+            configuration.Absorb(mergeConfiguration);
+            if (fromChild)
+            {
+                consumedChildren.Add(node);
+            }
+            else
+            {
+                consumedIncompleteConfigurations.Add(mergeConfiguration);
+            }
+        }
+
+        foreach (var siblingGroup in result.SiblingMergeGroups)
+        {
+            SemanticsNode? mergedNode = null;
+            SemanticsConfiguration? mergedConfiguration = null;
+            var mergedRect = default(Rect);
+            var mergedIsHidden = false;
+            var mergedBlocksPreviousNodes = false;
+
+            foreach (var groupConfiguration in siblingGroup)
+            {
+                if (!TryResolveDelegateNode(
+                        owner,
+                        groupConfiguration,
+                        configurationToChildNode,
+                        incompleteConfigurationNodes,
+                        out var groupNode,
+                        out var fromChild))
+                {
+                    continue;
+                }
+
+                if (fromChild)
+                {
+                    if (consumedChildren.Contains(groupNode))
+                    {
+                        continue;
+                    }
+                }
+                else
+                {
+                    if (consumedIncompleteConfigurations.Contains(groupConfiguration))
+                    {
+                        continue;
+                    }
+                }
+
+                if (mergedNode == null || mergedConfiguration == null)
+                {
+                    mergedNode = groupNode;
+                    mergedConfiguration = CreateConfigurationFromSemanticsNode(groupNode);
+                    mergedRect = groupNode.Rect;
+                    mergedIsHidden = groupNode.IsHidden;
+                    mergedBlocksPreviousNodes = groupNode.BlocksPreviousNodes;
+
+                    if (fromChild)
+                    {
+                        consumedChildren.Add(groupNode);
+                    }
+                    else
+                    {
+                        consumedIncompleteConfigurations.Add(groupConfiguration);
+                    }
+
+                    continue;
+                }
+
+                if (!mergedConfiguration.IsCompatibleWith(groupConfiguration))
+                {
+                    ApplySemanticsConfigurationToNode(
+                        mergedNode,
+                        mergedConfiguration,
+                        mergedRect,
+                        mergedIsHidden,
+                        mergedBlocksPreviousNodes,
+                        []);
+                    siblingNodes.Add(mergedNode);
+
+                    mergedNode = groupNode;
+                    mergedConfiguration = CreateConfigurationFromSemanticsNode(groupNode);
+                    mergedRect = groupNode.Rect;
+                    mergedIsHidden = groupNode.IsHidden;
+                    mergedBlocksPreviousNodes = groupNode.BlocksPreviousNodes;
+                }
+                else
+                {
+                    mergedConfiguration.Absorb(groupConfiguration);
+                    mergedRect = ExpandRectToInclude(mergedRect, groupNode.Rect);
+                    mergedIsHidden &= groupNode.IsHidden;
+                    mergedBlocksPreviousNodes |= groupNode.BlocksPreviousNodes;
+                }
+
+                if (fromChild)
+                {
+                    consumedChildren.Add(groupNode);
+                }
+                else
+                {
+                    consumedIncompleteConfigurations.Add(groupConfiguration);
+                }
+            }
+
+            if (mergedNode != null && mergedConfiguration != null)
+            {
+                ApplySemanticsConfigurationToNode(
+                    mergedNode,
+                    mergedConfiguration,
+                    mergedRect,
+                    mergedIsHidden,
+                    mergedBlocksPreviousNodes,
+                    []);
+                siblingNodes.Add(mergedNode);
+            }
+        }
+
+        if (consumedChildren.Count > 0)
+        {
+            children.RemoveAll(consumedChildren.Contains);
+        }
+
+        return siblingNodes;
+    }
+
+    private static bool ContributesToSemanticsTree(SemanticsConfiguration configuration)
+    {
+        return HasOwnSemantics(configuration) || configuration.ChildConfigurationsDelegate != null;
+    }
+
+    private static void ValidateSemanticsConfiguration(SemanticsConfiguration configuration)
+    {
+        if (configuration.ExplicitChildNodes && configuration.ChildConfigurationsDelegate != null)
+        {
+            throw new InvalidOperationException(
+                "SemanticsConfiguration with ExplicitChildNodes=true cannot have a non-null ChildConfigurationsDelegate.");
+        }
+    }
+
+    private bool TryResolveDelegateNode(
+        SemanticsOwner owner,
+        SemanticsConfiguration configuration,
+        Dictionary<SemanticsConfiguration, SemanticsNode> configurationToChildNode,
+        Dictionary<SemanticsConfiguration, SemanticsNode> incompleteConfigurationNodes,
+        out SemanticsNode node,
+        out bool fromChild)
+    {
+        if (configurationToChildNode.TryGetValue(configuration, out node!))
+        {
+            fromChild = true;
+            return true;
+        }
+
+        fromChild = false;
+        if (incompleteConfigurationNodes.TryGetValue(configuration, out node!))
+        {
+            return true;
+        }
+
+        var incompleteNode = CreateIncompleteSemanticsNode(owner, configuration);
+        if (incompleteNode == null)
+        {
+            node = null!;
+            return false;
+        }
+
+        node = incompleteNode;
+        incompleteConfigurationNodes[configuration] = node;
+        return true;
+    }
+
+    private SemanticsNode? CreateIncompleteSemanticsNode(
+        SemanticsOwner owner,
+        SemanticsConfiguration configuration)
+    {
+        if (configuration.IsExcluded || !HasOwnSemantics(configuration))
+        {
+            return null;
+        }
+
+        var rect = configuration.ExplicitRect.HasValue
+            ? TransformRect(_semanticsTransform, configuration.ExplicitRect.Value)
+            : _semanticsRect;
+        if (_semanticsClipRect.HasValue && !_semanticsClipRect.Value.Intersects(rect))
+        {
+            return null;
+        }
+
+        var isHidden = _semanticsPaintClipRect.HasValue
+                       && !_semanticsPaintClipRect.Value.Intersects(rect);
+        var node = owner.CreateDetachedNode();
+        ApplySemanticsConfigurationToNode(
+            node,
+            configuration,
+            rect,
+            isHidden,
+            configuration.IsBlockingSemanticsOfPreviouslyPaintedNodes,
+            []);
+        return node;
+    }
+
     private static SemanticsConfiguration CreateConfigurationFromSemanticsNode(SemanticsNode node)
     {
         var configuration = new SemanticsConfiguration
@@ -779,6 +1093,33 @@ public abstract class RenderObject : IRenderObject
         node.CopyActionHandlersTo(handlers);
         configuration.ReplaceActionHandlers(handlers);
         return configuration;
+    }
+
+    private static Rect ExpandRectToInclude(Rect current, Rect addition)
+    {
+        var minX = Math.Min(current.X, addition.X);
+        var minY = Math.Min(current.Y, addition.Y);
+        var maxX = Math.Max(current.Right, addition.Right);
+        var maxY = Math.Max(current.Bottom, addition.Bottom);
+        return new Rect(minX, minY, maxX - minX, maxY - minY);
+    }
+
+    private static void ApplySemanticsConfigurationToNode(
+        SemanticsNode node,
+        SemanticsConfiguration configuration,
+        Rect rect,
+        bool isHidden,
+        bool blocksPreviousNodes,
+        List<SemanticsNode> children)
+    {
+        node.Rect = rect;
+        node.Label = configuration.Label;
+        node.Flags = configuration.Flags;
+        node.Actions = configuration.Actions;
+        node.IsHidden = isHidden;
+        node.BlocksPreviousNodes = blocksPreviousNodes;
+        node.ReplaceChildren(children);
+        node.SetActionHandlers(configuration.ActionHandlers);
     }
 
     protected virtual void PerformUpdateCompositingBits()

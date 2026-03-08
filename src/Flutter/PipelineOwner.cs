@@ -255,19 +255,19 @@ public sealed class PipelineOwner
 
         while (_nodesNeedingSemantics.Count > 0)
         {
-            var deferredNodes = _nodesNeedingSemantics
-                .Where(node =>
-                    node.Attached
-                    && ReferenceEquals(node.Owner, this)
-                    && node.NeedsLayout)
-                .ToArray();
-
             var nodesToProcess = _nodesNeedingSemantics
                 .Where(node =>
                     node.Attached
                     && ReferenceEquals(node.Owner, this)
                     && !node.NeedsLayout)
                 .OrderBy(static node => node.Depth)
+                .ToArray();
+
+            var deferredNodes = _nodesNeedingSemantics
+                .Where(node =>
+                    node.Attached
+                    && ReferenceEquals(node.Owner, this)
+                    && node.NeedsLayout)
                 .ToArray();
 
             _nodesNeedingSemantics.Clear();
@@ -284,10 +284,26 @@ public sealed class PipelineOwner
             }
 
             // Phase 1/2: rebuild semantics fragments and propagate parent-data context.
-            Root.UpdateSemanticsChildren(Matrix.Identity, semanticsClipRect: null, paintClipRect: null);
+            foreach (var node in nodesToProcess)
+            {
+                if (node.Parent != null && node.SemanticsParentDataDirty)
+                {
+                    continue;
+                }
+
+                node.UpdateSemanticsChildrenFromCachedParentData();
+            }
 
             // Phase 3: compute semantics geometry with final transforms/clips.
-            Root.EnsureSemanticsGeometry();
+            foreach (var node in nodesToProcess)
+            {
+                if (node.Parent != null && node.SemanticsParentDataDirty)
+                {
+                    continue;
+                }
+
+                node.EnsureSemanticsGeometry();
+            }
 
             // Phase 4: compile semantics nodes from staged semantics data.
             var compiledRoots = new List<SemanticsNode>();

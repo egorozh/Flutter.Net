@@ -356,6 +356,45 @@ public sealed class SemanticsTreeTests
     }
 
     [Fact]
+    public void BlockingSemantics_BlockedSiblingDirtyNode_DoesNotRebuildUntilUnblocked()
+    {
+        var back = new CountingSemanticLeafRenderBox("Back");
+        var front = new MutableBlockingSemanticBox("Front", new Size(20, 10), blocksPreviousNodes: true);
+        var row = new RenderFlex(
+            children: [back, front],
+            direction: Axis.Horizontal);
+
+        var renderView = new RenderView
+        {
+            Child = row
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+
+        pipeline.FlushLayout(new Size(220, 120));
+        pipeline.FlushSemantics();
+
+        back.ResetSemanticsCounter();
+        back.Label = "Back 2";
+        pipeline.FlushSemantics();
+
+        Assert.Equal(0, back.SemanticsUpdateCount);
+        Assert.True(back.SemanticsParentDataDirty);
+
+        front.BlocksPreviousNodes = false;
+        pipeline.FlushSemantics();
+
+        Assert.Equal(1, back.SemanticsUpdateCount);
+        Assert.False(back.SemanticsParentDataDirty);
+
+        var root = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(root);
+        Assert.Contains(root.Children, node => node.Label == "Back 2");
+        Assert.Contains(root.Children, node => node.Label == "Front");
+    }
+
+    [Fact]
     public void VisitChildrenForSemantics_OmittedChildStaysParentDataDirty_UntilVisible()
     {
         var first = new FixedSemanticBox("First", new Size(20, 10));
@@ -679,6 +718,216 @@ public sealed class SemanticsTreeTests
         Assert.False(ancestor.SemanticsParentDataDirty);
     }
 
+    [Fact]
+    public void ChildConfigurationsDelegate_MergeUp_AbsorbsChildrenIntoBoundaryNode()
+    {
+        var row = new RenderFlex(
+            children:
+            [
+                new FixedSemanticBox("One", new Size(12, 8)),
+                new FixedSemanticBox("Two", new Size(12, 8))
+            ],
+            direction: Axis.Horizontal);
+        var delegated = new ChildDelegateSemanticBoundaryRenderBox("Parent", row, static childConfigurations =>
+            new ChildSemanticsConfigurationsResult(
+                new List<SemanticsConfiguration>(childConfigurations),
+                new List<List<SemanticsConfiguration>>()));
+
+        var renderView = new RenderView
+        {
+            Child = delegated
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+        pipeline.FlushLayout(new Size(220, 120));
+        pipeline.FlushSemantics();
+
+        var root = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(root);
+        var parentNode = Assert.Single(root.Children);
+        Assert.Equal("Parent One Two", parentNode.Label);
+        Assert.Empty(parentNode.Children);
+    }
+
+    [Fact]
+    public void ChildConfigurationsDelegate_SiblingMergeGroup_ProducesSiblingNode()
+    {
+        var row = new RenderFlex(
+            children:
+            [
+                new FixedSemanticBox("One", new Size(12, 8)),
+                new FixedSemanticBox("Two", new Size(12, 8))
+            ],
+            direction: Axis.Horizontal);
+        var delegated = new ChildDelegateSemanticBoundaryRenderBox("Parent", row, static childConfigurations =>
+            new ChildSemanticsConfigurationsResult(
+                new List<SemanticsConfiguration>(),
+                new List<List<SemanticsConfiguration>>
+                {
+                    new List<SemanticsConfiguration>(childConfigurations)
+                }));
+
+        var renderView = new RenderView
+        {
+            Child = delegated
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+        pipeline.FlushLayout(new Size(220, 120));
+        pipeline.FlushSemantics();
+
+        var root = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(root);
+        Assert.Equal(2, root.Children.Count);
+
+        var parentNode = Assert.Single(root.Children.Where(node => node.Label == "Parent"));
+        Assert.Empty(parentNode.Children);
+
+        var siblingNode = Assert.Single(root.Children.Where(node => node.Label == "One Two"));
+        Assert.True(siblingNode.Flags == SemanticsFlags.None);
+    }
+
+    [Fact]
+    public void ChildConfigurationsDelegate_SiblingMergeGroup_WithConflicts_LeavesSeparateNodes()
+    {
+        var firstTapCount = 0;
+        var secondTapCount = 0;
+        var first = new ActionSemanticBox("First", new Size(12, 8), () => firstTapCount += 1);
+        var second = new ActionSemanticBox("Second", new Size(12, 8), () => secondTapCount += 1);
+        var row = new RenderFlex(
+            children: [first, second],
+            direction: Axis.Horizontal);
+        var delegated = new ChildDelegateSemanticBoundaryRenderBox("Parent", row, static childConfigurations =>
+            new ChildSemanticsConfigurationsResult(
+                new List<SemanticsConfiguration>(),
+                new List<List<SemanticsConfiguration>>
+                {
+                    new List<SemanticsConfiguration>(childConfigurations)
+                }));
+
+        var renderView = new RenderView
+        {
+            Child = delegated
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+        pipeline.FlushLayout(new Size(220, 120));
+        pipeline.FlushSemantics();
+
+        var root = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(root);
+        Assert.Equal(3, root.Children.Count);
+
+        Assert.Single(root.Children.Where(node => node.Label == "Parent"));
+        var firstNode = Assert.Single(root.Children.Where(node => node.Label == "First"));
+        var secondNode = Assert.Single(root.Children.Where(node => node.Label == "Second"));
+
+        Assert.True(pipeline.SemanticsOwner.PerformAction(firstNode.Id, SemanticsActions.Tap));
+        Assert.True(pipeline.SemanticsOwner.PerformAction(secondNode.Id, SemanticsActions.Tap));
+        Assert.Equal(1, firstTapCount);
+        Assert.Equal(1, secondTapCount);
+    }
+
+    [Fact]
+    public void ChildConfigurationsDelegate_IncompleteMergeUp_WithoutChildSemantics_AbsorbsIntoBoundaryNode()
+    {
+        var childWithoutSemantics = new RenderConstrainedBox(BoxConstraints.TightFor(width: 10, height: 10));
+        var delegated = new ChildDelegateSemanticBoundaryRenderBox("Parent", childWithoutSemantics, static _ =>
+        {
+            var synthetic = new SemanticsConfiguration
+            {
+                Label = "Synthetic"
+            };
+
+            return new ChildSemanticsConfigurationsResult(
+                new List<SemanticsConfiguration> { synthetic },
+                new List<List<SemanticsConfiguration>>());
+        });
+
+        var renderView = new RenderView
+        {
+            Child = delegated
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+        pipeline.FlushLayout(new Size(220, 120));
+        pipeline.FlushSemantics();
+
+        var root = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(root);
+        var parentNode = Assert.Single(root.Children);
+        Assert.Equal("Parent Synthetic", parentNode.Label);
+        Assert.Empty(parentNode.Children);
+    }
+
+    [Fact]
+    public void ChildConfigurationsDelegate_IncompleteSiblingGroup_WithoutChildSemantics_ProducesActionableSiblingNode()
+    {
+        var tapCount = 0;
+        var childWithoutSemantics = new RenderConstrainedBox(BoxConstraints.TightFor(width: 10, height: 10));
+        var delegated = new ChildDelegateSemanticBoundaryRenderBox("Parent", childWithoutSemantics, _ =>
+        {
+            var synthetic = new SemanticsConfiguration
+            {
+                Label = "Synthetic Action"
+            };
+            synthetic.AddActionHandler(SemanticsActions.Tap, () => tapCount += 1);
+
+            return new ChildSemanticsConfigurationsResult(
+                new List<SemanticsConfiguration>(),
+                new List<List<SemanticsConfiguration>>
+                {
+                    new List<SemanticsConfiguration> { synthetic }
+                });
+        });
+
+        var renderView = new RenderView
+        {
+            Child = delegated
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+        pipeline.FlushLayout(new Size(220, 120));
+        pipeline.FlushSemantics();
+
+        var root = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(root);
+        Assert.Equal(2, root.Children.Count);
+
+        var siblingNode = Assert.Single(root.Children.Where(node => node.Label == "Synthetic Action"));
+        Assert.True(siblingNode.Actions.HasFlag(SemanticsActions.Tap));
+        Assert.True(pipeline.SemanticsOwner.PerformAction(siblingNode.Id, SemanticsActions.Tap));
+        Assert.Equal(1, tapCount);
+    }
+
+    [Fact]
+    public void ChildConfigurationsDelegate_WithExplicitChildNodes_ThrowsInvalidOperation()
+    {
+        var row = new RenderFlex(children: [new FixedSemanticBox("One", new Size(12, 8))], direction: Axis.Horizontal);
+        var delegated = new ChildDelegateSemanticBoundaryRenderBox(
+            label: "Parent",
+            child: row,
+            childDelegate: static _ => new ChildSemanticsConfigurationsResult(
+                new List<SemanticsConfiguration>(),
+                new List<List<SemanticsConfiguration>>()),
+            explicitChildNodes: true);
+
+        var renderView = new RenderView
+        {
+            Child = delegated
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+        pipeline.FlushLayout(new Size(220, 120));
+        Assert.Throws<InvalidOperationException>(() => pipeline.FlushSemantics());
+    }
+
     private sealed class MutableSemanticBoundaryRenderBox : RenderProxyBox
     {
         private string _label;
@@ -769,6 +1018,33 @@ public sealed class SemanticsTreeTests
             {
                 configuration.ChildConfigurationsDelegate = MergeAllDelegate;
             }
+        }
+    }
+
+    private sealed class ChildDelegateSemanticBoundaryRenderBox : RenderProxyBox
+    {
+        private readonly string _label;
+        private readonly ChildSemanticsConfigurationsDelegate _childDelegate;
+        private readonly bool _explicitChildNodes;
+
+        public ChildDelegateSemanticBoundaryRenderBox(
+            string label,
+            RenderBox child,
+            ChildSemanticsConfigurationsDelegate childDelegate,
+            bool explicitChildNodes = false)
+        {
+            _label = label;
+            _childDelegate = childDelegate;
+            _explicitChildNodes = explicitChildNodes;
+            Child = child;
+        }
+
+        protected override void DescribeSemanticsConfiguration(SemanticsConfiguration configuration)
+        {
+            configuration.IsSemanticBoundary = true;
+            configuration.Label = _label;
+            configuration.ExplicitChildNodes = _explicitChildNodes;
+            configuration.ChildConfigurationsDelegate = _childDelegate;
         }
     }
 
