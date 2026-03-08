@@ -210,6 +210,57 @@ public sealed class ScrollPipelineTests
         Assert.Contains(0, ActiveIndices(sliverList));
     }
 
+    [Fact]
+    public void RenderViewport_CacheExtent_PreloadsChildrenOutsidePaintRegion()
+    {
+        var manager = new TestSliverChildManager(childCount: 200, childExtent: 50);
+        var sliverList = new RenderSliverList(manager);
+        manager.AttachOwner(sliverList);
+
+        var viewport = new RenderViewport(
+            axis: Axis.Vertical,
+            offsetPixels: 0,
+            cacheExtent: 100);
+        viewport.Insert(sliverList);
+
+        var root = new RenderView { Child = viewport };
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+        pipeline.FlushLayout(new Size(100, 200));
+
+        Assert.Contains(5, ActiveIndices(sliverList));
+        Assert.InRange(manager.MaxCreatedIndex, 5, 10);
+
+        viewport.CacheExtent = 0;
+        pipeline.FlushLayout(new Size(100, 200));
+
+        Assert.DoesNotContain(5, ActiveIndices(sliverList));
+        Assert.True(manager.RemoveCount > 0);
+    }
+
+    [Fact]
+    public void RenderViewport_ViewportCacheExtentStyle_ScalesByViewportSize()
+    {
+        var manager = new TestSliverChildManager(childCount: 200, childExtent: 50);
+        var sliverList = new RenderSliverList(manager);
+        manager.AttachOwner(sliverList);
+
+        var viewport = new RenderViewport(
+            axis: Axis.Vertical,
+            offsetPixels: 0,
+            cacheExtent: 1,
+            cacheExtentStyle: CacheExtentStyle.Viewport);
+        viewport.Insert(sliverList);
+
+        var root = new RenderView { Child = viewport };
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+        pipeline.FlushLayout(new Size(100, 200));
+
+        Assert.Contains(7, ActiveIndices(sliverList));
+        Assert.InRange(manager.MaxCreatedIndex, 7, 12);
+    }
+
     private static IReadOnlyList<int> ActiveIndices(RenderSliverList sliverList)
     {
         var indices = new List<int>();

@@ -11,6 +11,12 @@ public interface IScrollMetrics
     double ViewportDimension { get; }
 }
 
+public enum CacheExtentStyle
+{
+    Pixel,
+    Viewport
+}
+
 public abstract class Simulation
 {
     public abstract double X(double timeSeconds);

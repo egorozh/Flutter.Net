@@ -8,18 +8,24 @@ public sealed class RenderViewport : RenderBox, IRenderObjectContainer
     private readonly RenderBoxContainerDefaultsMixin<RenderSliver, SliverPhysicalParentData> _container;
     private Axis _axis;
     private double _offsetPixels;
+    private double _cacheExtent;
+    private CacheExtentStyle _cacheExtentStyle;
     private double _maxScrollExtent;
     private RenderSliverToBoxAdapter? _legacyChildSliver;
 
     public RenderViewport(
         Axis axis = Axis.Vertical,
         double offsetPixels = 0.0,
+        double cacheExtent = 0.0,
+        CacheExtentStyle cacheExtentStyle = CacheExtentStyle.Pixel,
         Action<double, double, double>? onViewportMetricsChanged = null,
         RenderBox? child = null)
     {
         _container = new RenderBoxContainerDefaultsMixin<RenderSliver, SliverPhysicalParentData>(this);
         _axis = axis;
         _offsetPixels = offsetPixels;
+        _cacheExtent = Math.Max(0, cacheExtent);
+        _cacheExtentStyle = cacheExtentStyle;
         OnViewportMetricsChanged = onViewportMetricsChanged;
 
         if (child != null)
@@ -59,6 +65,37 @@ public sealed class RenderViewport : RenderBox, IRenderObjectContainer
     }
 
     public Action<double, double, double>? OnViewportMetricsChanged { get; set; }
+
+    public double CacheExtent
+    {
+        get => _cacheExtent;
+        set
+        {
+            var normalized = Math.Max(0, value);
+            if (Math.Abs(_cacheExtent - normalized) < 0.0001)
+            {
+                return;
+            }
+
+            _cacheExtent = normalized;
+            MarkNeedsLayout();
+        }
+    }
+
+    public CacheExtentStyle CacheExtentStyle
+    {
+        get => _cacheExtentStyle;
+        set
+        {
+            if (_cacheExtentStyle == value)
+            {
+                return;
+            }
+
+            _cacheExtentStyle = value;
+            MarkNeedsLayout();
+        }
+    }
 
     // Backward-compatible single child API used by existing tests/widgets.
     public RenderBox? Child
@@ -253,11 +290,20 @@ public sealed class RenderViewport : RenderBox, IRenderObjectContainer
     {
         var precedingScrollExtent = 0.0;
         var paintedExtent = 0.0;
+        var cacheExtent = Math.Max(0, _cacheExtentStyle == CacheExtentStyle.Viewport
+            ? _cacheExtent * viewportMainAxisExtent
+            : _cacheExtent);
+        var cacheStart = Math.Max(0, scrollOffset - cacheExtent);
+        var cacheEnd = scrollOffset + viewportMainAxisExtent + cacheExtent;
 
         for (var child = FirstChild; child != null; child = _container.ChildAfter(child))
         {
             var localScrollOffset = Math.Max(0, scrollOffset - precedingScrollExtent);
             var remainingPaintExtent = Math.Max(0, viewportMainAxisExtent - paintedExtent);
+            var localCacheStart = Math.Max(0, cacheStart - precedingScrollExtent);
+            var localCacheEnd = Math.Max(localCacheStart, cacheEnd - precedingScrollExtent);
+            var remainingCacheExtent = Math.Max(0, localCacheEnd - localCacheStart);
+            var cacheOrigin = localCacheStart - localScrollOffset;
 
             child.LayoutWithSliverConstraints(new SliverConstraints(
                 Axis,
@@ -265,8 +311,8 @@ public sealed class RenderViewport : RenderBox, IRenderObjectContainer
                 remainingPaintExtent,
                 crossAxisExtent,
                 viewportMainAxisExtent,
-                CacheOrigin: 0,
-                RemainingCacheExtent: remainingPaintExtent));
+                CacheOrigin: cacheOrigin,
+                RemainingCacheExtent: remainingCacheExtent));
 
             if (Math.Abs(child.Geometry.ScrollOffsetCorrection) > 0.0001)
             {

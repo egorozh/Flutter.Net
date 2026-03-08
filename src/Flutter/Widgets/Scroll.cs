@@ -298,6 +298,8 @@ public sealed class Scrollable : StatefulWidget
         Axis axis = Axis.Vertical,
         ScrollController? controller = null,
         ScrollPhysics? physics = null,
+        double cacheExtent = 250.0,
+        CacheExtentStyle cacheExtentStyle = CacheExtentStyle.Pixel,
         HitTestBehavior hitTestBehavior = HitTestBehavior.Opaque,
         Key? key = null) : base(key)
     {
@@ -306,6 +308,8 @@ public sealed class Scrollable : StatefulWidget
         Axis = axis;
         Controller = controller;
         Physics = physics;
+        CacheExtent = cacheExtent;
+        CacheExtentStyle = cacheExtentStyle;
         HitTestBehavior = hitTestBehavior;
     }
 
@@ -318,6 +322,10 @@ public sealed class Scrollable : StatefulWidget
     public ScrollController? Controller { get; }
 
     public ScrollPhysics? Physics { get; }
+
+    public double CacheExtent { get; }
+
+    public CacheExtentStyle CacheExtentStyle { get; }
 
     public HitTestBehavior HitTestBehavior { get; }
 
@@ -386,6 +394,8 @@ public sealed class Scrollable : StatefulWidget
                     child: new Viewport(
                         axis: widget.Axis,
                         offsetPixels: _position.Pixels,
+                        cacheExtent: widget.CacheExtent,
+                        cacheExtentStyle: widget.CacheExtentStyle,
                         slivers: slivers,
                         onViewportMetricsChanged: HandleViewportMetricsChanged)));
         }
@@ -472,18 +482,26 @@ public sealed class Viewport : MultiChildRenderObjectWidget
     public Viewport(
         Axis axis,
         double offsetPixels,
+        double cacheExtent,
+        CacheExtentStyle cacheExtentStyle,
         IReadOnlyList<Widget> slivers,
         Action<double, double, double>? onViewportMetricsChanged = null,
         Key? key = null) : base(slivers, key)
     {
         Axis = axis;
         OffsetPixels = offsetPixels;
+        CacheExtent = cacheExtent;
+        CacheExtentStyle = cacheExtentStyle;
         OnViewportMetricsChanged = onViewportMetricsChanged;
     }
 
     public Axis Axis { get; }
 
     public double OffsetPixels { get; }
+
+    public double CacheExtent { get; }
+
+    public CacheExtentStyle CacheExtentStyle { get; }
 
     public Action<double, double, double>? OnViewportMetricsChanged { get; }
 
@@ -492,6 +510,8 @@ public sealed class Viewport : MultiChildRenderObjectWidget
         return new RenderViewport(
             axis: Axis,
             offsetPixels: OffsetPixels,
+            cacheExtent: CacheExtent,
+            cacheExtentStyle: CacheExtentStyle,
             onViewportMetricsChanged: OnViewportMetricsChanged);
     }
 
@@ -500,6 +520,8 @@ public sealed class Viewport : MultiChildRenderObjectWidget
         var viewport = (RenderViewport)renderObject;
         viewport.Axis = Axis;
         viewport.OffsetPixels = OffsetPixels;
+        viewport.CacheExtent = CacheExtent;
+        viewport.CacheExtentStyle = CacheExtentStyle;
         viewport.OnViewportMetricsChanged = OnViewportMetricsChanged;
     }
 }
@@ -965,6 +987,8 @@ public sealed class CustomScrollView : StatelessWidget
         ScrollController? controller = null,
         bool? primary = null,
         ScrollPhysics? physics = null,
+        double cacheExtent = 250.0,
+        CacheExtentStyle cacheExtentStyle = CacheExtentStyle.Pixel,
         Key? key = null) : base(key)
     {
         Slivers = slivers;
@@ -972,6 +996,8 @@ public sealed class CustomScrollView : StatelessWidget
         Controller = controller;
         Primary = primary;
         Physics = physics;
+        CacheExtent = cacheExtent;
+        CacheExtentStyle = cacheExtentStyle;
     }
 
     public IReadOnlyList<Widget> Slivers { get; }
@@ -983,6 +1009,10 @@ public sealed class CustomScrollView : StatelessWidget
     public bool? Primary { get; }
 
     public ScrollPhysics? Physics { get; }
+
+    public double CacheExtent { get; }
+
+    public CacheExtentStyle CacheExtentStyle { get; }
 
     public override Widget Build(BuildContext context)
     {
@@ -997,7 +1027,9 @@ public sealed class CustomScrollView : StatelessWidget
             slivers: Slivers,
             axis: ScrollDirection,
             controller: effectiveController,
-            physics: Physics);
+            physics: Physics,
+            cacheExtent: CacheExtent,
+            cacheExtentStyle: CacheExtentStyle);
     }
 }
 
@@ -1008,12 +1040,16 @@ public sealed class SingleChildScrollView : StatelessWidget
         Axis scrollDirection = Axis.Vertical,
         ScrollController? controller = null,
         ScrollPhysics? physics = null,
+        double cacheExtent = 250.0,
+        CacheExtentStyle cacheExtentStyle = CacheExtentStyle.Pixel,
         Key? key = null) : base(key)
     {
         Child = child;
         ScrollDirection = scrollDirection;
         Controller = controller;
         Physics = physics;
+        CacheExtent = cacheExtent;
+        CacheExtentStyle = cacheExtentStyle;
     }
 
     public Widget Child { get; }
@@ -1024,13 +1060,19 @@ public sealed class SingleChildScrollView : StatelessWidget
 
     public ScrollPhysics? Physics { get; }
 
+    public double CacheExtent { get; }
+
+    public CacheExtentStyle CacheExtentStyle { get; }
+
     public override Widget Build(BuildContext context)
     {
         return new CustomScrollView(
             slivers: [new SliverToBoxAdapter(Child)],
             scrollDirection: ScrollDirection,
             controller: Controller,
-            physics: Physics);
+            physics: Physics,
+            cacheExtent: CacheExtent,
+            cacheExtentStyle: CacheExtentStyle);
     }
 }
 
@@ -1147,6 +1189,8 @@ public sealed class ListView : StatelessWidget
     private readonly IndexedWidgetBuilder? _itemBuilder;
     private readonly int _itemCount;
     private readonly bool _addAutomaticKeepAlives;
+    private readonly double _cacheExtent;
+    private readonly CacheExtentStyle _cacheExtentStyle;
 
     public ListView(
         IReadOnlyList<Widget>? children = null,
@@ -1154,6 +1198,8 @@ public sealed class ListView : StatelessWidget
         ScrollController? controller = null,
         ScrollPhysics? physics = null,
         bool addAutomaticKeepAlives = true,
+        double cacheExtent = 250.0,
+        CacheExtentStyle cacheExtentStyle = CacheExtentStyle.Pixel,
         Key? key = null) : base(key)
     {
         _children = children ?? [];
@@ -1161,6 +1207,8 @@ public sealed class ListView : StatelessWidget
         Controller = controller;
         Physics = physics;
         _addAutomaticKeepAlives = addAutomaticKeepAlives;
+        _cacheExtent = cacheExtent;
+        _cacheExtentStyle = cacheExtentStyle;
     }
 
     private ListView(
@@ -1170,6 +1218,8 @@ public sealed class ListView : StatelessWidget
         ScrollController? controller,
         ScrollPhysics? physics,
         bool addAutomaticKeepAlives,
+        double cacheExtent,
+        CacheExtentStyle cacheExtentStyle,
         Key? key) : base(key)
     {
         _itemCount = itemCount;
@@ -1178,6 +1228,8 @@ public sealed class ListView : StatelessWidget
         Controller = controller;
         Physics = physics;
         _addAutomaticKeepAlives = addAutomaticKeepAlives;
+        _cacheExtent = cacheExtent;
+        _cacheExtentStyle = cacheExtentStyle;
     }
 
     public Axis ScrollDirection { get; }
@@ -1193,6 +1245,8 @@ public sealed class ListView : StatelessWidget
         ScrollController? controller = null,
         ScrollPhysics? physics = null,
         bool addAutomaticKeepAlives = true,
+        double cacheExtent = 250.0,
+        CacheExtentStyle cacheExtentStyle = CacheExtentStyle.Pixel,
         Key? key = null)
     {
         return new ListView(
@@ -1202,6 +1256,8 @@ public sealed class ListView : StatelessWidget
             controller: controller,
             physics: physics,
             addAutomaticKeepAlives: addAutomaticKeepAlives,
+            cacheExtent: cacheExtent,
+            cacheExtentStyle: cacheExtentStyle,
             key: key);
     }
 
@@ -1220,6 +1276,8 @@ public sealed class ListView : StatelessWidget
             slivers: [sliver],
             scrollDirection: ScrollDirection,
             controller: Controller,
-            physics: Physics);
+            physics: Physics,
+            cacheExtent: _cacheExtent,
+            cacheExtentStyle: _cacheExtentStyle);
     }
 }
