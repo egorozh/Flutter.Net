@@ -205,6 +205,34 @@ internal sealed class NavigatorDetailsPage : StatelessWidget
                     foreground: Colors.Black,
                     fontSize: 12,
                     padding: new Thickness(10, 8)),
+                new Row(
+                    spacing: 8,
+                    children:
+                    [
+                        new Expanded(
+                            child: new CounterTapButton(
+                                label: "Start gesture",
+                                onTap: () => Navigator.StartUserGesture(context),
+                                background: Color.Parse("#FFE0F7FA"),
+                                foreground: Colors.Black,
+                                fontSize: 12,
+                                padding: new Thickness(10, 8))),
+                        new Expanded(
+                            child: new CounterTapButton(
+                                label: "Stop gesture",
+                                onTap: () => Navigator.StopUserGesture(context),
+                                background: Color.Parse("#FFFFF9C4"),
+                                foreground: Colors.Black,
+                                fontSize: 12,
+                                padding: new Thickness(10, 8))),
+                    ]),
+                new CounterTapButton(
+                    label: "MaybePopFromUserGesture",
+                    onTap: () => Navigator.MaybePopFromUserGesture(context),
+                    background: Color.Parse("#FFD7CCC8"),
+                    foreground: Colors.Black,
+                    fontSize: 12,
+                    padding: new Thickness(10, 8)),
                 new CounterTapButton(
                     label: "Back (MaybePop)",
                     onTap: () => Navigator.MaybePop(context),

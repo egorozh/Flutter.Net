@@ -376,6 +376,122 @@ public sealed class NavigationTests
     }
 
     [Fact]
+    public void NavigatorObserver_UserGestureStartStop_ReceivesCallbacks()
+    {
+        var owner = new BuildOwner();
+        NavigatorState? navigatorState = null;
+        var observer = new RecordingObserver();
+
+        var root = new TestRootElement(
+            new Navigator(
+                initialRoute: BuildRoute(
+                    name: "root",
+                    onBuild: _ => { },
+                    captureState: state => navigatorState ??= state),
+                observers: [observer]));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        navigatorState!.Push(BuildRoute(
+            name: "details",
+            onBuild: _ => { },
+            captureState: _ => { }));
+        owner.FlushBuild();
+
+        navigatorState.StartUserGesture();
+        navigatorState.StopUserGesture();
+
+        Assert.Equal(
+            [
+                "push:root:null",
+                "push:details:root",
+                "gesture-start:details:root",
+                "gesture-stop"
+            ],
+            observer.Events);
+    }
+
+    [Fact]
+    public void Navigator_UserGesture_NestedStartStop_NotifiesOnce()
+    {
+        var owner = new BuildOwner();
+        NavigatorState? navigatorState = null;
+        var observer = new RecordingObserver();
+
+        var root = new TestRootElement(
+            new Navigator(
+                initialRoute: BuildRoute(
+                    name: "root",
+                    onBuild: _ => { },
+                    captureState: state => navigatorState ??= state),
+                observers: [observer]));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        navigatorState!.StartUserGesture();
+        navigatorState.StartUserGesture();
+        Assert.True(navigatorState.UserGestureInProgress);
+        navigatorState.StopUserGesture();
+        Assert.True(navigatorState.UserGestureInProgress);
+        navigatorState.StopUserGesture();
+        Assert.False(navigatorState.UserGestureInProgress);
+
+        Assert.Equal(
+            [
+                "push:root:null",
+                "gesture-start:root:null",
+                "gesture-stop"
+            ],
+            observer.Events);
+    }
+
+    [Fact]
+    public void Navigator_MaybePopFromUserGesture_PopsAndStopsGesture()
+    {
+        var owner = new BuildOwner();
+        NavigatorState? navigatorState = null;
+        var currentPageName = string.Empty;
+        var observer = new RecordingObserver();
+
+        var root = new TestRootElement(
+            new Navigator(
+                initialRoute: BuildRoute(
+                    name: "root",
+                    onBuild: name => currentPageName = name,
+                    captureState: state => navigatorState ??= state),
+                observers: [observer]));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        navigatorState!.Push(BuildRoute(
+            name: "details",
+            onBuild: name => currentPageName = name,
+            captureState: _ => { }));
+        owner.FlushBuild();
+
+        Assert.True(navigatorState.MaybePopFromUserGesture());
+        owner.FlushBuild();
+
+        Assert.Equal("root", currentPageName);
+        Assert.False(navigatorState.UserGestureInProgress);
+        Assert.Equal(
+            [
+                "push:root:null",
+                "push:details:root",
+                "gesture-start:details:root",
+                "pop:details:root",
+                "gesture-stop"
+            ],
+            observer.Events);
+    }
+
+    [Fact]
     public void Navigator_NamedRoutes_ResolvesInitialAndPushNamed()
     {
         var owner = new BuildOwner();
@@ -915,6 +1031,16 @@ public sealed class NavigationTests
         public override void DidReplace(Route newRoute, Route? oldRoute)
         {
             Events.Add($"replace:{newRoute.Settings.Name}:{oldRoute?.Settings.Name ?? "null"}");
+        }
+
+        public override void DidStartUserGesture(Route route, Route? previousRoute)
+        {
+            Events.Add($"gesture-start:{route.Settings.Name}:{previousRoute?.Settings.Name ?? "null"}");
+        }
+
+        public override void DidStopUserGesture()
+        {
+            Events.Add("gesture-stop");
         }
     }
 

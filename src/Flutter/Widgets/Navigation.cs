@@ -227,6 +227,14 @@ public abstract class NavigatorObserver
     public virtual void DidReplace(Route newRoute, Route? oldRoute)
     {
     }
+
+    public virtual void DidStartUserGesture(Route route, Route? previousRoute)
+    {
+    }
+
+    public virtual void DidStopUserGesture()
+    {
+    }
 }
 
 public interface RouteAware
@@ -516,6 +524,21 @@ public sealed class Navigator : StatefulWidget
         Of(context).RemoveRouteBelow(anchorRoute, result);
     }
 
+    public static void StartUserGesture(BuildContext context)
+    {
+        Of(context).StartUserGesture();
+    }
+
+    public static void StopUserGesture(BuildContext context)
+    {
+        Of(context).StopUserGesture();
+    }
+
+    public static bool MaybePopFromUserGesture(BuildContext context, object? result = null)
+    {
+        return Of(context).MaybePopFromUserGesture(result);
+    }
+
     public static bool TryHandleBackButton()
     {
         return NavigatorBackButtonDispatcher.DispatchBackButton();
@@ -527,6 +550,7 @@ public sealed class NavigatorState : State
     private readonly List<Route> _history = [];
     private readonly List<NavigatorObserver> _observers = [];
     private readonly Func<bool> _backButtonHandler;
+    private int _userGestureCount;
 
     public NavigatorState()
     {
@@ -538,6 +562,8 @@ public sealed class NavigatorState : State
     public bool CanPop => _history.Count > 1;
 
     public Route? CurrentRoute => _history.Count == 0 ? null : _history[^1];
+
+    public bool UserGestureInProgress => _userGestureCount > 0;
 
     public override void InitState()
     {
@@ -573,6 +599,7 @@ public sealed class NavigatorState : State
     public override void Dispose()
     {
         NavigatorBackButtonDispatcher.RemoveHandler(_backButtonHandler);
+        StopUserGesture();
 
         foreach (var route in _history.ToArray())
         {
@@ -699,6 +726,19 @@ public sealed class NavigatorState : State
         if (!MaybePop(result))
         {
             throw new InvalidOperationException("Navigator cannot pop the current route.");
+        }
+    }
+
+    public bool MaybePopFromUserGesture(object? result = null)
+    {
+        StartUserGesture();
+        try
+        {
+            return MaybePop(result);
+        }
+        finally
+        {
+            StopUserGesture();
         }
     }
 
@@ -832,6 +872,40 @@ public sealed class NavigatorState : State
 
             RemoveRouteAt(removeIndex, result);
         });
+    }
+
+    public void StartUserGesture()
+    {
+        var route = CurrentRoute;
+        if (route == null)
+        {
+            return;
+        }
+
+        _userGestureCount += 1;
+        if (_userGestureCount > 1)
+        {
+            return;
+        }
+
+        var previousRoute = _history.Count > 1 ? _history[^2] : null;
+        NotifyObserversStartUserGesture(route, previousRoute);
+    }
+
+    public void StopUserGesture()
+    {
+        if (_userGestureCount == 0)
+        {
+            return;
+        }
+
+        _userGestureCount -= 1;
+        if (_userGestureCount > 0)
+        {
+            return;
+        }
+
+        NotifyObserversStopUserGesture();
     }
 
     private void PushInitialRoute()
@@ -1046,6 +1120,22 @@ public sealed class NavigatorState : State
         foreach (var observer in _observers.ToArray())
         {
             observer.DidReplace(newRoute, oldRoute);
+        }
+    }
+
+    private void NotifyObserversStartUserGesture(Route route, Route? previousRoute)
+    {
+        foreach (var observer in _observers.ToArray())
+        {
+            observer.DidStartUserGesture(route, previousRoute);
+        }
+    }
+
+    private void NotifyObserversStopUserGesture()
+    {
+        foreach (var observer in _observers.ToArray())
+        {
+            observer.DidStopUserGesture();
         }
     }
 
