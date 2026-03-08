@@ -154,6 +154,51 @@ public sealed class ScrollPipelineTests
         Assert.True(manager.RemoveCount > 0);
     }
 
+    [Fact]
+    public void RenderSliverList_KeepAliveChild_IsReused_WhenReturningToViewport()
+    {
+        var manager = new TestSliverChildManager(
+            childCount: 200,
+            childExtent: 50,
+            keepAliveIndices: [0]);
+        var sliverList = new RenderSliverList(manager);
+        manager.AttachOwner(sliverList);
+
+        var viewport = new RenderViewport(
+            axis: Axis.Vertical,
+            offsetPixels: 0);
+        viewport.Insert(sliverList);
+
+        var root = new RenderView { Child = viewport };
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+
+        pipeline.FlushLayout(new Size(100, 200));
+        Assert.Equal(1, manager.CreateCountFor(0));
+        Assert.Contains(0, ActiveIndices(sliverList));
+
+        viewport.OffsetPixels = 600;
+        pipeline.FlushLayout(new Size(100, 200));
+        Assert.DoesNotContain(0, ActiveIndices(sliverList));
+        Assert.DoesNotContain(0, manager.RemovedIndices);
+
+        viewport.OffsetPixels = 0;
+        pipeline.FlushLayout(new Size(100, 200));
+        Assert.Equal(1, manager.CreateCountFor(0));
+        Assert.Contains(0, ActiveIndices(sliverList));
+    }
+
+    private static IReadOnlyList<int> ActiveIndices(RenderSliverList sliverList)
+    {
+        var indices = new List<int>();
+        for (var child = sliverList.FirstChild; child != null; child = sliverList.ChildAfter(child))
+        {
+            indices.Add(((SliverMultiBoxAdaptorParentData)child.parentData!).Index);
+        }
+
+        return indices;
+    }
+
     private sealed class FixedSizeBox : RenderBox
     {
         private readonly Size _size;
@@ -182,14 +227,19 @@ public sealed class ScrollPipelineTests
     {
         private readonly int _childCount;
         private readonly double _childExtent;
+        private readonly HashSet<int> _keepAliveIndices;
         private readonly Dictionary<int, RenderBox> _childrenByIndex = [];
         private readonly Dictionary<RenderBox, int> _indexByChild = [];
+        private readonly Dictionary<int, int> _createCountByIndex = [];
         private RenderSliverList _owner = null!;
 
-        public TestSliverChildManager(int childCount, double childExtent)
+        public TestSliverChildManager(int childCount, double childExtent, IReadOnlyCollection<int>? keepAliveIndices = null)
         {
             _childCount = childCount;
             _childExtent = childExtent;
+            _keepAliveIndices = keepAliveIndices != null
+                ? [.. keepAliveIndices]
+                : [];
         }
 
         public int? ChildCount => _childCount;
@@ -197,6 +247,12 @@ public sealed class ScrollPipelineTests
         public int MaxCreatedIndex { get; private set; } = -1;
 
         public int RemoveCount { get; private set; }
+        public HashSet<int> RemovedIndices { get; } = [];
+
+        public int CreateCountFor(int index)
+        {
+            return _createCountByIndex.TryGetValue(index, out var count) ? count : 0;
+        }
 
         public void AttachOwner(RenderSliverList owner)
         {
@@ -218,8 +274,16 @@ public sealed class ScrollPipelineTests
             var child = new FixedSizeBox(new Size(100, _childExtent));
             _childrenByIndex[index] = child;
             _indexByChild[child] = index;
+            _createCountByIndex[index] = _createCountByIndex.TryGetValue(index, out var createdCount)
+                ? createdCount + 1
+                : 1;
             MaxCreatedIndex = Math.Max(MaxCreatedIndex, index);
             _owner.Insert(child, after);
+            if (child.parentData is SliverMultiBoxAdaptorParentData parentData)
+            {
+                parentData.KeepAlive = _keepAliveIndices.Contains(index);
+            }
+
             return true;
         }
 
@@ -233,6 +297,7 @@ public sealed class ScrollPipelineTests
             _indexByChild.Remove(child);
             _childrenByIndex.Remove(index);
             RemoveCount += 1;
+            RemovedIndices.Add(index);
             _owner.Remove(child);
         }
 

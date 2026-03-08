@@ -392,6 +392,36 @@ public sealed class SliverToBoxAdapter : SingleChildRenderObjectWidget
     }
 }
 
+public sealed class KeepAlive : ParentDataWidget<SliverMultiBoxAdaptorParentData>
+{
+    public KeepAlive(
+        bool keepAlive,
+        Widget child,
+        Key? key = null) : base(child, key)
+    {
+        Value = keepAlive;
+    }
+
+    public bool Value { get; }
+
+    public override Type DebugTypicalAncestorWidgetType => typeof(SliverMultiBoxAdaptorWidget);
+
+    protected override void ApplyParentData(RenderObject renderObject)
+    {
+        var parentData = (SliverMultiBoxAdaptorParentData)renderObject.parentData!;
+        if (parentData.KeepAlive == Value)
+        {
+            return;
+        }
+
+        parentData.KeepAlive = Value;
+        if (!Value)
+        {
+            renderObject.Parent?.MarkNeedsLayout();
+        }
+    }
+}
+
 public abstract class SliverMultiBoxAdaptorWidget : RenderObjectWidget
 {
     protected SliverMultiBoxAdaptorWidget(SliverChildDelegate @delegate, Key? key = null) : base(key)
@@ -556,7 +586,12 @@ internal sealed class SliverMultiBoxAdaptorElement : RenderObjectElement, IRende
             throw new InvalidOperationException("SliverMultiBoxAdaptorElement expects IndexedSlot.");
         }
 
-        TypedRenderObject.Insert((RenderBox)child, (RenderBox?)indexedSlot.Value?.RenderObject);
+        var renderBox = (RenderBox)child;
+        TypedRenderObject.Insert(renderBox, (RenderBox?)indexedSlot.Value?.RenderObject);
+        if (renderBox.parentData is SliverMultiBoxAdaptorParentData parentData)
+        {
+            parentData.Index = indexedSlot.Index;
+        }
     }
 
     public override void MoveRenderObjectChild(RenderObject child, object? oldSlot, object? newSlot)
@@ -566,7 +601,12 @@ internal sealed class SliverMultiBoxAdaptorElement : RenderObjectElement, IRende
             throw new InvalidOperationException("SliverMultiBoxAdaptorElement expects IndexedSlot.");
         }
 
-        TypedRenderObject.Move((RenderBox)child, (RenderBox?)indexedSlot.Value?.RenderObject);
+        var renderBox = (RenderBox)child;
+        TypedRenderObject.Move(renderBox, (RenderBox?)indexedSlot.Value?.RenderObject);
+        if (renderBox.parentData is SliverMultiBoxAdaptorParentData parentData)
+        {
+            parentData.Index = indexedSlot.Index;
+        }
     }
 
     public override void RemoveRenderObjectChild(RenderObject child, object? slot)
