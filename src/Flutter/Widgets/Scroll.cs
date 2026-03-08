@@ -979,6 +979,64 @@ public sealed class SliverList : SliverMultiBoxAdaptorWidget
     }
 }
 
+public sealed class SliverFixedExtentList : SliverMultiBoxAdaptorWidget
+{
+    public SliverFixedExtentList(
+        SliverChildDelegate @delegate,
+        double itemExtent,
+        Key? key = null) : base(@delegate, key)
+    {
+        if (itemExtent <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(itemExtent), "itemExtent must be greater than 0.");
+        }
+
+        ItemExtent = itemExtent;
+    }
+
+    public double ItemExtent { get; }
+
+    public static SliverFixedExtentList FromChildren(
+        IReadOnlyList<Widget> children,
+        double itemExtent,
+        bool addAutomaticKeepAlives = true,
+        Key? key = null)
+    {
+        return new SliverFixedExtentList(
+            new SliverChildListDelegate(
+                children,
+                addAutomaticKeepAlives: addAutomaticKeepAlives),
+            itemExtent,
+            key);
+    }
+
+    public static SliverFixedExtentList Builder(
+        int childCount,
+        IndexedWidgetBuilder itemBuilder,
+        double itemExtent,
+        bool addAutomaticKeepAlives = true,
+        Key? key = null)
+    {
+        return new SliverFixedExtentList(
+            new SliverChildBuilderDelegate(
+                itemBuilder,
+                childCount,
+                addAutomaticKeepAlives: addAutomaticKeepAlives),
+            itemExtent,
+            key);
+    }
+
+    internal override RenderObject CreateRenderObject(BuildContext context)
+    {
+        return new RenderSliverFixedExtentList(ItemExtent);
+    }
+
+    internal override void UpdateRenderObject(BuildContext context, RenderObject renderObject)
+    {
+        ((RenderSliverFixedExtentList)renderObject).ItemExtent = ItemExtent;
+    }
+}
+
 public sealed class CustomScrollView : StatelessWidget
 {
     public CustomScrollView(
@@ -1188,6 +1246,7 @@ public sealed class ListView : StatelessWidget
     private readonly IReadOnlyList<Widget>? _children;
     private readonly IndexedWidgetBuilder? _itemBuilder;
     private readonly int _itemCount;
+    private readonly double? _itemExtent;
     private readonly bool _addAutomaticKeepAlives;
     private readonly double _cacheExtent;
     private readonly CacheExtentStyle _cacheExtentStyle;
@@ -1197,15 +1256,22 @@ public sealed class ListView : StatelessWidget
         Axis scrollDirection = Axis.Vertical,
         ScrollController? controller = null,
         ScrollPhysics? physics = null,
+        double? itemExtent = null,
         bool addAutomaticKeepAlives = true,
         double cacheExtent = 250.0,
         CacheExtentStyle cacheExtentStyle = CacheExtentStyle.Pixel,
         Key? key = null) : base(key)
     {
+        if (itemExtent.HasValue && itemExtent.Value <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(itemExtent), "itemExtent must be greater than 0.");
+        }
+
         _children = children ?? [];
         ScrollDirection = scrollDirection;
         Controller = controller;
         Physics = physics;
+        _itemExtent = itemExtent;
         _addAutomaticKeepAlives = addAutomaticKeepAlives;
         _cacheExtent = cacheExtent;
         _cacheExtentStyle = cacheExtentStyle;
@@ -1217,16 +1283,23 @@ public sealed class ListView : StatelessWidget
         Axis scrollDirection,
         ScrollController? controller,
         ScrollPhysics? physics,
+        double? itemExtent,
         bool addAutomaticKeepAlives,
         double cacheExtent,
         CacheExtentStyle cacheExtentStyle,
         Key? key) : base(key)
     {
+        if (itemExtent.HasValue && itemExtent.Value <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(itemExtent), "itemExtent must be greater than 0.");
+        }
+
         _itemCount = itemCount;
         _itemBuilder = itemBuilder;
         ScrollDirection = scrollDirection;
         Controller = controller;
         Physics = physics;
+        _itemExtent = itemExtent;
         _addAutomaticKeepAlives = addAutomaticKeepAlives;
         _cacheExtent = cacheExtent;
         _cacheExtentStyle = cacheExtentStyle;
@@ -1244,6 +1317,7 @@ public sealed class ListView : StatelessWidget
         Axis scrollDirection = Axis.Vertical,
         ScrollController? controller = null,
         ScrollPhysics? physics = null,
+        double? itemExtent = null,
         bool addAutomaticKeepAlives = true,
         double cacheExtent = 250.0,
         CacheExtentStyle cacheExtentStyle = CacheExtentStyle.Pixel,
@@ -1255,6 +1329,7 @@ public sealed class ListView : StatelessWidget
             scrollDirection: scrollDirection,
             controller: controller,
             physics: physics,
+            itemExtent: itemExtent,
             addAutomaticKeepAlives: addAutomaticKeepAlives,
             cacheExtent: cacheExtent,
             cacheExtentStyle: cacheExtentStyle,
@@ -1263,14 +1338,31 @@ public sealed class ListView : StatelessWidget
 
     public override Widget Build(BuildContext context)
     {
-        Widget sliver = _itemBuilder != null
-            ? SliverList.Builder(
-                _itemCount,
-                _itemBuilder,
-                addAutomaticKeepAlives: _addAutomaticKeepAlives)
-            : SliverList.FromChildren(
-                _children ?? [],
-                addAutomaticKeepAlives: _addAutomaticKeepAlives);
+        Widget sliver;
+        if (_itemBuilder != null)
+        {
+            sliver = _itemExtent.HasValue
+                ? SliverFixedExtentList.Builder(
+                    _itemCount,
+                    _itemBuilder,
+                    _itemExtent.Value,
+                    addAutomaticKeepAlives: _addAutomaticKeepAlives)
+                : SliverList.Builder(
+                    _itemCount,
+                    _itemBuilder,
+                    addAutomaticKeepAlives: _addAutomaticKeepAlives);
+        }
+        else
+        {
+            sliver = _itemExtent.HasValue
+                ? SliverFixedExtentList.FromChildren(
+                    _children ?? [],
+                    _itemExtent.Value,
+                    addAutomaticKeepAlives: _addAutomaticKeepAlives)
+                : SliverList.FromChildren(
+                    _children ?? [],
+                    addAutomaticKeepAlives: _addAutomaticKeepAlives);
+        }
 
         return new CustomScrollView(
             slivers: [sliver],

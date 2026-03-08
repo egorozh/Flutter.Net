@@ -794,3 +794,281 @@ public sealed class RenderSliverList : RenderSliverMultiBoxAdaptor
         return Math.Max(0, visibleEnd - visibleStart);
     }
 }
+
+public sealed class RenderSliverFixedExtentList : RenderSliverMultiBoxAdaptor
+{
+    private double _itemExtent;
+
+    public RenderSliverFixedExtentList(double itemExtent, IRenderSliverBoxChildManager? childManager = null) : base(childManager)
+    {
+        _itemExtent = Math.Max(0, itemExtent);
+    }
+
+    public double ItemExtent
+    {
+        get => _itemExtent;
+        set
+        {
+            var normalized = Math.Max(0, value);
+            if (Math.Abs(_itemExtent - normalized) < 0.0001)
+            {
+                return;
+            }
+
+            _itemExtent = normalized;
+            MarkNeedsLayout();
+        }
+    }
+
+    protected override void PerformSliverLayout(SliverConstraints constraints)
+    {
+        var childManager = ChildManager;
+        if (childManager == null || _itemExtent <= 0)
+        {
+            Geometry = default;
+            return;
+        }
+
+        childManager.SetDidUnderflow(false);
+
+        var childCount = childManager.ChildCount;
+        if (childCount == 0)
+        {
+            var activeChildCount = CountActiveChildren();
+            if (activeChildCount > 0)
+            {
+                CollectGarbage(activeChildCount, 0);
+            }
+
+            Geometry = default;
+            childManager.SetDidUnderflow(true);
+            return;
+        }
+
+        var remainingCacheExtent = constraints.RemainingCacheExtent > 0
+            ? constraints.RemainingCacheExtent
+            : constraints.RemainingPaintExtent;
+        var scrollOffset = Math.Max(0, constraints.ScrollOffset + constraints.CacheOrigin);
+        var targetEndScrollOffset = scrollOffset + Math.Max(0, remainingCacheExtent);
+
+        var firstIndex = GetMinChildIndexForScrollOffset(scrollOffset, _itemExtent);
+        var targetLastIndex = GetMaxChildIndexForScrollOffset(targetEndScrollOffset, _itemExtent);
+        if (childCount.HasValue)
+        {
+            var maxIndex = Math.Max(0, childCount.Value - 1);
+            firstIndex = Math.Clamp(firstIndex, 0, maxIndex);
+            targetLastIndex = Math.Clamp(targetLastIndex, 0, maxIndex);
+            if (targetLastIndex < firstIndex)
+            {
+                targetLastIndex = firstIndex;
+            }
+        }
+
+        var childConstraints = FixedExtentChildConstraints(constraints, _itemExtent);
+        if (FirstChild == null && !AddInitialChild(firstIndex, firstIndex * _itemExtent))
+        {
+            Geometry = new SliverGeometry(
+                ScrollExtent: childCount.HasValue ? childCount.Value * _itemExtent : 0,
+                MaxPaintExtent: childCount.HasValue ? childCount.Value * _itemExtent : 0);
+            childManager.SetDidUnderflow(true);
+            return;
+        }
+
+        var firstChild = FirstChild;
+        if (firstChild == null)
+        {
+            Geometry = default;
+            childManager.SetDidUnderflow(true);
+            return;
+        }
+
+        while (IndexOf(firstChild) > firstIndex)
+        {
+            var targetIndex = IndexOf(firstChild) - 1;
+            var newLeadingChild = InsertAndLayoutLeadingChild(childConstraints);
+            if (newLeadingChild == null)
+            {
+                childManager.SetDidUnderflow(true);
+                break;
+            }
+
+            var newLeadingParentData = (SliverMultiBoxAdaptorParentData)newLeadingChild.parentData!;
+            newLeadingParentData.Index = targetIndex;
+            newLeadingParentData.LayoutOffset = targetIndex * _itemExtent;
+            firstChild = newLeadingChild;
+        }
+
+        var leadingGarbage = 0;
+        var trailingGarbage = 0;
+        var child = firstChild;
+        var index = IndexOf(child);
+
+        while (index < firstIndex)
+        {
+            leadingGarbage += 1;
+            var nextChild = ChildAfter(child);
+            if (nextChild == null || IndexOf(nextChild) != index + 1)
+            {
+                nextChild = InsertAndLayoutChild(childConstraints, child);
+                if (nextChild == null)
+                {
+                    childManager.SetDidUnderflow(true);
+                    break;
+                }
+            }
+
+            child = nextChild;
+            index += 1;
+        }
+
+        if (index != firstIndex)
+        {
+            firstIndex = index;
+            targetLastIndex = Math.Max(targetLastIndex, firstIndex);
+        }
+
+        RenderBox? lastLaidOutChild = null;
+        var reachedEnd = false;
+
+        while (child != null && index <= targetLastIndex)
+        {
+            var childParentData = (SliverMultiBoxAdaptorParentData)child.parentData!;
+            childParentData.Index = index;
+            childParentData.LayoutOffset = index * _itemExtent;
+            child.Layout(childConstraints, parentUsesSize: true);
+            childParentData.offset = constraints.Axis == Axis.Vertical
+                ? new Point(0, childParentData.LayoutOffset - constraints.ScrollOffset)
+                : new Point(childParentData.LayoutOffset - constraints.ScrollOffset, 0);
+
+            lastLaidOutChild = child;
+
+            if (index == targetLastIndex)
+            {
+                child = ChildAfter(child);
+                break;
+            }
+
+            var nextChild = ChildAfter(child);
+            if (nextChild == null || IndexOf(nextChild) != index + 1)
+            {
+                nextChild = InsertAndLayoutChild(childConstraints, child);
+                if (nextChild == null)
+                {
+                    reachedEnd = true;
+                    childManager.SetDidUnderflow(true);
+                    child = null;
+                    break;
+                }
+            }
+
+            child = nextChild;
+            index += 1;
+        }
+
+        if (lastLaidOutChild == null)
+        {
+            Geometry = default;
+            return;
+        }
+
+        for (var trailingChild = child; trailingChild != null; trailingChild = ChildAfter(trailingChild))
+        {
+            trailingGarbage += 1;
+        }
+
+        CollectGarbage(leadingGarbage, trailingGarbage);
+
+        var leadingScrollOffset = firstIndex * _itemExtent;
+        var trailingScrollOffset = (index + 1) * _itemExtent;
+        if (reachedEnd && childCount.HasValue)
+        {
+            trailingScrollOffset = Math.Min(trailingScrollOffset, childCount.Value * _itemExtent);
+        }
+
+        var estimatedMaxScrollOffset = childCount.HasValue
+            ? childCount.Value * _itemExtent
+            : reachedEnd
+                ? trailingScrollOffset
+                : double.PositiveInfinity;
+        var paintExtent = CalculatePaintExtent(
+            from: leadingScrollOffset,
+            to: trailingScrollOffset,
+            scrollOffset: constraints.ScrollOffset,
+            remainingPaintExtent: constraints.RemainingPaintExtent);
+        var layoutExtent = Math.Min(paintExtent, constraints.ViewportMainAxisExtent);
+        var cacheExtent = CalculatePaintExtent(
+            from: leadingScrollOffset,
+            to: trailingScrollOffset,
+            scrollOffset: constraints.ScrollOffset + constraints.CacheOrigin,
+            remainingPaintExtent: remainingCacheExtent);
+        var targetEndScrollOffsetForPaint = constraints.ScrollOffset + constraints.RemainingPaintExtent;
+
+        Geometry = new SliverGeometry(
+            ScrollExtent: estimatedMaxScrollOffset,
+            PaintExtent: paintExtent,
+            LayoutExtent: layoutExtent,
+            MaxPaintExtent: estimatedMaxScrollOffset,
+            CacheExtent: cacheExtent,
+            HasVisualOverflow: trailingScrollOffset > targetEndScrollOffsetForPaint || constraints.ScrollOffset > 0);
+    }
+
+    private static int GetMinChildIndexForScrollOffset(double scrollOffset, double itemExtent)
+    {
+        if (scrollOffset <= 0)
+        {
+            return 0;
+        }
+
+        return Math.Max(0, (int)Math.Floor(scrollOffset / itemExtent));
+    }
+
+    private static int GetMaxChildIndexForScrollOffset(double scrollOffset, double itemExtent)
+    {
+        if (scrollOffset <= 0)
+        {
+            return 0;
+        }
+
+        return Math.Max(0, (int)Math.Ceiling(scrollOffset / itemExtent) - 1);
+    }
+
+    private static BoxConstraints FixedExtentChildConstraints(SliverConstraints constraints, double itemExtent)
+    {
+        if (constraints.Axis == Axis.Vertical)
+        {
+            return new BoxConstraints(
+                MinWidth: constraints.CrossAxisExtent,
+                MaxWidth: constraints.CrossAxisExtent,
+                MinHeight: itemExtent,
+                MaxHeight: itemExtent);
+        }
+
+        return new BoxConstraints(
+            MinWidth: itemExtent,
+            MaxWidth: itemExtent,
+            MinHeight: constraints.CrossAxisExtent,
+            MaxHeight: constraints.CrossAxisExtent);
+    }
+
+    private int CountActiveChildren()
+    {
+        var count = 0;
+        for (var child = FirstChild; child != null; child = ChildAfter(child))
+        {
+            count += 1;
+        }
+
+        return count;
+    }
+
+    private static double CalculatePaintExtent(
+        double from,
+        double to,
+        double scrollOffset,
+        double remainingPaintExtent)
+    {
+        var visibleStart = Math.Max(from, scrollOffset);
+        var visibleEnd = Math.Min(to, scrollOffset + remainingPaintExtent);
+        return Math.Max(0, visibleEnd - visibleStart);
+    }
+}

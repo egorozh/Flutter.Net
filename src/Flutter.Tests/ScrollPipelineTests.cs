@@ -261,7 +261,72 @@ public sealed class ScrollPipelineTests
         Assert.InRange(manager.MaxCreatedIndex, 7, 12);
     }
 
-    private static IReadOnlyList<int> ActiveIndices(RenderSliverList sliverList)
+    [Fact]
+    public void RenderSliverFixedExtentList_ComputesIndicesFromItemExtent()
+    {
+        double maxExtent = -1;
+        var manager = new TestSliverChildManager(childCount: 100, childExtent: 10);
+        var sliverList = new RenderSliverFixedExtentList(itemExtent: 40, childManager: manager);
+        manager.AttachOwner(sliverList);
+
+        var viewport = new RenderViewport(
+            axis: Axis.Vertical,
+            offsetPixels: 0,
+            onViewportMetricsChanged: (_, _, max) => maxExtent = max);
+        viewport.Insert(sliverList);
+
+        var root = new RenderView { Child = viewport };
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+        pipeline.FlushLayout(new Size(100, 200));
+
+        Assert.Equal(3800, maxExtent);
+        Assert.Contains(4, ActiveIndices(sliverList));
+        Assert.DoesNotContain(5, ActiveIndices(sliverList));
+
+        viewport.OffsetPixels = 480;
+        pipeline.FlushLayout(new Size(100, 200));
+
+        Assert.DoesNotContain(0, ActiveIndices(sliverList));
+        Assert.Contains(12, ActiveIndices(sliverList));
+        Assert.InRange(manager.MaxCreatedIndex, 16, 20);
+    }
+
+    [Fact]
+    public void RenderSliverFixedExtentList_KeepAliveChild_IsReused_WhenReturningToViewport()
+    {
+        var manager = new TestSliverChildManager(
+            childCount: 200,
+            childExtent: 50,
+            keepAliveIndices: [0]);
+        var sliverList = new RenderSliverFixedExtentList(itemExtent: 50, childManager: manager);
+        manager.AttachOwner(sliverList);
+
+        var viewport = new RenderViewport(
+            axis: Axis.Vertical,
+            offsetPixels: 0);
+        viewport.Insert(sliverList);
+
+        var root = new RenderView { Child = viewport };
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+
+        pipeline.FlushLayout(new Size(100, 200));
+        Assert.Equal(1, manager.CreateCountFor(0));
+        Assert.Contains(0, ActiveIndices(sliverList));
+
+        viewport.OffsetPixels = 600;
+        pipeline.FlushLayout(new Size(100, 200));
+        Assert.DoesNotContain(0, ActiveIndices(sliverList));
+        Assert.DoesNotContain(0, manager.RemovedIndices);
+
+        viewport.OffsetPixels = 0;
+        pipeline.FlushLayout(new Size(100, 200));
+        Assert.Equal(1, manager.CreateCountFor(0));
+        Assert.Contains(0, ActiveIndices(sliverList));
+    }
+
+    private static IReadOnlyList<int> ActiveIndices(RenderSliverMultiBoxAdaptor sliverList)
     {
         var indices = new List<int>();
         for (var child = sliverList.FirstChild; child != null; child = sliverList.ChildAfter(child))
@@ -342,7 +407,7 @@ public sealed class ScrollPipelineTests
         private readonly Dictionary<int, RenderBox> _childrenByIndex = [];
         private readonly Dictionary<RenderBox, int> _indexByChild = [];
         private readonly Dictionary<int, int> _createCountByIndex = [];
-        private RenderSliverList _owner = null!;
+        private RenderSliverMultiBoxAdaptor _owner = null!;
 
         public TestSliverChildManager(int childCount, double childExtent, IReadOnlyCollection<int>? keepAliveIndices = null)
         {
@@ -365,7 +430,7 @@ public sealed class ScrollPipelineTests
             return _createCountByIndex.TryGetValue(index, out var count) ? count : 0;
         }
 
-        public void AttachOwner(RenderSliverList owner)
+        public void AttachOwner(RenderSliverMultiBoxAdaptor owner)
         {
             _owner = owner;
         }

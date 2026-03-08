@@ -14,6 +14,7 @@ public sealed class CounterScreen : StatelessWidget
         var model = CounterScope.Of(context);
         var scrollList = ListView.Builder(
             itemCount: 30,
+            itemExtent: 40,
             itemBuilder: (_, index) => new KeepAliveListItem(
                 index: index,
                 keepAlive: index % 2 == 0,
