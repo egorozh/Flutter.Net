@@ -14,5 +14,6 @@
 
   <ItemGroup>
     <ProjectReference Include="../Flutter/Flutter.csproj" />
+    <ProjectReference Include="../Sample/Flutter.Net/Flutter.Net.csproj" />
   </ItemGroup>
 </Project>

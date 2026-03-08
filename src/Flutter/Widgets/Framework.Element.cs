@@ -117,7 +117,14 @@ public abstract class Element
             DidChangeDependencies();
         }
 
-        MarkNeedsBuild();
+        if (Dirty)
+        {
+            Owner?.ScheduleBuild(this);
+        }
+        else
+        {
+            MarkNeedsBuild();
+        }
     }
 
     protected virtual void OnMount()
