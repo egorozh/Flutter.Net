@@ -40,10 +40,25 @@ This file defines expectations for coding agents working in this repository.
 
 - Historical shipped changes: `CHANGELOG.md`
 - Current status + global roadmap: `docs/FRAMEWORK_PLAN.md`
-- When task scope changes framework behavior, update both files so agents can infer:
+- Module entry points by task: `docs/ai/MODULE_INDEX.md`
+- Non-negotiable behavior rules: `docs/ai/INVARIANTS.md`
+- Sample parity tracker: `docs/ai/PARITY_MATRIX.md`
+- Feature-to-tests map: `docs/ai/TEST_MATRIX.md`
+- Iteration planning template: `docs/ai/FEATURE_TEMPLATE.md`
+- When task scope changes framework behavior, update tracking docs so agents can infer:
   - what is already done,
   - what remains,
   - what direction has priority now.
+
+## Context Budget Protocol (For AI Agents)
+
+1. Start with read order: `AGENTS.md` -> `docs/FRAMEWORK_PLAN.md` -> `docs/ai/MODULE_INDEX.md` -> targeted tests -> targeted implementation files.
+2. Initial context budget: up to 8 files per task.
+3. Do not open large hotspot files (`Widgets/Scroll.cs`, `Rendering/Sliver.cs`, `Widgets/Navigation.cs`, `Widgets/Framework.Element.cs`, `SemanticsTreeTests.cs`) unless the task explicitly requires them.
+4. Expand context only when blocked by a concrete unanswered question.
+5. For every non-trivial feature, create/update a task note based on `docs/ai/FEATURE_TEMPLATE.md`.
+6. If sample behavior changes, update both `src/Sample/Flutter.Net` and `dart_sample` in the same iteration and reflect status in `docs/ai/PARITY_MATRIX.md`.
+7. Before finishing, update docs with minimal deltas only (`CHANGELOG.md`, `docs/FRAMEWORK_PLAN.md`, and relevant `docs/ai/*` files).
 
 ## Environment Requirements
 

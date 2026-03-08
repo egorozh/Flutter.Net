@@ -20,6 +20,7 @@ Flutter-like UI framework in C#.
 
 - Changelog: [`CHANGELOG.md`](CHANGELOG.md)
 - Global implementation status and roadmap: [`docs/FRAMEWORK_PLAN.md`](docs/FRAMEWORK_PLAN.md)
+- AI-oriented context map and workflows: [`docs/ai/MODULE_INDEX.md`](docs/ai/MODULE_INDEX.md)
 
 ## Example
 
