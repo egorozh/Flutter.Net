@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using Avalonia;
 using Avalonia.Media;
 using Flutter.Rendering;
@@ -6,48 +8,72 @@ using Flutter.Widgets;
 
 namespace Flutter.Net;
 
-internal enum SamplePageId
+internal static class SampleRoutes
 {
-    Counter,
-    ListViewSeparated,
-    ListViewFixedExtent,
-    ListViewReverse,
-    GridView,
-    CustomSlivers,
-    Scrollbar
+    public const string Menu = "/";
+    public const string Counter = "/counter";
+    public const string ListViewSeparated = "/list-separated";
+    public const string ListViewFixedExtent = "/list-fixed-extent";
+    public const string ListViewReverse = "/list-reverse";
+    public const string GridView = "/grid-view";
+    public const string CustomSlivers = "/custom-slivers";
+    public const string Scrollbar = "/scrollbar";
 }
 
-internal readonly record struct SamplePageDefinition(
-    SamplePageId Id,
+internal readonly record struct SampleRouteDefinition(
+    string RouteName,
     string Title,
-    string Subtitle);
+    string Subtitle,
+    Func<Widget> Builder);
 
 internal sealed class SampleGalleryScreen : StatelessWidget
 {
-    private static readonly IReadOnlyList<SamplePageDefinition> PageDefinitions =
+    private static readonly IReadOnlyList<SampleRouteDefinition> DemoPages =
     [
-        new(SamplePageId.Counter, "Counter", "existing sample"),
-        new(SamplePageId.ListViewSeparated, "ListView.Separated", "item + separator builder"),
-        new(SamplePageId.ListViewFixedExtent, "ListView fixed extent", "itemExtent + padding"),
-        new(SamplePageId.ListViewReverse, "ListView reverse", "reverse=true behavior"),
-        new(SamplePageId.GridView, "GridView + SliverGrid", "delegate-based 2D layout"),
-        new(SamplePageId.CustomSlivers, "Custom slivers", "SliverPadding + SliverFixedExtentList"),
-        new(SamplePageId.Scrollbar, "Scrollbar", "controller + thumb"),
+        new(SampleRoutes.Counter, "Counter", "existing sample", () => new CounterScreen()),
+        new(SampleRoutes.ListViewSeparated, "ListView.Separated", "item + separator builder", () => new ListViewSeparatedDemoPage()),
+        new(SampleRoutes.ListViewFixedExtent, "ListView fixed extent", "itemExtent + padding", () => new ListViewFixedExtentDemoPage()),
+        new(SampleRoutes.ListViewReverse, "ListView reverse", "reverse=true behavior", () => new ListViewReverseDemoPage()),
+        new(SampleRoutes.GridView, "GridView + SliverGrid", "delegate-based 2D layout", () => new GridViewDemoPage()),
+        new(SampleRoutes.CustomSlivers, "Custom slivers", "SliverPadding + SliverFixedExtentList", () => new CustomSliversDemoPage()),
+        new(SampleRoutes.Scrollbar, "Scrollbar", "controller + thumb", () => new ScrollbarDemoPage()),
     ];
+
+    private static readonly IReadOnlyDictionary<string, SampleRouteDefinition> DemoPageByRoute =
+        DemoPages.ToDictionary(page => page.RouteName, page => page);
 
     public override Widget Build(BuildContext context)
     {
         return new Navigator(
-            initialRoute: new BuilderPageRoute(
-                builder: _ => new SampleMenuPage(PageDefinitions)));
+            onGenerateRoute: BuildRoute,
+            initialRouteName: SampleRoutes.Menu);
+    }
+
+    private static Route? BuildRoute(RouteSettings settings)
+    {
+        if (settings.Name == SampleRoutes.Menu)
+        {
+            return new BuilderPageRoute(
+                builder: _ => new SampleMenuPage(DemoPages),
+                settings: settings);
+        }
+
+        if (settings.Name != null && DemoPageByRoute.TryGetValue(settings.Name, out var page))
+        {
+            return new BuilderPageRoute(
+                builder: _ => new SampleDemoPage(page, page.Builder()),
+                settings: settings);
+        }
+
+        return null;
     }
 }
 
 internal sealed class SampleMenuPage : StatelessWidget
 {
-    private readonly IReadOnlyList<SamplePageDefinition> _pages;
+    private readonly IReadOnlyList<SampleRouteDefinition> _pages;
 
-    public SampleMenuPage(IReadOnlyList<SamplePageDefinition> pages)
+    public SampleMenuPage(IReadOnlyList<SampleRouteDefinition> pages)
     {
         _pages = pages;
     }
@@ -77,47 +103,24 @@ internal sealed class SampleMenuPage : StatelessWidget
                 ]));
     }
 
-    private static Widget BuildPageButton(BuildContext context, SamplePageDefinition page)
+    private static Widget BuildPageButton(BuildContext context, SampleRouteDefinition page)
     {
         return new CounterTapButton(
             label: $"{page.Title}  |  {page.Subtitle}",
-            onTap: () => OpenPage(context, page),
+            onTap: () => Navigator.Of(context).PushNamed(page.RouteName),
             background: Color.Parse("#FFDCE3ED"),
             foreground: Colors.Black,
             fontSize: 12,
             padding: new Thickness(10, 8));
     }
-
-    private static void OpenPage(BuildContext context, SamplePageDefinition page)
-    {
-        Navigator.Of(context).Push(
-            new BuilderPageRoute(
-                builder: _ => new SampleDemoPage(page, BuildDemoContent(page.Id)),
-                settings: new RouteSettings(Name: page.Id.ToString())));
-    }
-
-    private static Widget BuildDemoContent(SamplePageId pageId)
-    {
-        return pageId switch
-        {
-            SamplePageId.Counter => new CounterScreen(),
-            SamplePageId.ListViewSeparated => new ListViewSeparatedDemoPage(),
-            SamplePageId.ListViewFixedExtent => new ListViewFixedExtentDemoPage(),
-            SamplePageId.ListViewReverse => new ListViewReverseDemoPage(),
-            SamplePageId.GridView => new GridViewDemoPage(),
-            SamplePageId.CustomSlivers => new CustomSliversDemoPage(),
-            SamplePageId.Scrollbar => new ScrollbarDemoPage(),
-            _ => new SizedBox()
-        };
-    }
 }
 
 internal sealed class SampleDemoPage : StatelessWidget
 {
-    private readonly SamplePageDefinition _page;
+    private readonly SampleRouteDefinition _page;
     private readonly Widget _child;
 
-    public SampleDemoPage(SamplePageDefinition page, Widget child)
+    public SampleDemoPage(SampleRouteDefinition page, Widget child)
     {
         _page = page;
         _child = child;

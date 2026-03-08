@@ -151,6 +151,109 @@ public sealed class NavigationTests
         Assert.False(Navigator.TryHandleBackButton());
     }
 
+    [Fact]
+    public void Navigator_NamedRoutes_ResolvesInitialAndPushNamed()
+    {
+        var owner = new BuildOwner();
+        NavigatorState? navigatorState = null;
+        var currentPageName = string.Empty;
+        object? latestArguments = null;
+
+        Route? OnGenerateRoute(RouteSettings settings)
+        {
+            return settings.Name switch
+            {
+                "/" => new BuilderPageRoute(
+                    builder: context =>
+                    {
+                        navigatorState ??= Navigator.Of(context);
+                        currentPageName = "menu";
+                        latestArguments = settings.Arguments;
+                        return new SizedBox(width: 1, height: 1);
+                    },
+                    settings: settings),
+                "/details" => new BuilderPageRoute(
+                    builder: context =>
+                    {
+                        navigatorState ??= Navigator.Of(context);
+                        currentPageName = "details";
+                        latestArguments = settings.Arguments;
+                        return new SizedBox(width: 1, height: 1);
+                    },
+                    settings: settings),
+                _ => null
+            };
+        }
+
+        var root = new TestRootElement(
+            new Navigator(
+                onGenerateRoute: OnGenerateRoute,
+                initialRouteName: "/"));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.NotNull(navigatorState);
+        Assert.Equal("menu", currentPageName);
+        Assert.Null(latestArguments);
+
+        navigatorState!.PushNamed("/details", arguments: 42);
+        owner.FlushBuild();
+
+        Assert.Equal("details", currentPageName);
+        Assert.Equal(42, latestArguments);
+
+        Assert.Throws<InvalidOperationException>(() => navigatorState.PushNamed("/missing"));
+    }
+
+    [Fact]
+    public void Navigator_PushReplacementNamed_ReplacesTopRoute()
+    {
+        var owner = new BuildOwner();
+        NavigatorState? navigatorState = null;
+        var currentPageName = string.Empty;
+
+        Route? OnGenerateRoute(RouteSettings settings)
+        {
+            return settings.Name switch
+            {
+                "/" => new BuilderPageRoute(
+                    builder: context =>
+                    {
+                        navigatorState ??= Navigator.Of(context);
+                        currentPageName = "root";
+                        return new SizedBox(width: 1, height: 1);
+                    },
+                    settings: settings),
+                "/replacement" => new BuilderPageRoute(
+                    builder: context =>
+                    {
+                        navigatorState ??= Navigator.Of(context);
+                        currentPageName = "replacement";
+                        return new SizedBox(width: 1, height: 1);
+                    },
+                    settings: settings),
+                _ => null
+            };
+        }
+
+        var root = new TestRootElement(
+            new Navigator(
+                onGenerateRoute: OnGenerateRoute,
+                initialRouteName: "/"));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        navigatorState!.PushReplacementNamed("/replacement");
+        owner.FlushBuild();
+
+        Assert.Equal("replacement", currentPageName);
+        Assert.False(navigatorState.CanPop);
+    }
+
     private static Route BuildRoute(
         string name,
         Action<string> onBuild,

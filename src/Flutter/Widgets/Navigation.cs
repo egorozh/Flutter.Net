@@ -6,6 +6,7 @@ using Flutter.Foundation;
 namespace Flutter.Widgets;
 
 public sealed record RouteSettings(string? Name = null, object? Arguments = null);
+public delegate Route? RouteFactory(RouteSettings settings);
 
 public abstract class Route
 {
@@ -120,7 +121,27 @@ public sealed class Navigator : StatefulWidget
         Observers = observers ?? [];
     }
 
-    public Route InitialRoute { get; }
+    public Navigator(
+        RouteFactory onGenerateRoute,
+        string initialRouteName = "/",
+        IReadOnlyList<NavigatorObserver>? observers = null,
+        Key? key = null) : base(key)
+    {
+        if (string.IsNullOrWhiteSpace(initialRouteName))
+        {
+            throw new ArgumentException("initialRouteName cannot be null or whitespace.", nameof(initialRouteName));
+        }
+
+        OnGenerateRoute = onGenerateRoute ?? throw new ArgumentNullException(nameof(onGenerateRoute));
+        InitialRouteName = initialRouteName;
+        Observers = observers ?? [];
+    }
+
+    public Route? InitialRoute { get; }
+
+    public string? InitialRouteName { get; }
+
+    public RouteFactory? OnGenerateRoute { get; }
 
     public IReadOnlyList<NavigatorObserver> Observers { get; }
 
@@ -244,6 +265,12 @@ public sealed class NavigatorState : State
         });
     }
 
+    public void PushNamed(string routeName, object? arguments = null)
+    {
+        var route = ResolveNamedRoute(routeName, arguments);
+        Push(route);
+    }
+
     public bool MaybePop(object? result = null)
     {
         if (!CanPop)
@@ -309,6 +336,12 @@ public sealed class NavigatorState : State
         });
     }
 
+    public void PushReplacementNamed(string routeName, object? arguments = null, object? result = null)
+    {
+        var route = ResolveNamedRoute(routeName, arguments);
+        PushReplacement(route, result);
+    }
+
     private void PushInitialRoute()
     {
         if (_history.Count > 0)
@@ -316,7 +349,7 @@ public sealed class NavigatorState : State
             return;
         }
 
-        var initialRoute = CurrentWidget.InitialRoute;
+        var initialRoute = ResolveInitialRoute();
         InstallRoute(initialRoute);
         initialRoute.DidPush();
         NotifyObserversPush(initialRoute, previousRoute: null);
@@ -360,6 +393,46 @@ public sealed class NavigatorState : State
         {
             _history.Add(route);
         }
+    }
+
+    private Route ResolveInitialRoute()
+    {
+        if (CurrentWidget.InitialRoute != null)
+        {
+            return CurrentWidget.InitialRoute;
+        }
+
+        var routeName = CurrentWidget.InitialRouteName;
+        if (string.IsNullOrWhiteSpace(routeName))
+        {
+            throw new InvalidOperationException("Navigator requires either InitialRoute or InitialRouteName.");
+        }
+
+        return ResolveNamedRoute(routeName);
+    }
+
+    private Route ResolveNamedRoute(string routeName, object? arguments = null)
+    {
+        if (string.IsNullOrWhiteSpace(routeName))
+        {
+            throw new ArgumentException("routeName cannot be null or whitespace.", nameof(routeName));
+        }
+
+        var routeFactory = CurrentWidget.OnGenerateRoute;
+        if (routeFactory == null)
+        {
+            throw new InvalidOperationException(
+                $"Navigator does not have onGenerateRoute. Cannot resolve route '{routeName}'.");
+        }
+
+        var settings = new RouteSettings(Name: routeName, Arguments: arguments);
+        var route = routeFactory(settings);
+        if (route == null)
+        {
+            throw new InvalidOperationException($"onGenerateRoute returned null for route '{routeName}'.");
+        }
+
+        return route;
     }
 
     private void SyncObservers(
