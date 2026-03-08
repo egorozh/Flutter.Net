@@ -19,6 +19,8 @@ public abstract class RenderObject : IRenderObject
     internal SemanticsNode? _semanticsNode;
     private bool _needsCompositingBitsUpdate = true;
     private bool _needsSemanticsUpdate = true;
+    private bool _needsCompositedLayerUpdate;
+    private bool _isSemanticsBoundary;
 
 
     /// Cause the entire subtree rooted at the given [RenderObject] to be marked
@@ -197,7 +199,8 @@ public abstract class RenderObject : IRenderObject
 
         if (_needsCompositingBitsUpdate)
         {
-            Owner.RequestCompositingBitsUpdate();
+            _needsCompositingBitsUpdate = false;
+            MarkNeedsCompositingBitsUpdate();
         }
 
         if (_needsPaint)
@@ -207,7 +210,7 @@ public abstract class RenderObject : IRenderObject
 
         if (_needsSemanticsUpdate)
         {
-            Owner.RequestSemanticsUpdate();
+            Owner.RequestSemanticsUpdateFor(this);
         }
     }
 
@@ -387,7 +390,21 @@ public abstract class RenderObject : IRenderObject
         }
 
         _needsCompositingBitsUpdate = true;
-        Owner?.RequestCompositingBitsUpdate();
+        if (Parent != null)
+        {
+            if (Parent._needsCompositingBitsUpdate)
+            {
+                return;
+            }
+
+            if ((!_wasRepaintBoundary || !IsRepaintBoundary) && !Parent.IsRepaintBoundary)
+            {
+                Parent.MarkNeedsCompositingBitsUpdate();
+                return;
+            }
+        }
+
+        Owner?.RequestCompositingBitsUpdateFor(this);
     }
 
     public void MarkNeedsSemanticsUpdate()
@@ -398,27 +415,48 @@ public abstract class RenderObject : IRenderObject
         }
 
         _needsSemanticsUpdate = true;
-
-        if (Parent != null)
+        if (!Attached || Owner == null)
         {
-            Parent.MarkNeedsSemanticsUpdate();
             return;
         }
 
-        Owner?.RequestSemanticsUpdateFor(this);
+        var boundary = this;
+        while (boundary.Parent != null && !boundary._isSemanticsBoundary)
+        {
+            boundary = boundary.Parent;
+        }
+
+        Owner.RequestSemanticsUpdateFor(boundary);
     }
 
-    internal void FlushCompositingBits()
+    internal void UpdateCompositingBits()
     {
-        VisitChildren(static child => child.FlushCompositingBits());
-
         if (!_needsCompositingBitsUpdate)
         {
             return;
         }
 
-        _needsCompositingBitsUpdate = false;
+        VisitChildren(static child => child.UpdateCompositingBits());
+
+        var oldNeedsCompositing = NeedsCompositing;
         PerformUpdateCompositingBits();
+
+        if (!IsRepaintBoundary && _wasRepaintBoundary)
+        {
+            _needsPaint = false;
+            _needsCompositedLayerUpdate = false;
+            Owner?.ForgetPaintFor(this);
+            _needsCompositingBitsUpdate = false;
+            MarkNeedsPaint();
+            return;
+        }
+
+        _needsCompositingBitsUpdate = false;
+
+        if (oldNeedsCompositing != NeedsCompositing)
+        {
+            MarkNeedsPaint();
+        }
     }
 
     internal void BuildSemantics(SemanticsOwner owner, Point offset, List<SemanticsNode> output)
@@ -431,6 +469,7 @@ public abstract class RenderObject : IRenderObject
 
         var config = new SemanticsConfiguration();
         DescribeSemanticsConfiguration(config);
+        _isSemanticsBoundary = config.IsSemanticBoundary;
 
         if (config.IsExcluded)
         {
@@ -508,13 +547,13 @@ public abstract class RenderObject : IRenderObject
 
     protected virtual void PerformUpdateCompositingBits()
     {
-        var needsCompositing = IsRepaintBoundary;
+        var needsCompositing = IsRepaintBoundary || AlwaysNeedsCompositing;
 
         if (!needsCompositing)
         {
             VisitChildren(child =>
             {
-                if (child.NeedsCompositing || child.IsRepaintBoundary)
+                if (child.NeedsCompositing || child.IsRepaintBoundary || child.AlwaysNeedsCompositing)
                 {
                     needsCompositing = true;
                 }
@@ -532,6 +571,8 @@ public abstract class RenderObject : IRenderObject
     {
     }
 
+    protected virtual bool AlwaysNeedsCompositing => false;
+
     protected virtual Rect SemanticBounds => new Rect();
 
     internal virtual void VisitChildrenForSemantics(Action<RenderObject, Point> visitor)
@@ -542,6 +583,8 @@ public abstract class RenderObject : IRenderObject
     internal bool HasBoxConstraints => _constraints is BoxConstraints;
     internal BoxConstraints CurrentBoxConstraints => (BoxConstraints)_constraints!;
     internal bool NeedsLayoutOrDescendantNeedsLayout => _needsLayout || _descendantNeedsLayout;
+    internal bool NeedsLayout => _needsLayout;
+    internal bool NeedsCompositingBitsUpdate => _needsCompositingBitsUpdate;
 
     /// <summary>
     /// Whether this render object repaints separately from its parent.
@@ -551,6 +594,7 @@ public abstract class RenderObject : IRenderObject
 
     private bool _needsPaint = true;
     internal bool NeedsPaint => _needsPaint;
+    internal bool NeedsCompositedLayerUpdate => _needsCompositedLayerUpdate;
     internal bool NeedsCompositing { get; private set; }
 
     protected void MarkNeedsPaint()
@@ -575,6 +619,54 @@ public abstract class RenderObject : IRenderObject
         }
 
         Owner?.RequestPaintFor(this);
+    }
+
+    protected void MarkNeedsCompositedLayerUpdate()
+    {
+        if (_needsCompositedLayerUpdate || _needsPaint)
+        {
+            return;
+        }
+
+        _needsCompositedLayerUpdate = true;
+
+        if (IsRepaintBoundary && _wasRepaintBoundary)
+        {
+            Owner?.RequestPaintFor(this);
+            return;
+        }
+
+        MarkNeedsPaint();
+    }
+
+    protected virtual void UpdateCompositedLayer(OffsetLayer layer)
+    {
+    }
+
+    internal void UpdateCompositedLayerProperties()
+    {
+        if (!_needsCompositedLayerUpdate)
+        {
+            return;
+        }
+
+        if (IsRepaintBoundary && _layer is OffsetLayer layer)
+        {
+            UpdateCompositedLayer(layer);
+        }
+
+        _needsCompositedLayerUpdate = false;
+    }
+
+    internal void UpdateSemanticsSubtree()
+    {
+        if (_needsSemanticsUpdate)
+        {
+            _needsSemanticsUpdate = false;
+            PerformSemantics();
+        }
+
+        VisitChildrenForSemantics((child, _) => child.UpdateSemanticsSubtree());
     }
 
     /// <summary>
@@ -708,6 +800,7 @@ public abstract class RenderObject : IRenderObject
         // }
         // ());
         _needsPaint = false;
+        _needsCompositedLayerUpdate = false;
 
         _wasRepaintBoundary = IsRepaintBoundary;
 

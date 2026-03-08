@@ -95,6 +95,36 @@ public sealed class CompositingLayerTests
         Assert.Equal(2, leaf.PaintCount);
     }
 
+    [Fact]
+    public void RepaintBoundary_LayerPropertyUpdate_DoesNotRepaintChildren()
+    {
+        var leaf = new TestLeafRenderBox();
+        var boundary = new TestLayerUpdatingBoundaryRenderBox(leaf);
+        var root = new RenderView
+        {
+            Child = boundary
+        };
+
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+
+        pipeline.FlushLayout(new Size(300, 200));
+        pipeline.FlushCompositingBits();
+        pipeline.FlushPaint();
+
+        Assert.Equal(1, boundary.PaintCount);
+        Assert.Equal(1, leaf.PaintCount);
+        Assert.Equal(0, boundary.LayerUpdateCount);
+
+        boundary.TriggerLayerPropertyUpdate();
+        pipeline.FlushCompositingBits();
+        pipeline.FlushPaint();
+
+        Assert.Equal(1, boundary.PaintCount);
+        Assert.Equal(1, leaf.PaintCount);
+        Assert.Equal(1, boundary.LayerUpdateCount);
+    }
+
     private sealed class TestLeafRenderBox : RenderBox
     {
         public int PaintCount { get; private set; }
@@ -152,6 +182,36 @@ public sealed class CompositingLayerTests
         {
             PaintCount += 1;
             ctx.DrawRectangle(Brushes.Transparent, null, new Rect(offset, Size));
+            base.Paint(ctx, offset);
+        }
+    }
+
+    private sealed class TestLayerUpdatingBoundaryRenderBox : RenderProxyBox
+    {
+        public int PaintCount { get; private set; }
+        public int LayerUpdateCount { get; private set; }
+
+        public TestLayerUpdatingBoundaryRenderBox(RenderBox child)
+        {
+            Child = child;
+        }
+
+        public override bool IsRepaintBoundary => true;
+
+        public void TriggerLayerPropertyUpdate()
+        {
+            MarkNeedsCompositedLayerUpdate();
+        }
+
+        protected override void UpdateCompositedLayer(OffsetLayer layer)
+        {
+            LayerUpdateCount += 1;
+            layer.Offset = new Point(2, 3);
+        }
+
+        public override void Paint(PaintingContext ctx, Point offset)
+        {
+            PaintCount += 1;
             base.Paint(ctx, offset);
         }
     }

@@ -16,6 +16,7 @@ public sealed class PipelineOwner
     private bool _needsPaint;
     private bool _needsSemantics;
     private readonly HashSet<RenderObject> _nodesNeedingLayout = [];
+    private readonly HashSet<RenderObject> _nodesNeedingCompositingBitsUpdate = [];
     private readonly HashSet<RenderObject> _nodesNeedingPaint = [];
     private readonly HashSet<RenderObject> _nodesNeedingSemantics = [];
     private readonly SemanticsOwner _semanticsOwner = new();
@@ -50,7 +51,12 @@ public sealed class PipelineOwner
 
     public void RequestCompositingBitsUpdate()
     {
-        if (_needsCompositingBitsUpdate)
+        RequestCompositingBitsUpdateFor(Root);
+    }
+
+    internal void RequestCompositingBitsUpdateFor(RenderObject node)
+    {
+        if (!_nodesNeedingCompositingBitsUpdate.Add(node))
         {
             return;
         }
@@ -144,8 +150,32 @@ public sealed class PipelineOwner
             return;
         }
 
+        while (_nodesNeedingCompositingBitsUpdate.Count > 0)
+        {
+            var dirtyNodes = _nodesNeedingCompositingBitsUpdate
+                .OrderBy(static node => node.Depth)
+                .ToArray();
+
+            _nodesNeedingCompositingBitsUpdate.Clear();
+            _needsCompositingBitsUpdate = false;
+
+            foreach (var node in dirtyNodes)
+            {
+                if (!node.Attached || !ReferenceEquals(node.Owner, this))
+                {
+                    continue;
+                }
+
+                if (!node.NeedsCompositingBitsUpdate)
+                {
+                    continue;
+                }
+
+                node.UpdateCompositingBits();
+            }
+        }
+
         _needsCompositingBitsUpdate = false;
-        Root.FlushCompositingBits();
     }
 
     public void FlushPaint()
@@ -171,7 +201,7 @@ public sealed class PipelineOwner
                     continue;
                 }
 
-                if (!node.NeedsPaint && !ReferenceEquals(node, Root))
+                if (!node.NeedsPaint && !node.NeedsCompositedLayerUpdate && !ReferenceEquals(node, Root))
                 {
                     continue;
                 }
@@ -188,8 +218,15 @@ public sealed class PipelineOwner
                     continue;
                 }
 
-                layer.RemoveAllChildren();
-                node._paintWithContext(new PaintingContext(layer), new Point(0, 0));
+                if (node.NeedsPaint)
+                {
+                    layer.RemoveAllChildren();
+                    node._paintWithContext(new PaintingContext(layer), new Point(0, 0));
+                }
+                else
+                {
+                    node.UpdateCompositedLayerProperties();
+                }
             }
         }
 
@@ -210,15 +247,54 @@ public sealed class PipelineOwner
 
         while (_nodesNeedingSemantics.Count > 0)
         {
-            var hasOwnedDirtyNodes = _nodesNeedingSemantics.Any(node =>
-                node.Attached && ReferenceEquals(node.Owner, this));
+            var deferredNodes = _nodesNeedingSemantics
+                .Where(node =>
+                    node.Attached
+                    && ReferenceEquals(node.Owner, this)
+                    && node.NeedsLayout)
+                .ToArray();
+
+            var nodesToProcess = _nodesNeedingSemantics
+                .Where(node =>
+                    node.Attached
+                    && ReferenceEquals(node.Owner, this)
+                    && !node.NeedsLayout)
+                .OrderBy(static node => node.Depth)
+                .ToArray();
 
             _nodesNeedingSemantics.Clear();
-            _needsSemantics = false;
-
-            if (!hasOwnedDirtyNodes)
+            foreach (var deferred in deferredNodes)
             {
-                continue;
+                _nodesNeedingSemantics.Add(deferred);
+            }
+
+            _needsSemantics = _nodesNeedingSemantics.Count > 0;
+
+            if (nodesToProcess.Length == 0)
+            {
+                break;
+            }
+
+            var dirtySet = new HashSet<RenderObject>(nodesToProcess);
+            foreach (var node in nodesToProcess)
+            {
+                var ancestor = node.Parent;
+                var hasDirtyAncestor = false;
+                while (ancestor != null)
+                {
+                    if (dirtySet.Contains(ancestor))
+                    {
+                        hasDirtyAncestor = true;
+                        break;
+                    }
+
+                    ancestor = ancestor.Parent;
+                }
+
+                if (!hasDirtyAncestor)
+                {
+                    node.UpdateSemanticsSubtree();
+                }
             }
 
             var roots = new List<SemanticsNode>();
@@ -226,12 +302,17 @@ public sealed class PipelineOwner
             _semanticsOwner.UpdateRoot(roots);
         }
 
-        _needsSemantics = false;
+        _needsSemantics = _nodesNeedingSemantics.Count > 0;
     }
 
     private void RepaintRoot()
     {
         _rootLayer.RemoveAllChildren();
         Root._paintWithContext(new PaintingContext(_rootLayer), new Point(0, 0));
+    }
+
+    internal void ForgetPaintFor(RenderObject node)
+    {
+        _nodesNeedingPaint.Remove(node);
     }
 }

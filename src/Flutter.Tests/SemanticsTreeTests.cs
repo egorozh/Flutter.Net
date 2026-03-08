@@ -192,6 +192,37 @@ public sealed class SemanticsTreeTests
         Assert.Contains("actions=Tap", dump);
     }
 
+    [Fact]
+    public void SemanticsFlush_UpdatesDirtySubtree_WithoutForcingAncestorPerformSemantics()
+    {
+        var leaf = new CountingSemanticLeafRenderBox("A");
+        var boundary = new CountingSemanticBoundaryRenderBox(leaf);
+        var renderView = new RenderView
+        {
+            Child = boundary
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+
+        pipeline.FlushLayout(new Size(220, 120));
+        pipeline.FlushSemantics();
+
+        boundary.ResetSemanticsCounter();
+        leaf.ResetSemanticsCounter();
+
+        leaf.Label = "B";
+        pipeline.FlushSemantics();
+
+        Assert.Equal(0, boundary.SemanticsUpdateCount);
+        Assert.Equal(1, leaf.SemanticsUpdateCount);
+
+        var root = pipeline.SemanticsOwner.RootNode;
+        Assert.NotNull(root);
+        var updatedLeaf = Assert.Single(root.Children[0].Children);
+        Assert.Equal("B", updatedLeaf.Label);
+    }
+
     private sealed class MergeSemanticsRenderBox : RenderProxyBox
     {
         public MergeSemanticsRenderBox(RenderBox child)
@@ -217,6 +248,96 @@ public sealed class SemanticsTreeTests
         protected override void DescribeSemanticsConfiguration(SemanticsConfiguration configuration)
         {
             configuration.IsExcluded = true;
+        }
+    }
+
+    private sealed class CountingSemanticBoundaryRenderBox : RenderProxyBox
+    {
+        public int SemanticsUpdateCount { get; private set; }
+
+        public CountingSemanticBoundaryRenderBox(RenderBox child)
+        {
+            Child = child;
+        }
+
+        public void ResetSemanticsCounter()
+        {
+            SemanticsUpdateCount = 0;
+        }
+
+        protected override void PerformLayout()
+        {
+            Child!.Layout(Constraints, parentUsesSize: true);
+            Size = Constraints.Constrain(Child.Size);
+            ((BoxParentData)Child.parentData!).offset = new Point(0, 0);
+        }
+
+        public override void Paint(PaintingContext ctx, Point offset)
+        {
+            ctx.PaintChild(Child!, offset);
+        }
+
+        protected override void PerformSemantics()
+        {
+            SemanticsUpdateCount += 1;
+        }
+
+        protected override void DescribeSemanticsConfiguration(SemanticsConfiguration configuration)
+        {
+            configuration.IsSemanticBoundary = true;
+            configuration.Label = "Boundary";
+        }
+    }
+
+    private sealed class CountingSemanticLeafRenderBox : RenderBox
+    {
+        private string _label;
+
+        public CountingSemanticLeafRenderBox(string label)
+        {
+            _label = label;
+        }
+
+        public int SemanticsUpdateCount { get; private set; }
+
+        public string Label
+        {
+            get => _label;
+            set
+            {
+                if (_label == value)
+                {
+                    return;
+                }
+
+                _label = value;
+                MarkNeedsSemanticsUpdate();
+            }
+        }
+
+        public void ResetSemanticsCounter()
+        {
+            SemanticsUpdateCount = 0;
+        }
+
+        protected override void PerformLayout()
+        {
+            Size = Constraints.Constrain(new Size(20, 10));
+        }
+
+        public override void Paint(PaintingContext ctx, Point offset)
+        {
+        }
+
+        protected override void PerformSemantics()
+        {
+            SemanticsUpdateCount += 1;
+        }
+
+        protected override void DescribeSemanticsConfiguration(SemanticsConfiguration configuration)
+        {
+            configuration.IsSemanticBoundary = true;
+            configuration.Label = Label;
         }
     }
 }
