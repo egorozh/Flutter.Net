@@ -5,6 +5,7 @@ using Avalonia.Media;
 using Flutter.Gestures;
 using Flutter.Rendering;
 using Flutter.UI;
+using Flutter.Widgets;
 
 namespace Flutter;
 
@@ -22,6 +23,7 @@ public class FlutterHost : Control
         _pipeline.Attach(_root);
 
         ClipToBounds = true;
+        Focusable = true;
         EnsureSchedulerSubscription();
     }
 
@@ -44,8 +46,33 @@ public class FlutterHost : Control
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);
+        Focus();
         e.Pointer.Capture(this);
         DispatchPointerEvent(ToPointerDownEvent(e));
+    }
+
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+
+        if (e.Handled)
+        {
+            return;
+        }
+
+        var keyName = e.Key.ToString();
+        var isBackKey = e.Key == Key.Escape
+                        || string.Equals(keyName, "Back", StringComparison.Ordinal)
+                        || string.Equals(keyName, "BrowserBack", StringComparison.Ordinal);
+        if (!isBackKey)
+        {
+            return;
+        }
+
+        if (Navigator.TryHandleBackButton())
+        {
+            e.Handled = true;
+        }
     }
 
     protected override void OnPointerMoved(PointerEventArgs e)

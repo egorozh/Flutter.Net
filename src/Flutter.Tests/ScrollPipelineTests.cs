@@ -5,6 +5,7 @@ using Xunit;
 
 namespace Flutter.Tests;
 
+[Collection(SchedulerTestCollection.Name)]
 public sealed class ScrollPipelineTests
 {
     [Fact]
