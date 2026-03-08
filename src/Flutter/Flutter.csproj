@@ -9,6 +9,10 @@
     <ItemGroup>
         <PackageReference Include="Avalonia" />
     </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="Flutter.Tests" />
+    </ItemGroup>
     
     <ItemGroup>
         <Compile Update="Widgets\Framework.Widget.cs">

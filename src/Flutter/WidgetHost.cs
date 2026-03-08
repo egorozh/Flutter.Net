@@ -79,7 +79,7 @@ public sealed class WidgetHost : FlutterHost
         internal override void Update(Widget newWidget)
         {
             base.Update(newWidget);
-            MarkNeedsBuild();
+            Rebuild();
         }
 
         internal override void ForgetChild(Element child)
@@ -87,6 +87,14 @@ public sealed class WidgetHost : FlutterHost
             if (ReferenceEquals(child, _child))
             {
                 _child = null;
+            }
+        }
+
+        internal override void VisitChildren(Action<Element> visitor)
+        {
+            if (_child != null)
+            {
+                visitor(_child);
             }
         }
 
@@ -131,7 +139,7 @@ public sealed class WidgetHost : FlutterHost
         {
             if (_child != null)
             {
-                DeactivateChild(_child);
+                UnmountChild(_child);
                 _child = null;
             }
 

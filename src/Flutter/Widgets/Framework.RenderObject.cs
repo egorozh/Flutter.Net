@@ -69,6 +69,18 @@ public abstract class RenderObjectElement : Element, IRenderObjectHost
         AttachRenderObject(Slot);
     }
 
+    protected override void OnActivate()
+    {
+        base.OnActivate();
+        AttachRenderObject(Slot);
+    }
+
+    protected override void OnDeactivate()
+    {
+        DetachRenderObject();
+        base.OnDeactivate();
+    }
+
     internal override void Update(Widget newWidget)
     {
         base.Update(newWidget);
@@ -226,6 +238,14 @@ public sealed class SingleChildRenderObjectElement : RenderObjectElement
         }
     }
 
+    internal override void VisitChildren(Action<Element> visitor)
+    {
+        if (_child != null)
+        {
+            visitor(_child);
+        }
+    }
+
     public override void InsertRenderObjectChild(RenderObject child, object? slot)
     {
         if (slot != null)
@@ -271,7 +291,7 @@ public sealed class SingleChildRenderObjectElement : RenderObjectElement
     {
         if (_child != null)
         {
-            DeactivateChild(_child);
+            UnmountChild(_child);
             _child = null;
         }
 
@@ -324,6 +344,17 @@ public sealed class MultiChildRenderObjectElement : RenderObjectElement
     internal override void ForgetChild(Element child)
     {
         _forgottenChildren.Add(child);
+    }
+
+    internal override void VisitChildren(Action<Element> visitor)
+    {
+        foreach (var child in _children)
+        {
+            if (!_forgottenChildren.Contains(child))
+            {
+                visitor(child);
+            }
+        }
     }
 
     public override void InsertRenderObjectChild(RenderObject child, object? slot)
@@ -388,7 +419,7 @@ public sealed class MultiChildRenderObjectElement : RenderObjectElement
         {
             if (!_forgottenChildren.Contains(child))
             {
-                DeactivateChild(child);
+                UnmountChild(child);
             }
         }
 

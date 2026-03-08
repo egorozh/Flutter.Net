@@ -102,6 +102,18 @@ public abstract class State
     {
     }
 
+    public virtual void DidChangeDependencies()
+    {
+    }
+
+    public virtual void Activate()
+    {
+    }
+
+    public virtual void Deactivate()
+    {
+    }
+
     public virtual void Dispose()
     {
     }
@@ -130,4 +142,105 @@ public abstract class InheritedWidget : Widget
     protected internal abstract bool UpdateShouldNotify(InheritedWidget oldWidget);
     
     internal override Element CreateElement() => new InheritedElement(this);
+}
+
+public abstract class InheritedModel<TAspect> : InheritedWidget
+{
+    protected InheritedModel(Key? key = null) : base(key)
+    {
+    }
+
+    protected internal abstract bool UpdateShouldNotifyDependent(
+        InheritedModel<TAspect> oldWidget,
+        IReadOnlySet<TAspect> dependencies);
+
+    protected internal virtual bool IsSupportedAspect(object aspect)
+    {
+        return true;
+    }
+
+    internal override Element CreateElement() => new InheritedModelElement<TAspect>(this);
+
+    public static TModel? InheritFrom<TModel>(BuildContext context, object? aspect = null)
+        where TModel : InheritedModel<TAspect>
+    {
+        if (aspect == null)
+        {
+            return context.DependOnInherited<TModel>();
+        }
+
+        var models = new List<InheritedElement>();
+        FindModels<TModel>(context.Owner, aspect, models);
+        if (models.Count == 0)
+        {
+            return null;
+        }
+
+        TModel? value = null;
+        foreach (var model in models)
+        {
+            value = (TModel)context.Owner.DependOnInheritedElement(model, aspect);
+        }
+
+        return value;
+    }
+
+    private static void FindModels<TModel>(
+        Element contextElement,
+        object aspect,
+        List<InheritedElement> results)
+        where TModel : InheritedModel<TAspect>
+    {
+        var model = GetNearestAncestorModel<TModel>(contextElement);
+        if (model == null)
+        {
+            return;
+        }
+
+        results.Add(model);
+
+        var modelWidget = (TModel)model.Widget;
+        if (modelWidget.IsSupportedAspect(aspect))
+        {
+            return;
+        }
+
+        FindModels<TModel>(model, aspect, results);
+    }
+
+    private static InheritedElement? GetNearestAncestorModel<TModel>(Element contextElement)
+        where TModel : InheritedModel<TAspect>
+    {
+        for (var ancestor = contextElement.Parent; ancestor != null; ancestor = ancestor.Parent)
+        {
+            if (ancestor is InheritedElement inheritedElement && inheritedElement.Widget is TModel)
+            {
+                return inheritedElement;
+            }
+        }
+
+        return null;
+    }
+}
+
+public abstract class InheritedNotifier<TNotifier> : InheritedWidget where TNotifier : class, IListenable
+{
+    protected InheritedNotifier(TNotifier? notifier, Widget child, Key? key = null) : base(key)
+    {
+        Notifier = notifier;
+        Child = child;
+    }
+
+    public TNotifier? Notifier { get; }
+
+    public Widget Child { get; }
+
+    public override Widget Build(BuildContext context) => Child;
+
+    protected internal override bool UpdateShouldNotify(InheritedWidget oldWidget)
+    {
+        return !ReferenceEquals(((InheritedNotifier<TNotifier>)oldWidget).Notifier, Notifier);
+    }
+
+    internal override Element CreateElement() => new InheritedNotifierElement<TNotifier>(this);
 }

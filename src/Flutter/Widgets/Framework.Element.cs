@@ -25,20 +25,36 @@ public readonly struct BuildContext
         Owner = owner;
     }
 
-    public T? DependOnInherited<T>() where T : InheritedWidget => Owner.DependOnInherited<T>();
+    public T? DependOnInherited<T>(object? aspect = null) where T : InheritedWidget => Owner.DependOnInherited<T>(aspect);
+}
+
+internal enum ElementLifecycleState
+{
+    Initial,
+    Active,
+    Inactive,
+    Defunct
 }
 
 public abstract class Element
 {
     private static int _nextElementId;
 
+    private ElementLifecycleState _lifecycleState = ElementLifecycleState.Initial;
+    private HashSet<InheritedElement>? _dependencies;
+    private bool _hadUnsatisfiedDependencies;
+
     public Widget Widget { get; private set; }
     public Element? Parent { get; private set; }
     public int Depth { get; private set; }
     public object? Slot { get; private set; }
+
     internal int SequenceId { get; } = Interlocked.Increment(ref _nextElementId);
     internal bool Dirty { get; set; }
     internal BuildOwner? Owner { get; private set; }
+
+    internal bool IsActive => _lifecycleState == ElementLifecycleState.Active;
+    internal bool IsInactive => _lifecycleState == ElementLifecycleState.Inactive;
 
     protected Element(Widget widget)
     {
@@ -47,19 +63,72 @@ public abstract class Element
 
     internal void Attach(BuildOwner owner)
     {
+        if (Owner != null && !ReferenceEquals(Owner, owner))
+        {
+            throw new InvalidOperationException("Element cannot be attached to multiple BuildOwner instances.");
+        }
+
         Owner = owner;
         Owner.RegisterElement(this);
     }
 
     internal void Mount(Element? parent, object? newSlot)
     {
+        if (_lifecycleState != ElementLifecycleState.Initial)
+        {
+            throw new InvalidOperationException($"Cannot mount element in state {_lifecycleState}.");
+        }
+
         Parent = parent;
         Slot = newSlot;
         Depth = (parent?.Depth ?? 0) + 1;
+        _lifecycleState = ElementLifecycleState.Active;
+
+        if (Widget.Key is GlobalKey globalKey)
+        {
+            Owner?.RegisterGlobalKey(globalKey, this);
+        }
+
         OnMount();
     }
 
+    internal void ActivateWithParent(Element parent, object? newSlot)
+    {
+        if (_lifecycleState != ElementLifecycleState.Inactive)
+        {
+            throw new InvalidOperationException($"Cannot activate element in state {_lifecycleState}.");
+        }
+
+        var hadDependencies = (_dependencies?.Count > 0) || _hadUnsatisfiedDependencies;
+
+        Parent = parent;
+        Slot = newSlot;
+        Depth = parent.Depth + 1;
+        _lifecycleState = ElementLifecycleState.Active;
+        _dependencies?.Clear();
+        _hadUnsatisfiedDependencies = false;
+
+        OnActivate();
+
+        VisitChildren(child => child.ActivateWithParent(this, child.Slot));
+
+        if (hadDependencies)
+        {
+            DidChangeDependencies();
+        }
+
+        MarkNeedsBuild();
+    }
+
     protected virtual void OnMount()
+    {
+    }
+
+    protected virtual void OnActivate()
+    {
+    }
+
+    protected virtual void OnDeactivate()
     {
     }
 
@@ -72,12 +141,60 @@ public abstract class Element
     {
     }
 
+    internal virtual void DidChangeDependencies()
+    {
+        MarkNeedsBuild();
+    }
+
+    internal virtual void VisitChildren(Action<Element> visitor)
+    {
+    }
+
+    internal void DeactivateRecursively()
+    {
+        if (_lifecycleState != ElementLifecycleState.Active)
+        {
+            return;
+        }
+
+        Owner?.UnscheduleBuild(this);
+        Dirty = false;
+
+        OnDeactivate();
+
+        VisitChildren(child => child.DeactivateRecursively());
+        RemoveDependencies();
+
+        Parent = null;
+        _lifecycleState = ElementLifecycleState.Inactive;
+        Owner?.TrackInactive(this);
+    }
+
     internal virtual void Unmount()
     {
+        if (_lifecycleState == ElementLifecycleState.Defunct)
+        {
+            return;
+        }
+
         OnUnmount();
+
+        var key = Widget.Key as GlobalKey;
+        if (key != null)
+        {
+            Owner?.UnregisterGlobalKey(key, this);
+        }
+
+        Owner?.UnscheduleBuild(this);
         Owner?.UnregisterElement(this);
+
+        _dependencies = null;
+        _hadUnsatisfiedDependencies = false;
+
         Parent = null;
         Slot = null;
+        Dirty = false;
+        _lifecycleState = ElementLifecycleState.Defunct;
     }
 
     internal abstract void Rebuild();
@@ -95,7 +212,23 @@ public abstract class Element
 
     internal virtual void Update(Widget newWidget)
     {
+        var oldGlobalKey = Widget.Key as GlobalKey;
+        var newGlobalKey = newWidget.Key as GlobalKey;
+
         Widget = newWidget;
+
+        if (!Equals(oldGlobalKey, newGlobalKey))
+        {
+            if (oldGlobalKey != null)
+            {
+                Owner?.UnregisterGlobalKey(oldGlobalKey, this);
+            }
+
+            if (newGlobalKey != null)
+            {
+                Owner?.RegisterGlobalKey(newGlobalKey, this);
+            }
+        }
     }
 
     internal virtual void ForgetChild(Element child)
@@ -107,6 +240,7 @@ public abstract class Element
         void Visit(Element element)
         {
             element.UpdateSlot(newSlot);
+
             if (element.RenderObjectAttachingChild is { } descendant)
             {
                 Visit(descendant);
@@ -119,13 +253,40 @@ public abstract class Element
     internal virtual void DeactivateChild(Element child)
     {
         ForgetChild(child);
+
+        if (Owner == null)
+        {
+            child.Unmount();
+            return;
+        }
+
+        Owner.Deactivate(child);
+    }
+
+    internal virtual void UnmountChild(Element child)
+    {
+        ForgetChild(child);
         child.Unmount();
     }
 
     internal Element InflateWidget(Widget newWidget, object? newSlot)
     {
+        var owner = Owner ?? throw new InvalidOperationException("Element is not attached to BuildOwner.");
+
+        var inactiveElement = owner.RetakeInactiveElement(this, newWidget);
+        if (inactiveElement != null)
+        {
+            inactiveElement.ActivateWithParent(this, newSlot);
+            if (!ReferenceEquals(inactiveElement.Widget, newWidget))
+            {
+                inactiveElement.Update(newWidget);
+            }
+
+            return inactiveElement;
+        }
+
         var element = newWidget.CreateElement();
-        element.Attach(Owner!);
+        element.Attach(owner);
         element.Mount(this, newSlot);
         return element;
     }
@@ -314,14 +475,51 @@ public abstract class Element
         return [..newChildren];
     }
 
-    internal virtual T? DependOnInherited<T>() where T : InheritedWidget
+    internal virtual T? DependOnInherited<T>(object? aspect = null) where T : InheritedWidget
     {
-        return Parent?.DependOnInherited<T>();
+        if (!IsActive)
+        {
+            throw new InvalidOperationException("Cannot lookup inherited widgets from an inactive element.");
+        }
+
+        for (var ancestor = Parent; ancestor != null; ancestor = ancestor.Parent)
+        {
+            if (ancestor is InheritedElement inheritedElement && inheritedElement.Widget is T typedWidget)
+            {
+                _ = DependOnInheritedElement(inheritedElement, aspect);
+                return typedWidget;
+            }
+        }
+
+        _hadUnsatisfiedDependencies = true;
+        return null;
     }
 
     public virtual RenderObject? RenderObject => null;
 
     internal virtual Element? RenderObjectAttachingChild => null;
+
+    internal InheritedWidget DependOnInheritedElement(InheritedElement ancestor, object? aspect)
+    {
+        _dependencies ??= [];
+        _dependencies.Add(ancestor);
+        ancestor.UpdateDependencies(this, aspect);
+
+        return (InheritedWidget)ancestor.Widget;
+    }
+
+    private void RemoveDependencies()
+    {
+        if (_dependencies == null || _dependencies.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var dependency in _dependencies)
+        {
+            dependency.RemoveDependent(this);
+        }
+    }
 }
 
 public sealed class StatelessElement : Element
@@ -352,7 +550,15 @@ public sealed class StatelessElement : Element
     internal override void Update(Widget newWidget)
     {
         base.Update(newWidget);
-        MarkNeedsBuild();
+        Rebuild();
+    }
+
+    internal override void VisitChildren(Action<Element> visitor)
+    {
+        if (_child != null)
+        {
+            visitor(_child);
+        }
     }
 
     internal override void ForgetChild(Element child)
@@ -367,7 +573,7 @@ public sealed class StatelessElement : Element
     {
         if (_child != null)
         {
-            DeactivateChild(_child);
+            UnmountChild(_child);
             _child = null;
         }
 
@@ -378,6 +584,8 @@ public sealed class StatelessElement : Element
 public sealed class StatefulElement : Element
 {
     private Element? _child;
+    private bool _didChangeDependencies;
+
     public State State { get; }
 
     public StatefulElement(StatefulWidget widget) : base(widget)
@@ -394,12 +602,32 @@ public sealed class StatefulElement : Element
     {
         base.OnMount();
         State.InitState();
+        State.DidChangeDependencies();
         Rebuild();
+    }
+
+    protected override void OnActivate()
+    {
+        base.OnActivate();
+        State.Activate();
+    }
+
+    protected override void OnDeactivate()
+    {
+        State.Deactivate();
+        base.OnDeactivate();
     }
 
     internal override void Rebuild()
     {
         Dirty = false;
+
+        if (_didChangeDependencies)
+        {
+            State.DidChangeDependencies();
+            _didChangeDependencies = false;
+        }
+
         var widget = State.Build(new BuildContext(this));
         _child = UpdateChild(_child, widget, Slot);
     }
@@ -409,7 +637,21 @@ public sealed class StatefulElement : Element
         var old = (StatefulWidget)Widget;
         base.Update(newWidget);
         State.DidUpdateWidget(old);
-        MarkNeedsBuild();
+        Rebuild();
+    }
+
+    internal override void DidChangeDependencies()
+    {
+        base.DidChangeDependencies();
+        _didChangeDependencies = true;
+    }
+
+    internal override void VisitChildren(Action<Element> visitor)
+    {
+        if (_child != null)
+        {
+            visitor(_child);
+        }
     }
 
     internal override void ForgetChild(Element child)
@@ -424,7 +666,7 @@ public sealed class StatefulElement : Element
     {
         if (_child != null)
         {
-            DeactivateChild(_child);
+            UnmountChild(_child);
             _child = null;
         }
 
@@ -433,9 +675,10 @@ public sealed class StatefulElement : Element
     }
 }
 
-public sealed class InheritedElement : Element
+public class InheritedElement : Element
 {
     private Element? _child;
+    private readonly Dictionary<Element, object?> _dependents = [];
 
     public InheritedElement(InheritedWidget widget) : base(widget)
     {
@@ -464,10 +707,57 @@ public sealed class InheritedElement : Element
         base.Update(newWidget);
         if (((InheritedWidget)newWidget).UpdateShouldNotify(old))
         {
-            Owner?.MarkSubtreeNeedsBuild(this);
+            NotifyClients(old);
         }
 
-        MarkNeedsBuild();
+        Rebuild();
+    }
+
+    protected object? GetDependencies(Element dependent)
+    {
+        _dependents.TryGetValue(dependent, out var dependencies);
+        return dependencies;
+    }
+
+    protected void SetDependencies(Element dependent, object? value)
+    {
+        _dependents[dependent] = value;
+    }
+
+    internal virtual void UpdateDependencies(Element dependent, object? aspect)
+    {
+        SetDependencies(dependent, value: null);
+    }
+
+    internal virtual void RemoveDependent(Element dependent)
+    {
+        _dependents.Remove(dependent);
+    }
+
+    protected void NotifyClients(InheritedWidget oldWidget)
+    {
+        if (_dependents.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var dependent in _dependents.Keys.ToArray())
+        {
+            NotifyDependent(oldWidget, dependent);
+        }
+    }
+
+    internal virtual void NotifyDependent(InheritedWidget _, Element dependent)
+    {
+        dependent.DidChangeDependencies();
+    }
+
+    internal override void VisitChildren(Action<Element> visitor)
+    {
+        if (_child != null)
+        {
+            visitor(_child);
+        }
     }
 
     internal override void ForgetChild(Element child)
@@ -482,11 +772,113 @@ public sealed class InheritedElement : Element
     {
         if (_child != null)
         {
-            DeactivateChild(_child);
+            UnmountChild(_child);
             _child = null;
         }
 
+        _dependents.Clear();
         base.Unmount();
+    }
+}
+
+public sealed class InheritedModelElement<TAspect> : InheritedElement
+{
+    public InheritedModelElement(InheritedModel<TAspect> widget) : base(widget)
+    {
+    }
+
+    private InheritedModel<TAspect> InheritedModelWidget => (InheritedModel<TAspect>)Widget;
+
+    internal override void UpdateDependencies(Element dependent, object? aspect)
+    {
+        var dependencies = GetDependencies(dependent) as HashSet<TAspect>;
+        if (dependencies != null && dependencies.Count == 0)
+        {
+            return;
+        }
+
+        if (aspect == null)
+        {
+            SetDependencies(dependent, new HashSet<TAspect>());
+            return;
+        }
+
+        if (aspect is not TAspect typedAspect)
+        {
+            throw new InvalidOperationException($"InheritedModel aspect must be of type {typeof(TAspect).Name}.");
+        }
+
+        dependencies ??= [];
+        dependencies.Add(typedAspect);
+        SetDependencies(dependent, dependencies);
+    }
+
+    internal override void NotifyDependent(InheritedWidget oldWidget, Element dependent)
+    {
+        var dependencies = GetDependencies(dependent) as HashSet<TAspect>;
+        if (dependencies == null)
+        {
+            return;
+        }
+
+        if (dependencies.Count == 0
+            || InheritedModelWidget.UpdateShouldNotifyDependent((InheritedModel<TAspect>)oldWidget, dependencies))
+        {
+            dependent.DidChangeDependencies();
+        }
+    }
+}
+
+public sealed class InheritedNotifierElement<TNotifier> : InheritedElement where TNotifier : class, IListenable
+{
+    private bool _dirty;
+
+    public InheritedNotifierElement(InheritedNotifier<TNotifier> widget) : base(widget)
+    {
+    }
+
+    private InheritedNotifier<TNotifier> InheritedNotifierWidget => (InheritedNotifier<TNotifier>)Widget;
+
+    protected override void OnMount()
+    {
+        InheritedNotifierWidget.Notifier?.AddListener(HandleUpdate);
+        base.OnMount();
+    }
+
+    internal override void Update(Widget newWidget)
+    {
+        var oldNotifier = InheritedNotifierWidget.Notifier;
+        var newNotifier = ((InheritedNotifier<TNotifier>)newWidget).Notifier;
+        if (!ReferenceEquals(oldNotifier, newNotifier))
+        {
+            oldNotifier?.RemoveListener(HandleUpdate);
+            newNotifier?.AddListener(HandleUpdate);
+        }
+
+        base.Update(newWidget);
+    }
+
+    internal override void Rebuild()
+    {
+        if (_dirty)
+        {
+            NotifyClients(InheritedNotifierWidget);
+            _dirty = false;
+        }
+
+        base.Rebuild();
+    }
+
+    internal override void Unmount()
+    {
+        InheritedNotifierWidget.Notifier?.RemoveListener(HandleUpdate);
+        base.Unmount();
+    }
+
+    private void HandleUpdate()
+    {
+        _dirty = true;
+        MarkNeedsBuild();
     }
 }
 
@@ -519,11 +911,19 @@ public class ProxyElement : Element
         var old = (ProxyWidget)Widget;
         base.Update(newWidget);
         Updated(old);
-        MarkNeedsBuild();
+        Rebuild();
     }
 
     protected virtual void Updated(ProxyWidget oldWidget)
     {
+    }
+
+    internal override void VisitChildren(Action<Element> visitor)
+    {
+        if (_child != null)
+        {
+            visitor(_child);
+        }
     }
 
     internal override void ForgetChild(Element child)
@@ -538,7 +938,7 @@ public class ProxyElement : Element
     {
         if (_child != null)
         {
-            DeactivateChild(_child);
+            UnmountChild(_child);
             _child = null;
         }
 

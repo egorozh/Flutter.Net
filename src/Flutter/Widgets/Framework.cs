@@ -61,7 +61,9 @@ public record ObjectKey(object? Value) : LocalKey;
 ///  * The discussion at [Widget.key] for more information about how widgets use
 /// keys.
 /// </summary>
-public abstract record GlobalKey<T> : Key where T : State
+public abstract record GlobalKey : Key;
+
+public abstract record GlobalKey<T> : GlobalKey where T : State
 {
     //   /// Creates a [LabeledGlobalKey], which is a [GlobalKey] with a label used for
 //   /// debugging.
