@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Media;
+using Flutter.UI;
 
 namespace Flutter.Rendering;
 
@@ -295,6 +296,23 @@ public sealed class RenderTransform : RenderProxyBox
             transformLayer.Transform = Transform;
         }
     }
+
+    protected override bool HitTestChildren(BoxHitTestResult result, Point position)
+    {
+        if (Child == null)
+        {
+            return false;
+        }
+
+        if (!Transform.TryInvert(out var inverse))
+        {
+            return false;
+        }
+
+        var childParentData = (BoxParentData)Child.parentData!;
+        var transformedPosition = inverse.Transform(position - childParentData.offset);
+        return Child.HitTest(result, transformedPosition);
+    }
 }
 
 public sealed class RenderClipRect : RenderProxyBox
@@ -351,5 +369,91 @@ public sealed class RenderClipRect : RenderProxyBox
     protected override Rect? DescribeApproximatePaintClip(RenderObject? child)
     {
         return _hasExplicitClipRect ? _clipRect : new Rect(new Point(0, 0), Size);
+    }
+
+    public override bool HitTest(BoxHitTestResult result, Point position)
+    {
+        var clip = _hasExplicitClipRect ? _clipRect : new Rect(new Point(0, 0), Size);
+        if (!clip.Contains(position))
+        {
+            return false;
+        }
+
+        return base.HitTest(result, position);
+    }
+}
+
+public sealed class RenderPointerListener : RenderProxyBox
+{
+    private HitTestBehavior _behavior;
+
+    public RenderPointerListener(
+        Action<PointerDownEvent>? onPointerDown = null,
+        Action<PointerMoveEvent>? onPointerMove = null,
+        Action<PointerUpEvent>? onPointerUp = null,
+        Action<PointerCancelEvent>? onPointerCancel = null,
+        HitTestBehavior behavior = HitTestBehavior.DeferToChild,
+        RenderBox? child = null)
+    {
+        OnPointerDown = onPointerDown;
+        OnPointerMove = onPointerMove;
+        OnPointerUp = onPointerUp;
+        OnPointerCancel = onPointerCancel;
+        _behavior = behavior;
+        Child = child;
+    }
+
+    public Action<PointerDownEvent>? OnPointerDown { get; set; }
+
+    public Action<PointerMoveEvent>? OnPointerMove { get; set; }
+
+    public Action<PointerUpEvent>? OnPointerUp { get; set; }
+
+    public Action<PointerCancelEvent>? OnPointerCancel { get; set; }
+
+    public HitTestBehavior Behavior
+    {
+        get => _behavior;
+        set => _behavior = value;
+    }
+
+    public override bool HitTest(BoxHitTestResult result, Point position)
+    {
+        if (position.X < 0 || position.Y < 0 || position.X > Size.Width || position.Y > Size.Height)
+        {
+            return false;
+        }
+
+        var hitTarget = HitTestChildren(result, position) || HitTestSelf(position);
+        if (hitTarget || Behavior == HitTestBehavior.Translucent || Behavior == HitTestBehavior.Opaque)
+        {
+            result.Add(new BoxHitTestEntry(this, position));
+        }
+
+        return hitTarget || Behavior == HitTestBehavior.Opaque || Behavior == HitTestBehavior.Translucent;
+    }
+
+    protected override bool HitTestSelf(Point position)
+    {
+        return Behavior == HitTestBehavior.Opaque;
+    }
+
+    public override void HandleEvent(PointerEvent @event, HitTestEntry entry)
+    {
+        switch (@event)
+        {
+            case PointerDownEvent downEvent:
+                OnPointerDown?.Invoke(downEvent);
+                break;
+            case PointerMoveEvent moveEvent:
+                OnPointerMove?.Invoke(moveEvent);
+                break;
+            case PointerUpEvent upEvent:
+                OnPointerUp?.Invoke(upEvent);
+                break;
+            case PointerCancelEvent cancelEvent:
+                OnPointerCancel?.Invoke(cancelEvent);
+                break;
+        }
     }
 }

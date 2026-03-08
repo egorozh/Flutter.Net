@@ -2,7 +2,9 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
+using Flutter.Gestures;
 using Flutter.Rendering;
+using Flutter.UI;
 
 namespace Flutter;
 
@@ -10,6 +12,7 @@ public class FlutterHost : Control
 {
     private readonly RenderView _root = new();
     private readonly PipelineOwner _pipeline;
+    private readonly GestureBinding _gestureBinding = GestureBinding.Instance;
     private bool _isSubscribedToScheduler;
 
     public FlutterHost()
@@ -41,23 +44,66 @@ public class FlutterHost : Control
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);
+        e.Pointer.Capture(this);
+        DispatchPointerEvent(ToPointerDownEvent(e));
+    }
 
-        var result = new BoxHitTestResult();
-        var local = e.GetPosition(this);
+    protected override void OnPointerMoved(PointerEventArgs e)
+    {
+        base.OnPointerMoved(e);
 
-        if (!_root.HitTest(result, local))
+        var pointer = e.GetCurrentPoint(this);
+        var position = pointer.Position;
+        var buttons = ToPointerButtons(pointer.Properties);
+        var kind = ToPointerKind(e.Pointer.Type);
+
+        if (buttons == PointerButtons.None)
         {
+            DispatchPointerEvent(new PointerHoverEvent(
+                pointer: unchecked((int)e.Pointer.Id),
+                kind: kind,
+                position: position,
+                buttons: buttons,
+                timestampUtc: DateTime.UtcNow));
             return;
         }
 
-        foreach (var entry in result.Path)
+        DispatchPointerEvent(new PointerMoveEvent(
+            pointer: unchecked((int)e.Pointer.Id),
+            kind: kind,
+            position: position,
+            buttons: buttons,
+            down: true,
+            timestampUtc: DateTime.UtcNow));
+    }
+
+    protected override void OnPointerReleased(PointerReleasedEventArgs e)
+    {
+        base.OnPointerReleased(e);
+
+        DispatchPointerEvent(new PointerUpEvent(
+            pointer: unchecked((int)e.Pointer.Id),
+            kind: ToPointerKind(e.Pointer.Type),
+            position: e.GetPosition(this),
+            buttons: ToPointerButtons(e.GetCurrentPoint(this).Properties),
+            timestampUtc: DateTime.UtcNow));
+
+        if (e.Pointer.Captured == this)
         {
-            entry.Target.HandleEvent(e, entry);
-            if (e.Handled)
-            {
-                break;
-            }
+            e.Pointer.Capture(null);
         }
+    }
+
+    protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
+    {
+        base.OnPointerCaptureLost(e);
+
+        DispatchPointerEvent(new PointerCancelEvent(
+            pointer: unchecked((int)e.Pointer.Id),
+            kind: ToPointerKind(e.Pointer.Type),
+            position: default,
+            buttons: PointerButtons.None,
+            timestampUtc: DateTime.UtcNow));
     }
 
     public override void Render(DrawingContext context)
@@ -131,5 +177,53 @@ public class FlutterHost : Control
 
         Scheduler.RemovePersistentFrameCallback(HandleSchedulerDrawFrame);
         _isSubscribedToScheduler = false;
+    }
+
+    private void DispatchPointerEvent(PointerEvent @event)
+    {
+        _gestureBinding.HandlePointerEvent(_root, @event);
+    }
+
+    private PointerDownEvent ToPointerDownEvent(PointerPressedEventArgs e)
+    {
+        return new PointerDownEvent(
+            pointer: unchecked((int)e.Pointer.Id),
+            kind: ToPointerKind(e.Pointer.Type),
+            position: e.GetPosition(this),
+            buttons: ToPointerButtons(e.GetCurrentPoint(this).Properties),
+            timestampUtc: DateTime.UtcNow);
+    }
+
+    private static PointerButtons ToPointerButtons(PointerPointProperties properties)
+    {
+        var buttons = PointerButtons.None;
+
+        if (properties.IsLeftButtonPressed)
+        {
+            buttons |= PointerButtons.Primary;
+        }
+
+        if (properties.IsRightButtonPressed)
+        {
+            buttons |= PointerButtons.Secondary;
+        }
+
+        if (properties.IsMiddleButtonPressed)
+        {
+            buttons |= PointerButtons.Middle;
+        }
+
+        return buttons;
+    }
+
+    private static PointerDeviceKind ToPointerKind(PointerType type)
+    {
+        return type switch
+        {
+            PointerType.Mouse => PointerDeviceKind.Mouse,
+            PointerType.Touch => PointerDeviceKind.Touch,
+            PointerType.Pen => PointerDeviceKind.Stylus,
+            _ => PointerDeviceKind.Unknown
+        };
     }
 }

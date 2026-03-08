@@ -2,9 +2,59 @@ using System;
 using Avalonia;
 using Avalonia.Media;
 using Flutter.Foundation;
+using Flutter.Rendering;
 using Flutter.Widgets;
 
 namespace Flutter.Net;
+
+internal sealed class CounterTapButton : StatelessWidget
+{
+    public CounterTapButton(
+        string label,
+        Action? onTap,
+        Color background,
+        Color foreground,
+        double fontSize,
+        Thickness? padding = null,
+        Key? key = null) : base(key)
+    {
+        Label = label;
+        OnTap = onTap;
+        Background = background;
+        Foreground = foreground;
+        FontSize = fontSize;
+        Padding = padding ?? new Thickness(14, 10);
+    }
+
+    public string Label { get; }
+
+    public Action? OnTap { get; }
+
+    public Color Background { get; }
+
+    public Color Foreground { get; }
+
+    public double FontSize { get; }
+
+    public Thickness Padding { get; }
+
+    public override Widget Build(BuildContext context)
+    {
+        return new GestureDetector(
+            behavior: HitTestBehavior.Opaque,
+            onTap: OnTap,
+            child: new Container(
+                color: OnTap == null ? DisabledColor(Background) : Background,
+                padding: Padding,
+                child: new Text(Label, fontSize: FontSize, color: Foreground)));
+    }
+
+    private static Color DisabledColor(Color color)
+    {
+        var alpha = (byte)Math.Clamp((int)(color.A * 0.45), 0, 255);
+        return Color.FromArgb(alpha, color.R, color.G, color.B);
+    }
+}
 
 internal sealed class KeyedListItem : StatefulWidget
 {
@@ -32,9 +82,9 @@ internal sealed class KeyedListItemState : State
 
     public override Widget Build(BuildContext context)
     {
-        return new Button(
+        return new CounterTapButton(
             label: $"id={_id} token={_token} taps={_taps}",
-            onPressed: () => SetState(() => _taps++),
+            onTap: () => SetState(() => _taps++),
             background: Color.Parse("#FFF5F5F5"),
             foreground: Colors.Black,
             fontSize: 14,
@@ -57,9 +107,9 @@ internal sealed class MovableBadgeState : State
 
     public override Widget Build(BuildContext context)
     {
-        return new Button(
+        return new CounterTapButton(
             label: $"global taps={_taps}",
-            onPressed: () => SetState(() => _taps++),
+            onTap: () => SetState(() => _taps++),
             background: Colors.DarkOrange,
             foreground: Colors.White,
             fontSize: 14,

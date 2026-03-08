@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics;
 using Avalonia;
-using Avalonia.Input;
 using Avalonia.Media;
+using Flutter.UI;
 
 namespace Flutter.Rendering;
 
@@ -710,7 +710,7 @@ public abstract class RenderObject : IRenderObject
         return false;
     }
 
-    public virtual void HandleEvent(PointerPressedEventArgs @event, HitTestEntry entry)
+    public virtual void HandleEvent(PointerEvent @event, HitTestEntry entry)
     {
     }
 

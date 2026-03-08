@@ -28,16 +28,16 @@ public sealed class CounterScreen : StatelessWidget
                         children:
                         [
                             new Expanded(
-                                child: new Button(
+                                child: new CounterTapButton(
                                     label: "-",
-                                    onPressed: model.Decrement,
+                                    onTap: model.Decrement,
                                     background: Colors.LightGray,
                                     foreground: Colors.Black,
                                     fontSize: 20)),
                             new Expanded(
-                                child: new Button(
+                                child: new CounterTapButton(
                                     label: "+",
-                                    onPressed: model.Increment,
+                                    onTap: model.Increment,
                                     background: Colors.SkyBlue,
                                     foreground: Colors.Black,
                                     fontSize: 20)),
@@ -49,23 +49,23 @@ public sealed class CounterScreen : StatelessWidget
                         children:
                         [
                             new Expanded(
-                                child: new Button(
+                                child: new CounterTapButton(
                                     label: "Reverse",
-                                    onPressed: model.ReverseItems,
+                                    onTap: model.ReverseItems,
                                     background: Colors.MediumSeaGreen,
                                     foreground: Colors.White,
                                     fontSize: 13)),
                             new Expanded(
-                                child: new Button(
+                                child: new CounterTapButton(
                                     label: "Insert Head",
-                                    onPressed: model.InsertHead,
+                                    onTap: model.InsertHead,
                                     background: Colors.SteelBlue,
                                     foreground: Colors.White,
                                     fontSize: 13)),
                             new Expanded(
-                                child: new Button(
+                                child: new CounterTapButton(
                                     label: "Remove Tail",
-                                    onPressed: model.Items.Count == 0 ? null : model.RemoveTail,
+                                    onTap: model.Items.Count == 0 ? null : model.RemoveTail,
                                     background: Colors.IndianRed,
                                     foreground: Colors.White,
                                     fontSize: 13)),
@@ -94,9 +94,9 @@ public sealed class CounterScreen : StatelessWidget
                                         ? new MovableBadge(key: new GlobalObjectKey<MovableBadgeState>(model.GlobalBadgeIdentity))
                                         : new Text("right slot", color: Colors.Gray))),
                         ]),
-                    new Button(
+                    new CounterTapButton(
                         label: "Move Global Widget",
-                        onPressed: model.ToggleGlobalPlacement,
+                        onTap: model.ToggleGlobalPlacement,
                         background: Colors.SlateGray,
                         foreground: Colors.White,
                         fontSize: 14),

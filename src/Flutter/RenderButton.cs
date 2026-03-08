@@ -1,8 +1,8 @@
 using Avalonia;
-using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.TextFormatting;
 using Flutter.Rendering;
+using Flutter.UI;
 
 namespace Flutter;
 
@@ -152,10 +152,12 @@ public sealed class RenderButton : RenderBox
         return OnPressed != null;
     }
 
-    public override void HandleEvent(PointerPressedEventArgs @event, HitTestEntry entry)
+    public override void HandleEvent(PointerEvent @event, HitTestEntry entry)
     {
-        OnPressed?.Invoke();
-        @event.Handled = true;
+        if (@event is PointerDownEvent)
+        {
+            OnPressed?.Invoke();
+        }
     }
 
     protected override void DescribeSemanticsConfiguration(SemanticsConfiguration configuration)

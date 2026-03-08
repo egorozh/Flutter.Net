@@ -40,7 +40,7 @@ public abstract class RenderBox : RenderObject
 
         if (HitTestChildren(result, position) || HitTestSelf(position))
         {
-            result.Add(new HitTestEntry(this));
+            result.Add(new BoxHitTestEntry(this, position));
             return true;
         }
 
