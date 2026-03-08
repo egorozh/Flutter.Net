@@ -14,13 +14,10 @@ public sealed class CounterScreen : StatelessWidget
         var model = CounterScope.Of(context);
         var scrollList = ListView.Builder(
             itemCount: 30,
-            itemBuilder: (_, index) => new CounterTapButton(
-                label: $"row #{index} (tap +1)",
-                onTap: model.Increment,
-                background: Colors.White,
-                foreground: Colors.Black,
-                fontSize: 13,
-                padding: new Thickness(10, 8)));
+            itemBuilder: (_, index) => new KeepAliveListItem(
+                index: index,
+                keepAlive: index % 2 == 0,
+                onTap: model.Increment));
 
         return new Container(
             color: Colors.White,
@@ -110,7 +107,7 @@ public sealed class CounterScreen : StatelessWidget
                         foreground: Colors.White,
                         fontSize: 14),
                     new SizedBox(height: 12),
-                    new Text("Scrollable ListView.builder", fontSize: 18, color: Colors.Black),
+                    new Text("Scrollable ListView.builder (even rows keepAlive)", fontSize: 18, color: Colors.Black),
                     new SizedBox(
                         height: 220,
                         child: new ColoredBox(

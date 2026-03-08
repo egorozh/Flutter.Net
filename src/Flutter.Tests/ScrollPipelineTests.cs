@@ -126,6 +126,28 @@ public sealed class ScrollPipelineTests
     }
 
     [Fact]
+    public void RenderViewport_AppliesScrollOffsetCorrection_FromSliver()
+    {
+        double maxExtent = -1;
+        var correcting = new CorrectingSliver(
+            correction: -100,
+            scrollExtent: 500);
+        var viewport = new RenderViewport(
+            axis: Axis.Vertical,
+            offsetPixels: 100,
+            onViewportMetricsChanged: (_, _, max) => maxExtent = max);
+        viewport.Insert(correcting);
+
+        var root = new RenderView { Child = viewport };
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+        pipeline.FlushLayout(new Size(100, 200));
+
+        Assert.Equal(0, viewport.OffsetPixels);
+        Assert.Equal(300, maxExtent);
+    }
+
+    [Fact]
     public void RenderSliverList_CreatesOnlyNeededChildren_AndTrimsTrailingOnReverseScroll()
     {
         var manager = new TestSliverChildManager(childCount: 200, childExtent: 50);
@@ -216,6 +238,44 @@ public sealed class ScrollPipelineTests
         protected override bool HitTestSelf(Point position)
         {
             return true;
+        }
+
+        public override void Paint(PaintingContext ctx, Point offset)
+        {
+        }
+    }
+
+    private sealed class CorrectingSliver : RenderSliver
+    {
+        private readonly double _correction;
+        private readonly double _scrollExtent;
+        private bool _didCorrect;
+
+        public CorrectingSliver(double correction, double scrollExtent)
+        {
+            _correction = correction;
+            _scrollExtent = scrollExtent;
+        }
+
+        protected override void PerformSliverLayout(SliverConstraints constraints)
+        {
+            if (!_didCorrect && Math.Abs(constraints.ScrollOffset) > 0.0001)
+            {
+                _didCorrect = true;
+                Geometry = new SliverGeometry(ScrollOffsetCorrection: _correction);
+                return;
+            }
+
+            var remaining = Math.Max(0, _scrollExtent - constraints.ScrollOffset);
+            var paintExtent = Math.Min(remaining, constraints.RemainingPaintExtent);
+            var layoutExtent = Math.Min(paintExtent, constraints.ViewportMainAxisExtent);
+            Geometry = new SliverGeometry(
+                ScrollExtent: _scrollExtent,
+                PaintExtent: paintExtent,
+                LayoutExtent: layoutExtent,
+                MaxPaintExtent: _scrollExtent,
+                CacheExtent: paintExtent,
+                HasVisualOverflow: constraints.ScrollOffset > 0 || remaining > constraints.RemainingPaintExtent);
         }
 
         public override void Paint(PaintingContext ctx, Point offset)

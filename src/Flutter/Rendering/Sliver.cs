@@ -9,13 +9,17 @@ public readonly record struct SliverConstraints(
     double ScrollOffset,
     double RemainingPaintExtent,
     double CrossAxisExtent,
-    double ViewportMainAxisExtent);
+    double ViewportMainAxisExtent,
+    double CacheOrigin = 0,
+    double RemainingCacheExtent = 0);
 
 public readonly record struct SliverGeometry(
-    double ScrollExtent,
-    double PaintExtent,
-    double LayoutExtent,
-    double MaxPaintExtent,
+    double ScrollExtent = 0,
+    double PaintExtent = 0,
+    double LayoutExtent = 0,
+    double MaxPaintExtent = 0,
+    double CacheExtent = 0,
+    double ScrollOffsetCorrection = 0,
     bool HasVisualOverflow = false);
 
 public interface IRenderSliverBoxChildManager
@@ -51,7 +55,12 @@ public abstract class RenderSliver : RenderBox
     public void LayoutWithSliverConstraints(SliverConstraints constraints)
     {
         _sliverConstraints = constraints;
-        var scrollAwareMainAxisExtent = constraints.ViewportMainAxisExtent + Math.Max(0, constraints.ScrollOffset);
+        var remainingCacheExtent = constraints.RemainingCacheExtent > 0
+            ? constraints.RemainingCacheExtent
+            : constraints.RemainingPaintExtent;
+        var scrollAwareMainAxisExtent = constraints.ViewportMainAxisExtent
+                                        + Math.Max(0, constraints.ScrollOffset)
+                                        + Math.Max(0, remainingCacheExtent);
 
         BoxConstraints layoutConstraints;
         if (constraints.Axis == Axis.Vertical)
@@ -219,6 +228,9 @@ public class RenderSliverToBoxAdapter : RenderSliverSingleBoxAdapter
 
         var paintedExtent = Math.Min(remaining, constraints.RemainingPaintExtent);
         var layoutExtent = Math.Min(remaining, constraints.ViewportMainAxisExtent);
+        var cacheStart = constraints.ScrollOffset + constraints.CacheOrigin;
+        var cacheEnd = cacheStart + Math.Max(0, constraints.RemainingCacheExtent);
+        var cacheExtent = Math.Max(0, Math.Min(childExtent, cacheEnd) - Math.Max(0, cacheStart));
 
         var childParentData = (BoxParentData)Child.parentData!;
         childParentData.offset = constraints.Axis == Axis.Vertical
@@ -230,6 +242,7 @@ public class RenderSliverToBoxAdapter : RenderSliverSingleBoxAdapter
             PaintExtent: paintedExtent,
             LayoutExtent: layoutExtent,
             MaxPaintExtent: childExtent,
+            CacheExtent: cacheExtent,
             HasVisualOverflow: remaining > constraints.RemainingPaintExtent);
     }
 }
@@ -586,8 +599,11 @@ public sealed class RenderSliverList : RenderSliverMultiBoxAdaptor
         }
 
         var childConstraints = ChildConstraintsForSliver(constraints);
-        var scrollOffset = Math.Max(0, constraints.ScrollOffset);
-        var targetEndScrollOffset = scrollOffset + constraints.RemainingPaintExtent;
+        var remainingCacheExtent = constraints.RemainingCacheExtent > 0
+            ? constraints.RemainingCacheExtent
+            : constraints.RemainingPaintExtent;
+        var scrollOffset = Math.Max(0, constraints.ScrollOffset + constraints.CacheOrigin);
+        var targetEndScrollOffset = scrollOffset + Math.Max(0, remainingCacheExtent);
 
         var earliestUsefulChild = firstChild;
         while (ChildScrollOffset(earliestUsefulChild) > scrollOffset)
@@ -598,6 +614,17 @@ public sealed class RenderSliverList : RenderSliverMultiBoxAdaptor
             var newLeadingChild = InsertAndLayoutLeadingChild(childConstraints);
             if (newLeadingChild == null)
             {
+                var anchorChild = FirstChild ?? earliestUsefulChild;
+                if (IndexOf(anchorChild) == 0)
+                {
+                    var correction = -ChildScrollOffset(anchorChild);
+                    if (Math.Abs(correction) > 0.0001)
+                    {
+                        Geometry = new SliverGeometry(ScrollOffsetCorrection: correction);
+                        return;
+                    }
+                }
+
                 break;
             }
 
@@ -610,8 +637,8 @@ public sealed class RenderSliverList : RenderSliverMultiBoxAdaptor
         earliestUsefulChild.Layout(childConstraints, parentUsesSize: true);
         var earliestUsefulParentData = (SliverMultiBoxAdaptorParentData)earliestUsefulChild.parentData!;
         earliestUsefulParentData.offset = constraints.Axis == Axis.Vertical
-            ? new Point(0, earliestUsefulParentData.LayoutOffset - scrollOffset)
-            : new Point(earliestUsefulParentData.LayoutOffset - scrollOffset, 0);
+            ? new Point(0, earliestUsefulParentData.LayoutOffset - constraints.ScrollOffset)
+            : new Point(earliestUsefulParentData.LayoutOffset - constraints.ScrollOffset, 0);
 
         var leadingGarbage = 0;
         var trailingGarbage = 0;
@@ -647,8 +674,8 @@ public sealed class RenderSliverList : RenderSliverMultiBoxAdaptor
             nextChildParentData.Index = nextIndex;
             nextChildParentData.LayoutOffset = endScrollOffset;
             nextChildParentData.offset = constraints.Axis == Axis.Vertical
-                ? new Point(0, nextChildParentData.LayoutOffset - scrollOffset)
-                : new Point(nextChildParentData.LayoutOffset - scrollOffset, 0);
+                ? new Point(0, nextChildParentData.LayoutOffset - constraints.ScrollOffset)
+                : new Point(nextChildParentData.LayoutOffset - constraints.ScrollOffset, 0);
 
             child = nextChild;
             index = nextIndex;
@@ -714,16 +741,23 @@ public sealed class RenderSliverList : RenderSliverMultiBoxAdaptor
         var paintExtent = CalculatePaintExtent(
             from: leadingScrollOffset,
             to: endScrollOffset,
-            scrollOffset: scrollOffset,
+            scrollOffset: constraints.ScrollOffset,
             remainingPaintExtent: constraints.RemainingPaintExtent);
         var layoutExtent = Math.Min(paintExtent, constraints.ViewportMainAxisExtent);
+        var cacheExtent = CalculatePaintExtent(
+            from: leadingScrollOffset,
+            to: endScrollOffset,
+            scrollOffset: constraints.ScrollOffset + constraints.CacheOrigin,
+            remainingPaintExtent: remainingCacheExtent);
+        var targetEndScrollOffsetForPaint = constraints.ScrollOffset + constraints.RemainingPaintExtent;
 
         Geometry = new SliverGeometry(
             ScrollExtent: estimatedMaxScrollOffset,
             PaintExtent: paintExtent,
             LayoutExtent: layoutExtent,
             MaxPaintExtent: estimatedMaxScrollOffset,
-            HasVisualOverflow: endScrollOffset > targetEndScrollOffset || scrollOffset > 0);
+            CacheExtent: cacheExtent,
+            HasVisualOverflow: endScrollOffset > targetEndScrollOffsetForPaint || constraints.ScrollOffset > 0);
     }
 
     private static double EstimateMaxScrollOffset(

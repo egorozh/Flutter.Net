@@ -148,23 +148,36 @@ public sealed class RenderViewport : RenderBox, IRenderObjectContainer
 
         var viewportMainAxisExtent = Axis == Axis.Vertical ? Size.Height : Size.Width;
         var crossAxisExtent = Axis == Axis.Vertical ? Size.Width : Size.Height;
+        var currentOffset = Math.Max(0, _offsetPixels);
+        const double precisionErrorTolerance = 0.0001;
 
-        var (totalScrollExtent, _) = LayoutChildren(
-            scrollOffset: _offsetPixels,
-            viewportMainAxisExtent: viewportMainAxisExtent,
-            crossAxisExtent: crossAxisExtent);
-
-        var clampedOffset = Math.Clamp(_offsetPixels, 0, Math.Max(0, totalScrollExtent - viewportMainAxisExtent));
-        if (Math.Abs(clampedOffset - _offsetPixels) > 0.0001)
+        for (var pass = 0; pass < 4; pass++)
         {
-            _offsetPixels = clampedOffset;
-            (totalScrollExtent, _) = LayoutChildren(
-                scrollOffset: _offsetPixels,
+            var layout = LayoutWithCorrections(
+                scrollOffset: currentOffset,
                 viewportMainAxisExtent: viewportMainAxisExtent,
                 crossAxisExtent: crossAxisExtent);
+
+            var maxScrollExtent = Math.Max(0, layout.totalScrollExtent - viewportMainAxisExtent);
+            var clampedOffset = Math.Clamp(layout.scrollOffset, 0, maxScrollExtent);
+            if (Math.Abs(clampedOffset - currentOffset) <= precisionErrorTolerance)
+            {
+                currentOffset = clampedOffset;
+                _offsetPixels = currentOffset;
+                _maxScrollExtent = maxScrollExtent;
+                OnViewportMetricsChanged?.Invoke(viewportMainAxisExtent, 0, _maxScrollExtent);
+                return;
+            }
+
+            currentOffset = clampedOffset;
         }
 
-        _maxScrollExtent = Math.Max(0, totalScrollExtent - viewportMainAxisExtent);
+        var finalLayout = LayoutWithCorrections(
+            scrollOffset: currentOffset,
+            viewportMainAxisExtent: viewportMainAxisExtent,
+            crossAxisExtent: crossAxisExtent);
+        _maxScrollExtent = Math.Max(0, finalLayout.totalScrollExtent - viewportMainAxisExtent);
+        _offsetPixels = Math.Clamp(finalLayout.scrollOffset, 0, _maxScrollExtent);
         OnViewportMetricsChanged?.Invoke(viewportMainAxisExtent, 0, _maxScrollExtent);
     }
 
@@ -203,7 +216,37 @@ public sealed class RenderViewport : RenderBox, IRenderObjectContainer
         }
     }
 
-    private (double totalScrollExtent, double paintedExtent) LayoutChildren(
+    private (double scrollOffset, double totalScrollExtent, double paintedExtent) LayoutWithCorrections(
+        double scrollOffset,
+        double viewportMainAxisExtent,
+        double crossAxisExtent)
+    {
+        const double precisionErrorTolerance = 0.0001;
+        var currentScrollOffset = Math.Max(0, scrollOffset);
+
+        for (var pass = 0; pass < 8; pass++)
+        {
+            var result = LayoutChildren(
+                currentScrollOffset,
+                viewportMainAxisExtent,
+                crossAxisExtent);
+            if (!result.scrollOffsetCorrection.HasValue
+                || Math.Abs(result.scrollOffsetCorrection.Value) <= precisionErrorTolerance)
+            {
+                return (currentScrollOffset, result.totalScrollExtent, result.paintedExtent);
+            }
+
+            currentScrollOffset = Math.Max(0, currentScrollOffset + result.scrollOffsetCorrection.Value);
+        }
+
+        var finalResult = LayoutChildren(
+            currentScrollOffset,
+            viewportMainAxisExtent,
+            crossAxisExtent);
+        return (currentScrollOffset, finalResult.totalScrollExtent, finalResult.paintedExtent);
+    }
+
+    private (double totalScrollExtent, double paintedExtent, double? scrollOffsetCorrection) LayoutChildren(
         double scrollOffset,
         double viewportMainAxisExtent,
         double crossAxisExtent)
@@ -221,7 +264,14 @@ public sealed class RenderViewport : RenderBox, IRenderObjectContainer
                 localScrollOffset,
                 remainingPaintExtent,
                 crossAxisExtent,
-                viewportMainAxisExtent));
+                viewportMainAxisExtent,
+                CacheOrigin: 0,
+                RemainingCacheExtent: remainingPaintExtent));
+
+            if (Math.Abs(child.Geometry.ScrollOffsetCorrection) > 0.0001)
+            {
+                return (precedingScrollExtent, paintedExtent, child.Geometry.ScrollOffsetCorrection);
+            }
 
             var parentData = (SliverPhysicalParentData)child.parentData!;
             parentData.offset = Axis == Axis.Vertical
@@ -232,6 +282,6 @@ public sealed class RenderViewport : RenderBox, IRenderObjectContainer
             paintedExtent += child.Geometry.PaintExtent;
         }
 
-        return (precedingScrollExtent, paintedExtent);
+        return (precedingScrollExtent, paintedExtent, null);
     }
 }

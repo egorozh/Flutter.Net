@@ -31,6 +31,178 @@ public sealed class ScrollEndNotification(ScrollMetricsSnapshot metrics) : Scrol
 {
 }
 
+public sealed class KeepAliveNotification : Notification
+{
+    public KeepAliveNotification(KeepAliveHandle handle)
+    {
+        Handle = handle;
+    }
+
+    public KeepAliveHandle Handle { get; }
+}
+
+public sealed class KeepAliveHandle : ChangeNotifier
+{
+    private bool _released;
+
+    public bool IsReleased => _released;
+
+    public void Release()
+    {
+        if (_released)
+        {
+            return;
+        }
+
+        _released = true;
+        NotifyListeners();
+        base.Dispose();
+    }
+
+    public override void Dispose()
+    {
+        Release();
+    }
+}
+
+public sealed class AutomaticKeepAlive : StatefulWidget
+{
+    public AutomaticKeepAlive(Widget child, Key? key = null) : base(key)
+    {
+        Child = child;
+    }
+
+    public Widget Child { get; }
+
+    public override State CreateState()
+    {
+        return new AutomaticKeepAliveState();
+    }
+
+    private sealed class AutomaticKeepAliveState : State
+    {
+        private readonly Dictionary<KeepAliveHandle, Action> _releaseCallbacks = [];
+        private bool _keepingAlive;
+
+        private AutomaticKeepAlive CurrentWidget => (AutomaticKeepAlive)Element.Widget;
+
+        public override Widget Build(BuildContext context)
+        {
+            return new NotificationListener<KeepAliveNotification>(
+                onNotification: HandleKeepAliveNotification,
+                child: new KeepAlive(
+                    keepAlive: _keepingAlive,
+                    child: CurrentWidget.Child));
+        }
+
+        public override void Dispose()
+        {
+            foreach (var (handle, callback) in _releaseCallbacks.ToArray())
+            {
+                handle.RemoveListener(callback);
+            }
+
+            _releaseCallbacks.Clear();
+        }
+
+        private bool HandleKeepAliveNotification(KeepAliveNotification notification)
+        {
+            var handle = notification.Handle;
+            if (!_releaseCallbacks.ContainsKey(handle))
+            {
+                Action callback = () => HandleReleased(handle);
+                _releaseCallbacks[handle] = callback;
+                handle.AddListener(callback);
+            }
+
+            if (!_keepingAlive)
+            {
+                SetState(() => _keepingAlive = true);
+            }
+
+            return true;
+        }
+
+        private void HandleReleased(KeepAliveHandle handle)
+        {
+            if (!_releaseCallbacks.Remove(handle, out var callback))
+            {
+                return;
+            }
+
+            handle.RemoveListener(callback);
+            if (_releaseCallbacks.Count == 0 && _keepingAlive)
+            {
+                SetState(() => _keepingAlive = false);
+            }
+        }
+    }
+}
+
+public abstract class AutomaticKeepAliveClientMixin : State
+{
+    private KeepAliveHandle? _keepAliveHandle;
+
+    protected abstract bool WantKeepAlive { get; }
+
+    public void UpdateKeepAlive()
+    {
+        if (WantKeepAlive)
+        {
+            EnsureKeepAlive();
+        }
+        else
+        {
+            ReleaseKeepAlive();
+        }
+    }
+
+    protected void EnsureKeepAlive()
+    {
+        if (_keepAliveHandle != null)
+        {
+            return;
+        }
+
+        var handle = new KeepAliveHandle();
+        _keepAliveHandle = handle;
+        new KeepAliveNotification(handle).Dispatch(Context);
+    }
+
+    public override void InitState()
+    {
+        base.InitState();
+        if (WantKeepAlive)
+        {
+            EnsureKeepAlive();
+        }
+    }
+
+    public override void Deactivate()
+    {
+        ReleaseKeepAlive();
+        base.Deactivate();
+    }
+
+    public override void Dispose()
+    {
+        ReleaseKeepAlive();
+        base.Dispose();
+    }
+
+    private void ReleaseKeepAlive()
+    {
+        var handle = _keepAliveHandle;
+        if (handle == null)
+        {
+            return;
+        }
+
+        _keepAliveHandle = null;
+        handle.Release();
+    }
+}
+
 public sealed class PrimaryScrollController : InheritedNotifier<ScrollController>
 {
     public PrimaryScrollController(
@@ -343,11 +515,16 @@ public sealed class SliverChildBuilderDelegate : SliverChildDelegate
 {
     private readonly IndexedWidgetBuilder _builder;
     private readonly int? _childCount;
+    private readonly bool _addAutomaticKeepAlives;
 
-    public SliverChildBuilderDelegate(IndexedWidgetBuilder builder, int? childCount = null)
+    public SliverChildBuilderDelegate(
+        IndexedWidgetBuilder builder,
+        int? childCount = null,
+        bool addAutomaticKeepAlives = true)
     {
         _builder = builder;
         _childCount = childCount;
+        _addAutomaticKeepAlives = addAutomaticKeepAlives;
     }
 
     public override int? EstimatedChildCount => _childCount;
@@ -359,24 +536,39 @@ public sealed class SliverChildBuilderDelegate : SliverChildDelegate
             return null;
         }
 
-        return _builder(context, index);
+        var child = _builder(context, index);
+        return _addAutomaticKeepAlives
+            ? new AutomaticKeepAlive(child)
+            : child;
     }
 }
 
 public sealed class SliverChildListDelegate : SliverChildDelegate
 {
     private readonly IReadOnlyList<Widget> _children;
+    private readonly bool _addAutomaticKeepAlives;
 
-    public SliverChildListDelegate(IReadOnlyList<Widget> children)
+    public SliverChildListDelegate(
+        IReadOnlyList<Widget> children,
+        bool addAutomaticKeepAlives = true)
     {
         _children = children;
+        _addAutomaticKeepAlives = addAutomaticKeepAlives;
     }
 
     public override int? EstimatedChildCount => _children.Count;
 
     public override Widget? Build(BuildContext context, int index)
     {
-        return index >= 0 && index < _children.Count ? _children[index] : null;
+        if (index < 0 || index >= _children.Count)
+        {
+            return null;
+        }
+
+        var child = _children[index];
+        return _addAutomaticKeepAlives
+            ? new AutomaticKeepAlive(child)
+            : child;
     }
 }
 
@@ -665,10 +857,28 @@ internal sealed class SliverMultiBoxAdaptorElement : RenderObjectElement, IRende
                 break;
             }
 
-            previous = pair.Value;
+            if (IsActiveRenderListChild(pair.Value))
+            {
+                previous = pair.Value;
+            }
         }
 
         return previous;
+    }
+
+    private static bool IsActiveRenderListChild(Element element)
+    {
+        if (element.RenderObject is not RenderBox renderBox)
+        {
+            return false;
+        }
+
+        if (renderBox.parentData is not SliverMultiBoxAdaptorParentData parentData)
+        {
+            return false;
+        }
+
+        return !parentData.KeptAlive;
     }
 
     private void AttachMappings(int index, Element child)
@@ -715,14 +925,30 @@ public sealed class SliverList : SliverMultiBoxAdaptorWidget
     {
     }
 
-    public static SliverList FromChildren(IReadOnlyList<Widget> children, Key? key = null)
+    public static SliverList FromChildren(
+        IReadOnlyList<Widget> children,
+        bool addAutomaticKeepAlives = true,
+        Key? key = null)
     {
-        return new SliverList(new SliverChildListDelegate(children), key);
+        return new SliverList(
+            new SliverChildListDelegate(
+                children,
+                addAutomaticKeepAlives: addAutomaticKeepAlives),
+            key);
     }
 
-    public static SliverList Builder(int childCount, IndexedWidgetBuilder itemBuilder, Key? key = null)
+    public static SliverList Builder(
+        int childCount,
+        IndexedWidgetBuilder itemBuilder,
+        bool addAutomaticKeepAlives = true,
+        Key? key = null)
     {
-        return new SliverList(new SliverChildBuilderDelegate(itemBuilder, childCount), key);
+        return new SliverList(
+            new SliverChildBuilderDelegate(
+                itemBuilder,
+                childCount,
+                addAutomaticKeepAlives: addAutomaticKeepAlives),
+            key);
     }
 
     internal override RenderObject CreateRenderObject(BuildContext context)
@@ -920,18 +1146,21 @@ public sealed class ListView : StatelessWidget
     private readonly IReadOnlyList<Widget>? _children;
     private readonly IndexedWidgetBuilder? _itemBuilder;
     private readonly int _itemCount;
+    private readonly bool _addAutomaticKeepAlives;
 
     public ListView(
         IReadOnlyList<Widget>? children = null,
         Axis scrollDirection = Axis.Vertical,
         ScrollController? controller = null,
         ScrollPhysics? physics = null,
+        bool addAutomaticKeepAlives = true,
         Key? key = null) : base(key)
     {
         _children = children ?? [];
         ScrollDirection = scrollDirection;
         Controller = controller;
         Physics = physics;
+        _addAutomaticKeepAlives = addAutomaticKeepAlives;
     }
 
     private ListView(
@@ -940,6 +1169,7 @@ public sealed class ListView : StatelessWidget
         Axis scrollDirection,
         ScrollController? controller,
         ScrollPhysics? physics,
+        bool addAutomaticKeepAlives,
         Key? key) : base(key)
     {
         _itemCount = itemCount;
@@ -947,6 +1177,7 @@ public sealed class ListView : StatelessWidget
         ScrollDirection = scrollDirection;
         Controller = controller;
         Physics = physics;
+        _addAutomaticKeepAlives = addAutomaticKeepAlives;
     }
 
     public Axis ScrollDirection { get; }
@@ -961,6 +1192,7 @@ public sealed class ListView : StatelessWidget
         Axis scrollDirection = Axis.Vertical,
         ScrollController? controller = null,
         ScrollPhysics? physics = null,
+        bool addAutomaticKeepAlives = true,
         Key? key = null)
     {
         return new ListView(
@@ -969,14 +1201,20 @@ public sealed class ListView : StatelessWidget
             scrollDirection: scrollDirection,
             controller: controller,
             physics: physics,
+            addAutomaticKeepAlives: addAutomaticKeepAlives,
             key: key);
     }
 
     public override Widget Build(BuildContext context)
     {
         Widget sliver = _itemBuilder != null
-            ? SliverList.Builder(_itemCount, _itemBuilder)
-            : SliverList.FromChildren(_children ?? []);
+            ? SliverList.Builder(
+                _itemCount,
+                _itemBuilder,
+                addAutomaticKeepAlives: _addAutomaticKeepAlives)
+            : SliverList.FromChildren(
+                _children ?? [],
+                addAutomaticKeepAlives: _addAutomaticKeepAlives);
 
         return new CustomScrollView(
             slivers: [sliver],
