@@ -26,7 +26,7 @@ public sealed class ListViewSeparatedDemoPage : StatelessWidget
                         padding: new Thickness(12),
                         itemBuilder: (_, index) => new SeparatedListItem(index),
                         separatorBuilder: (_, index) => new Container(
-                            height: 1,
+                            height: 4,
                             color: index % 2 == 0
                                 ? Color.Parse("#FFDCE3ED")
                                 : Color.Parse("#FFE9EEF5")),
