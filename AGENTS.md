@@ -30,6 +30,7 @@ This file defines expectations for coding agents working in this repository.
 
 - `src/Flutter`: core framework (`Foundation`, `Widgets`, `Rendering`, `UI`, scheduler/ticker pipeline).
 - `src/Sample/Flutter.Net`: shared sample app/widgets.
+- `dart_sample`: reference sample app on real Flutter (Dart), kept in lockstep with `src/Sample/Flutter.Net`.
 - `src/Sample/Flutter.Net.Desktop`: desktop entry point.
 - `src/Sample/Flutter.Net.Browser`: WebAssembly host.
 - `src/Sample/Flutter.Net.Android`: Android host.
@@ -72,6 +73,7 @@ dotnet build src/Sample/Flutter.Net.iOS/Flutter.Net.iOS.csproj -c Debug
 5. Preserve lifecycle contracts (`CreateElement`, mount/update/rebuild flow, render object attachment).
 6. Keep nullability correctness (`Nullable` is enabled) and avoid introducing nullable warnings.
 7. Avoid broad dependency/framework upgrades unless explicitly requested.
+8. Any behavior/structure update in `src/Sample/Flutter.Net` must be adapted 100% in `dart_sample` in the same change (feature parity, route parity, and page/module structure parity).
 
 ## Validation Checklist
 
@@ -79,4 +81,5 @@ dotnet build src/Sample/Flutter.Net.iOS/Flutter.Net.iOS.csproj -c Debug
 2. For UI behavior changes, run desktop sample and verify startup/rendering through the framework widget host path.
 3. For rendering changes, verify that layout/paint behavior is executed by framework render objects.
 4. For browser/mobile changes, build the affected sample project(s).
-5. There is no dedicated automated test project yet; add focused tests when introducing non-trivial logic.
+5. For sample changes, validate both C# sample (`src/Sample/Flutter.Net`) and Dart sample (`dart_sample`) are kept in parity.
+6. There is no dedicated automated test project yet; add focused tests when introducing non-trivial logic.
