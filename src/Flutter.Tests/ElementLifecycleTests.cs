@@ -142,6 +142,83 @@ public sealed class ElementLifecycleTests
         Assert.Equal(1, LifecycleTracker.Events.Count(static eventName => eventName == "dispose"));
     }
 
+    [Fact]
+    public void UpdateChildren_MixedKeyedAndUnkeyed_ReusesKeyedAndStableTailDisposesMovedUnkeyed()
+    {
+        MixedTracker.Reset();
+
+        var owner = new BuildOwner();
+        var root = new TestRootElement(new MixedKeyedUnkeyedHost(reorder: false));
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var initialKeyed = MixedTracker.CurrentKeyedStateIdByName.ToDictionary(
+            static pair => pair.Key,
+            static pair => pair.Value);
+        var initialUnkeyed = MixedTracker.CurrentUnkeyedStateIdByName.ToDictionary(
+            static pair => pair.Key,
+            static pair => pair.Value);
+
+        root.Update(new MixedKeyedUnkeyedHost(reorder: true));
+        owner.FlushBuild();
+
+        Assert.Equal(initialKeyed["k1"], MixedTracker.CurrentKeyedStateIdByName["k1"]);
+        Assert.Equal(initialKeyed["k2"], MixedTracker.CurrentKeyedStateIdByName["k2"]);
+
+        Assert.NotEqual(initialUnkeyed["lead"], MixedTracker.CurrentUnkeyedStateIdByName["lead"]);
+        Assert.NotEqual(initialUnkeyed["middle"], MixedTracker.CurrentUnkeyedStateIdByName["middle"]);
+        Assert.Equal(initialUnkeyed["tail"], MixedTracker.CurrentUnkeyedStateIdByName["tail"]);
+        Assert.Contains(initialUnkeyed["lead"], MixedTracker.DisposedStateIds);
+        Assert.Contains(initialUnkeyed["middle"], MixedTracker.DisposedStateIds);
+        Assert.DoesNotContain(initialUnkeyed["tail"], MixedTracker.DisposedStateIds);
+
+        root.Unmount();
+    }
+
+    [Fact]
+    public void UpdateChildren_NestedMixedAcrossParentLevels_RetainsKeyedBranchAndRecreatesMovedUnkeyedBranch()
+    {
+        MixedTracker.Reset();
+        NestedBranchTracker.Reset();
+
+        var owner = new BuildOwner();
+        var root = new TestRootElement(new NestedMixedAcrossParentsHost(reorder: false));
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var initialKeyedBranchState = NestedBranchTracker.CurrentKeyedStateIdByName["branch-keyed"];
+        var initialUnkeyedBranchState = NestedBranchTracker.CurrentUnkeyedStateIdByName["branch-unkeyed"];
+        var initialKeyed = MixedTracker.CurrentKeyedStateIdByName.ToDictionary(
+            static pair => pair.Key,
+            static pair => pair.Value);
+        var initialUnkeyed = MixedTracker.CurrentUnkeyedStateIdByName.ToDictionary(
+            static pair => pair.Key,
+            static pair => pair.Value);
+
+        root.Update(new NestedMixedAcrossParentsHost(reorder: true));
+        owner.FlushBuild();
+
+        Assert.Equal(initialKeyedBranchState, NestedBranchTracker.CurrentKeyedStateIdByName["branch-keyed"]);
+        Assert.NotEqual(initialUnkeyedBranchState, NestedBranchTracker.CurrentUnkeyedStateIdByName["branch-unkeyed"]);
+        Assert.Contains(initialUnkeyedBranchState, NestedBranchTracker.DisposedStateIds);
+
+        Assert.Equal(initialKeyed["nested-k1"], MixedTracker.CurrentKeyedStateIdByName["nested-k1"]);
+        Assert.Equal(initialKeyed["nested-k2"], MixedTracker.CurrentKeyedStateIdByName["nested-k2"]);
+
+        Assert.NotEqual(initialUnkeyed["nested-lead"], MixedTracker.CurrentUnkeyedStateIdByName["nested-lead"]);
+        Assert.NotEqual(initialUnkeyed["nested-middle"], MixedTracker.CurrentUnkeyedStateIdByName["nested-middle"]);
+        Assert.Equal(initialUnkeyed["nested-tail"], MixedTracker.CurrentUnkeyedStateIdByName["nested-tail"]);
+        Assert.Equal(initialUnkeyed["root-tail"], MixedTracker.CurrentUnkeyedStateIdByName["root-tail"]);
+        Assert.Contains(initialUnkeyed["nested-lead"], MixedTracker.DisposedStateIds);
+        Assert.Contains(initialUnkeyed["nested-middle"], MixedTracker.DisposedStateIds);
+        Assert.DoesNotContain(initialUnkeyed["nested-tail"], MixedTracker.DisposedStateIds);
+        Assert.DoesNotContain(initialUnkeyed["root-tail"], MixedTracker.DisposedStateIds);
+
+        root.Unmount();
+    }
+
     private sealed class TestRootElement : Element, IRenderObjectHost
     {
         private Element? _child;
@@ -312,6 +389,211 @@ public sealed class ElementLifecycleTests
         }
     }
 
+    private sealed class MixedKeyedUnkeyedHost(bool reorder) : StatelessWidget
+    {
+        public override Widget Build(BuildContext context)
+        {
+            if (!reorder)
+            {
+                return new Column(
+                    children:
+                    [
+                        new UnkeyedMixedItemWidget("lead"),
+                        new KeyedMixedItemWidget("k1"),
+                        new UnkeyedMixedItemWidget("middle"),
+                        new KeyedMixedItemWidget("k2"),
+                        new UnkeyedMixedItemWidget("tail"),
+                    ]);
+            }
+
+            return new Column(
+                children:
+                [
+                    new KeyedMixedItemWidget("k2"),
+                    new UnkeyedMixedItemWidget("lead"),
+                    new KeyedMixedItemWidget("k1"),
+                    new UnkeyedMixedItemWidget("middle"),
+                    new UnkeyedMixedItemWidget("tail"),
+                ]);
+        }
+    }
+
+    private sealed class NestedMixedAcrossParentsHost(bool reorder) : StatelessWidget
+    {
+        public override Widget Build(BuildContext context)
+        {
+            if (!reorder)
+            {
+                return new Column(
+                    children:
+                    [
+                        new KeyedNestedBranchWidget("branch-keyed", reorderInner: false),
+                        new UnkeyedNestedBranchWidget("branch-unkeyed"),
+                        new UnkeyedMixedItemWidget("root-tail"),
+                    ]);
+            }
+
+            return new Column(
+                children:
+                [
+                    new UnkeyedNestedBranchWidget("branch-unkeyed"),
+                    new KeyedNestedBranchWidget("branch-keyed", reorderInner: true),
+                    new UnkeyedMixedItemWidget("root-tail"),
+                ]);
+        }
+    }
+
+    private sealed class KeyedNestedBranchWidget(string name, bool reorderInner) : StatefulWidget(new ValueKey<string>(name))
+    {
+        public string Name { get; } = name;
+        public bool ReorderInner { get; } = reorderInner;
+
+        public override State CreateState() => new KeyedNestedBranchState();
+    }
+
+    private sealed class KeyedNestedBranchState : State
+    {
+        private readonly string _stateId = Guid.NewGuid().ToString("N");
+        private KeyedNestedBranchWidget BranchWidget => (KeyedNestedBranchWidget)Element.Widget;
+
+        public override void InitState()
+        {
+            NestedBranchTracker.CurrentKeyedStateIdByName[BranchWidget.Name] = _stateId;
+        }
+
+        public override void Dispose()
+        {
+            if (NestedBranchTracker.CurrentKeyedStateIdByName.TryGetValue(BranchWidget.Name, out var stateId) &&
+                stateId == _stateId)
+            {
+                NestedBranchTracker.CurrentKeyedStateIdByName.Remove(BranchWidget.Name);
+            }
+
+            NestedBranchTracker.DisposedStateIds.Add(_stateId);
+        }
+
+        public override Widget Build(BuildContext context)
+        {
+            if (!BranchWidget.ReorderInner)
+            {
+                return new Column(
+                    children:
+                    [
+                        new Row(
+                            children:
+                            [
+                                new UnkeyedMixedItemWidget("nested-lead"),
+                                new KeyedMixedItemWidget("nested-k1"),
+                                new UnkeyedMixedItemWidget("nested-middle"),
+                                new KeyedMixedItemWidget("nested-k2"),
+                                new UnkeyedMixedItemWidget("nested-tail"),
+                            ]),
+                    ]);
+            }
+
+            return new Column(
+                children:
+                [
+                    new Row(
+                        children:
+                        [
+                            new KeyedMixedItemWidget("nested-k2"),
+                            new UnkeyedMixedItemWidget("nested-lead"),
+                            new KeyedMixedItemWidget("nested-k1"),
+                            new UnkeyedMixedItemWidget("nested-middle"),
+                            new UnkeyedMixedItemWidget("nested-tail"),
+                        ]),
+                ]);
+        }
+    }
+
+    private sealed class UnkeyedNestedBranchWidget(string name) : StatefulWidget
+    {
+        public string Name { get; } = name;
+
+        public override State CreateState() => new UnkeyedNestedBranchState();
+    }
+
+    private sealed class UnkeyedNestedBranchState : State
+    {
+        private readonly string _stateId = Guid.NewGuid().ToString("N");
+        private UnkeyedNestedBranchWidget BranchWidget => (UnkeyedNestedBranchWidget)Element.Widget;
+
+        public override void InitState()
+        {
+            NestedBranchTracker.CurrentUnkeyedStateIdByName[BranchWidget.Name] = _stateId;
+        }
+
+        public override void Dispose()
+        {
+            if (NestedBranchTracker.CurrentUnkeyedStateIdByName.TryGetValue(BranchWidget.Name, out var stateId) &&
+                stateId == _stateId)
+            {
+                NestedBranchTracker.CurrentUnkeyedStateIdByName.Remove(BranchWidget.Name);
+            }
+
+            NestedBranchTracker.DisposedStateIds.Add(_stateId);
+        }
+
+        public override Widget Build(BuildContext context)
+        {
+            return new Column(children: [new SizedBox(width: 1, height: 1)]);
+        }
+    }
+
+    private sealed class KeyedMixedItemWidget(string name) : StatefulWidget(new ValueKey<string>(name))
+    {
+        public override State CreateState() => new MixedItemState(name, isKeyed: true);
+    }
+
+    private sealed class UnkeyedMixedItemWidget(string name) : StatefulWidget
+    {
+        public override State CreateState() => new MixedItemState(name, isKeyed: false);
+    }
+
+    private sealed class MixedItemState(string name, bool isKeyed) : State
+    {
+        private readonly string _stateId = Guid.NewGuid().ToString("N");
+
+        public override void InitState()
+        {
+            if (isKeyed)
+            {
+                MixedTracker.CurrentKeyedStateIdByName[name] = _stateId;
+            }
+            else
+            {
+                MixedTracker.CurrentUnkeyedStateIdByName[name] = _stateId;
+            }
+        }
+
+        public override void Dispose()
+        {
+            if (isKeyed)
+            {
+                if (MixedTracker.CurrentKeyedStateIdByName.TryGetValue(name, out var stateId) && stateId == _stateId)
+                {
+                    MixedTracker.CurrentKeyedStateIdByName.Remove(name);
+                }
+            }
+            else
+            {
+                if (MixedTracker.CurrentUnkeyedStateIdByName.TryGetValue(name, out var stateId) &&
+                    stateId == _stateId)
+                {
+                    MixedTracker.CurrentUnkeyedStateIdByName.Remove(name);
+                }
+            }
+
+            MixedTracker.DisposedStateIds.Add(_stateId);
+        }
+
+        public override Widget Build(BuildContext context)
+        {
+            return new SizedBox(width: 1, height: 1);
+        }
+    }
+
     private sealed class LifecycleRecorderWidget : StatefulWidget
     {
         public LifecycleRecorderWidget(Key key) : base(key)
@@ -356,6 +638,34 @@ public sealed class ElementLifecycleTests
         public static void Reset()
         {
             Events.Clear();
+        }
+    }
+
+    private static class MixedTracker
+    {
+        public static readonly Dictionary<string, string> CurrentKeyedStateIdByName = [];
+        public static readonly Dictionary<string, string> CurrentUnkeyedStateIdByName = [];
+        public static readonly List<string> DisposedStateIds = [];
+
+        public static void Reset()
+        {
+            CurrentKeyedStateIdByName.Clear();
+            CurrentUnkeyedStateIdByName.Clear();
+            DisposedStateIds.Clear();
+        }
+    }
+
+    private static class NestedBranchTracker
+    {
+        public static readonly Dictionary<string, string> CurrentKeyedStateIdByName = [];
+        public static readonly Dictionary<string, string> CurrentUnkeyedStateIdByName = [];
+        public static readonly List<string> DisposedStateIds = [];
+
+        public static void Reset()
+        {
+            CurrentKeyedStateIdByName.Clear();
+            CurrentUnkeyedStateIdByName.Clear();
+            DisposedStateIds.Clear();
         }
     }
 }

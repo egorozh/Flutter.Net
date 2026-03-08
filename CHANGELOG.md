@@ -6,6 +6,11 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## [Unreleased]
 
+### Added
+
+- Lifecycle parity hardening: added element reconciliation tests for mixed keyed/unkeyed updates, including nested multi-parent reorder scenarios, to verify keyed state retention, stable-tail reuse, and disposal of moved unkeyed states (`src/Flutter.Tests/ElementLifecycleTests.cs`).
+- Scroll parity hardening: fixed `RenderSliverPadding` child paint offset to avoid double-applying scroll offset (preventing viewport gaps when padded slivers are scrolled), and added regression coverage for `Scrollable` + `ListView.Separated` viewport continuity during controller jumps (`src/Flutter/Rendering/Sliver.cs`, `src/Flutter.Tests/ScrollPipelineTests.cs`).
+
 ### Planned
 
 - Continue Flutter parity for widgets, layout, rendering, gestures, semantics, and navigation.

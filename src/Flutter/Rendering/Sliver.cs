@@ -779,7 +779,9 @@ public sealed class RenderSliverPadding : RenderSliver, IRenderObjectSingleChild
         }
 
         var childParentData = (SliverPhysicalParentData)_child.parentData!;
-        var childMainAxisOffset = mainStartPadding - constraints.ScrollOffset;
+        // Child paint origin is the visible portion of leading padding; the child sliver
+        // applies its own scroll offset internally and must not be shifted by full scroll offset again.
+        var childMainAxisOffset = beforePaddingPaintExtent;
         childParentData.offset = constraints.Axis == Axis.Vertical
             ? new Point(crossStartPadding, childMainAxisOffset)
             : new Point(childMainAxisOffset, crossStartPadding);

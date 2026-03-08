@@ -6,7 +6,7 @@ Purpose: map framework areas to existing test coverage and identify common gaps 
 
 | Area | Primary tests | What is covered | Typical gap to watch |
 | --- | --- | --- | --- |
-| Element lifecycle and reconciliation | `src/Flutter.Tests/ElementLifecycleTests.cs` | Keyed reorder, global key reparent/activation/disposal behavior. | Complex multi-branch updates with mixed keyed/unkeyed subtrees. |
+| Element lifecycle and reconciliation | `src/Flutter.Tests/ElementLifecycleTests.cs` | Keyed reorder, global key reparent/activation/disposal behavior, mixed keyed/unkeyed sibling reorder, and nested multi-parent mixed keyed/unkeyed reorder (keyed retention + moved unkeyed disposal). | Deep stress cases with rapid multi-frame updates that combine nested mixed keyed/unkeyed groups and `forgottenChildren` paths. |
 | Inherited dependencies | `src/Flutter.Tests/InheritedWidgetTests.cs`, `src/Flutter.Tests/InheritedModelTests.cs`, `src/Flutter.Tests/InheritedNotifierTests.cs` | Dependent registration and selective rebuild semantics. | Edge cases around deep tree shadowing plus dynamic notifier swaps. |
 | Frame and scheduler flow | `src/Flutter.Tests/FramePipelineTests.cs` | Begin/draw/post-frame order, persistent callbacks, build scheduling in frame. | Long-running callback interactions with host-level visibility transitions. |
 | Render object parity | `src/Flutter.Tests/RenderingParityTests.cs` | Constraint normalization, relayout boundary behavior, root relayout triggers. | Rare constraint edge cases across proxy chains. |
@@ -14,7 +14,7 @@ Purpose: map framework areas to existing test coverage and identify common gaps 
 | Semantics tree | `src/Flutter.Tests/SemanticsTreeTests.cs` | Actions, merge/split, transform/clip, dirty propagation and id reuse contracts. | Host accessibility bridge integration and end-to-end assistive flows. |
 | Gestures and hit testing | `src/Flutter.Tests/GesturePipelineTests.cs` | Transform/clip hit testing, recognizer dispatch, arena conflict outcomes, pointer signals. | Multi-pointer gesture interactions and cancellation races. |
 | Navigation | `src/Flutter.Tests/NavigationTests.cs` | Push/pop/replace/remove APIs, named routes, observers, route data semantics. | Host back integration across nested navigators. |
-| Scroll/slivers core | `src/Flutter.Tests/ScrollPipelineTests.cs` | Scroll position physics, viewport/sliver layout, cache extent, keep-alive reuse. | Stress tests with very large child counts and rapid direction changes. |
+| Scroll/slivers core | `src/Flutter.Tests/ScrollPipelineTests.cs` | Scroll position physics, viewport/sliver layout, cache extent, keep-alive reuse, sliver padding offset behavior, and `Scrollable + ListView.Separated` viewport continuity under jump-driven scroll updates. | Stress tests with very large child counts and rapid direction changes. |
 | Scroll widget infrastructure | `src/Flutter.Tests/ScrollInfrastructureTests.cs` | Notifications, primary controller, keep-alive mixin, list/grid constructor semantics. | Combined nested scrollables and scrollbar interaction nuances. |
 | Sample state behavior | `src/Flutter.Tests/SampleCounterStateTests.cs` | Counter model notifications and scope dependency behavior. | End-to-end sample page regressions across all demo routes. |
 
