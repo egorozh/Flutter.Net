@@ -1245,6 +1245,7 @@ public sealed class ListView : StatelessWidget
 {
     private readonly IReadOnlyList<Widget>? _children;
     private readonly IndexedWidgetBuilder? _itemBuilder;
+    private readonly IndexedWidgetBuilder? _separatorBuilder;
     private readonly int _itemCount;
     private readonly double? _itemExtent;
     private readonly bool _addAutomaticKeepAlives;
@@ -1280,6 +1281,7 @@ public sealed class ListView : StatelessWidget
     private ListView(
         int itemCount,
         IndexedWidgetBuilder itemBuilder,
+        IndexedWidgetBuilder? separatorBuilder,
         Axis scrollDirection,
         ScrollController? controller,
         ScrollPhysics? physics,
@@ -1289,6 +1291,11 @@ public sealed class ListView : StatelessWidget
         CacheExtentStyle cacheExtentStyle,
         Key? key) : base(key)
     {
+        if (itemCount < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(itemCount), "itemCount cannot be negative.");
+        }
+
         if (itemExtent.HasValue && itemExtent.Value <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(itemExtent), "itemExtent must be greater than 0.");
@@ -1296,6 +1303,7 @@ public sealed class ListView : StatelessWidget
 
         _itemCount = itemCount;
         _itemBuilder = itemBuilder;
+        _separatorBuilder = separatorBuilder;
         ScrollDirection = scrollDirection;
         Controller = controller;
         Physics = physics;
@@ -1326,6 +1334,34 @@ public sealed class ListView : StatelessWidget
         return new ListView(
             itemCount: itemCount,
             itemBuilder: itemBuilder,
+            separatorBuilder: null,
+            scrollDirection: scrollDirection,
+            controller: controller,
+            physics: physics,
+            itemExtent: itemExtent,
+            addAutomaticKeepAlives: addAutomaticKeepAlives,
+            cacheExtent: cacheExtent,
+            cacheExtentStyle: cacheExtentStyle,
+            key: key);
+    }
+
+    public static ListView Separated(
+        int itemCount,
+        IndexedWidgetBuilder itemBuilder,
+        IndexedWidgetBuilder separatorBuilder,
+        Axis scrollDirection = Axis.Vertical,
+        ScrollController? controller = null,
+        ScrollPhysics? physics = null,
+        double? itemExtent = null,
+        bool addAutomaticKeepAlives = true,
+        double cacheExtent = 250.0,
+        CacheExtentStyle cacheExtentStyle = CacheExtentStyle.Pixel,
+        Key? key = null)
+    {
+        return new ListView(
+            itemCount: itemCount,
+            itemBuilder: itemBuilder,
+            separatorBuilder: separatorBuilder,
             scrollDirection: scrollDirection,
             controller: controller,
             physics: physics,
@@ -1341,15 +1377,32 @@ public sealed class ListView : StatelessWidget
         Widget sliver;
         if (_itemBuilder != null)
         {
+            var childCount = _itemCount;
+            IndexedWidgetBuilder effectiveItemBuilder = _itemBuilder;
+
+            if (_separatorBuilder != null)
+            {
+                var itemBuilder = _itemBuilder;
+                var separatorBuilder = _separatorBuilder;
+                childCount = SeparatedChildCount(_itemCount);
+                effectiveItemBuilder = (buildContext, index) =>
+                {
+                    var itemIndex = index / 2;
+                    return index % 2 == 0
+                        ? itemBuilder(buildContext, itemIndex)
+                        : separatorBuilder(buildContext, itemIndex);
+                };
+            }
+
             sliver = _itemExtent.HasValue
                 ? SliverFixedExtentList.Builder(
-                    _itemCount,
-                    _itemBuilder,
+                    childCount,
+                    effectiveItemBuilder,
                     _itemExtent.Value,
                     addAutomaticKeepAlives: _addAutomaticKeepAlives)
                 : SliverList.Builder(
-                    _itemCount,
-                    _itemBuilder,
+                    childCount,
+                    effectiveItemBuilder,
                     addAutomaticKeepAlives: _addAutomaticKeepAlives);
         }
         else
@@ -1371,5 +1424,15 @@ public sealed class ListView : StatelessWidget
             physics: Physics,
             cacheExtent: _cacheExtent,
             cacheExtentStyle: _cacheExtentStyle);
+    }
+
+    private static int SeparatedChildCount(int itemCount)
+    {
+        if (itemCount <= 0)
+        {
+            return 0;
+        }
+
+        return itemCount * 2 - 1;
     }
 }

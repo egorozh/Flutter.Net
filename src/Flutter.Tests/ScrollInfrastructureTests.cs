@@ -101,6 +101,88 @@ public sealed class ScrollInfrastructureTests
         Assert.Equal(2, notifications);
     }
 
+    [Fact]
+    public void ListView_Separated_AlternatesItemAndSeparatorBuilders()
+    {
+        var owner = new BuildOwner();
+        var sampledChildren = new List<Widget?>();
+        Widget? built = null;
+
+        var root = new TestRootElement(
+            new ListViewBuildProbe(
+                listViewFactory: () => ListView.Separated(
+                    itemCount: 3,
+                    itemBuilder: (_, index) => new ItemMarker(index),
+                    separatorBuilder: (_, index) => new SeparatorMarker(index),
+                    addAutomaticKeepAlives: false),
+                onBuilt: (scrollViewWidget, context) =>
+                {
+                    built = scrollViewWidget;
+                    var scrollView = Assert.IsType<CustomScrollView>(scrollViewWidget);
+                    var sliver = Assert.IsType<SliverList>(Assert.Single(scrollView.Slivers));
+                    sampledChildren.Add(sliver.Delegate.Build(context, 0));
+                    sampledChildren.Add(sliver.Delegate.Build(context, 1));
+                    sampledChildren.Add(sliver.Delegate.Build(context, 2));
+                    sampledChildren.Add(sliver.Delegate.Build(context, 3));
+                    sampledChildren.Add(sliver.Delegate.Build(context, 4));
+                    sampledChildren.Add(sliver.Delegate.Build(context, 5));
+                }));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.NotNull(built);
+        var item0 = Assert.IsType<ItemMarker>(sampledChildren[0]);
+        var separator0 = Assert.IsType<SeparatorMarker>(sampledChildren[1]);
+        var item1 = Assert.IsType<ItemMarker>(sampledChildren[2]);
+        var separator1 = Assert.IsType<SeparatorMarker>(sampledChildren[3]);
+        var item2 = Assert.IsType<ItemMarker>(sampledChildren[4]);
+        Assert.Null(sampledChildren[5]);
+        Assert.Equal(0, item0.Index);
+        Assert.Equal(0, separator0.Index);
+        Assert.Equal(1, item1.Index);
+        Assert.Equal(1, separator1.Index);
+        Assert.Equal(2, item2.Index);
+    }
+
+    [Fact]
+    public void ListView_Separated_WithItemExtent_UsesSliverFixedExtentList()
+    {
+        var owner = new BuildOwner();
+        double builtItemExtent = 0;
+        var sampledChildren = new List<Widget?>();
+
+        var root = new TestRootElement(
+            new ListViewBuildProbe(
+                listViewFactory: () => ListView.Separated(
+                    itemCount: 2,
+                    itemBuilder: (_, index) => new ItemMarker(index),
+                    separatorBuilder: (_, index) => new SeparatorMarker(index),
+                    itemExtent: 36,
+                    addAutomaticKeepAlives: false),
+                onBuilt: (scrollViewWidget, context) =>
+                {
+                    var scrollView = Assert.IsType<CustomScrollView>(scrollViewWidget);
+                    var sliver = Assert.IsType<SliverFixedExtentList>(Assert.Single(scrollView.Slivers));
+                    builtItemExtent = sliver.ItemExtent;
+                    sampledChildren.Add(sliver.Delegate.Build(context, 0));
+                    sampledChildren.Add(sliver.Delegate.Build(context, 1));
+                    sampledChildren.Add(sliver.Delegate.Build(context, 2));
+                    sampledChildren.Add(sliver.Delegate.Build(context, 3));
+                }));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.Equal(36, builtItemExtent);
+        Assert.IsType<ItemMarker>(sampledChildren[0]);
+        Assert.IsType<SeparatorMarker>(sampledChildren[1]);
+        Assert.IsType<ItemMarker>(sampledChildren[2]);
+        Assert.Null(sampledChildren[3]);
+    }
+
     private sealed class NotificationEmitterWidget : StatelessWidget
     {
         public override Widget Build(BuildContext context)
@@ -170,6 +252,56 @@ public sealed class ScrollInfrastructureTests
             base.DidUpdateWidget(oldWidget);
             UpdateKeepAlive();
         }
+
+        public override Widget Build(BuildContext context)
+        {
+            return new SizedBox(width: 1, height: 1);
+        }
+    }
+
+    private sealed class ListViewBuildProbe : StatelessWidget
+    {
+        private readonly Func<ListView> _listViewFactory;
+        private readonly Action<Widget, BuildContext> _onBuilt;
+
+        public ListViewBuildProbe(Func<ListView> listViewFactory, Action<Widget, BuildContext> onBuilt)
+        {
+            _listViewFactory = listViewFactory;
+            _onBuilt = onBuilt;
+        }
+
+        public override Widget Build(BuildContext context)
+        {
+            var listView = _listViewFactory();
+            var built = listView.Build(context);
+            _onBuilt(built, context);
+            return new SizedBox(width: 1, height: 1);
+        }
+    }
+
+    private sealed class ItemMarker : StatelessWidget
+    {
+        public ItemMarker(int index)
+        {
+            Index = index;
+        }
+
+        public int Index { get; }
+
+        public override Widget Build(BuildContext context)
+        {
+            return new SizedBox(width: 1, height: 1);
+        }
+    }
+
+    private sealed class SeparatorMarker : StatelessWidget
+    {
+        public SeparatorMarker(int index)
+        {
+            Index = index;
+        }
+
+        public int Index { get; }
 
         public override Widget Build(BuildContext context)
         {
