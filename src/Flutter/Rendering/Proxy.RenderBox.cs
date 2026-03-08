@@ -49,12 +49,12 @@ public abstract class RenderProxyBox : RenderBox
         }
     }
 
-    internal override void VisitChildrenForSemantics(Action<RenderObject, Point> visitor)
+    internal override void VisitChildrenForSemantics(Action<RenderObject, Point, Matrix> visitor)
     {
         if (_child != null)
         {
             var childParentData = (BoxParentData)_child.parentData!;
-            visitor(_child, childParentData.offset);
+            visitor(_child, childParentData.offset, Matrix.Identity);
         }
     }
 
@@ -273,6 +273,15 @@ public sealed class RenderTransform : RenderProxyBox
     public override bool IsRepaintBoundary => Child != null;
     protected override bool AlwaysNeedsCompositing => Child != null;
 
+    internal override void VisitChildrenForSemantics(Action<RenderObject, Point, Matrix> visitor)
+    {
+        if (Child != null)
+        {
+            var childParentData = (BoxParentData)Child.parentData!;
+            visitor(Child, childParentData.offset, Transform);
+        }
+    }
+
     protected override OffsetLayer CreateCompositedLayer(OffsetLayer? oldLayer)
     {
         return oldLayer as TransformOffsetLayer ?? new TransformOffsetLayer();
@@ -330,5 +339,10 @@ public sealed class RenderClipRect : RenderProxyBox
         {
             clipLayer.ClipRect = _hasExplicitClipRect ? _clipRect : new Rect(new Point(0, 0), Size);
         }
+    }
+
+    protected override Rect? DescribeSemanticsClip(RenderObject? child)
+    {
+        return _hasExplicitClipRect ? _clipRect : new Rect(new Point(0, 0), Size);
     }
 }

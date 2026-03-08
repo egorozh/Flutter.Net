@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Media;
 using Flutter.Rendering;
 
 namespace Flutter;
@@ -51,11 +52,11 @@ public sealed class RenderView : RenderBox
         }
     }
 
-    internal override void VisitChildrenForSemantics(Action<RenderObject, Point> visitor)
+    internal override void VisitChildrenForSemantics(Action<RenderObject, Point, Matrix> visitor)
     {
         if (_child != null)
         {
-            visitor(_child, new Point(0, 0));
+            visitor(_child, new Point(0, 0), Matrix.Identity);
         }
     }
 

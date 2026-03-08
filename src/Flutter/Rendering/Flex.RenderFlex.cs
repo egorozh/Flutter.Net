@@ -301,12 +301,12 @@ public class RenderFlex : RenderBox, IRenderBoxContainerDefaultsMixin<RenderBox,
         }
     }
 
-    internal override void VisitChildrenForSemantics(Action<RenderObject, Point> visitor)
+    internal override void VisitChildrenForSemantics(Action<RenderObject, Point, Matrix> visitor)
     {
         for (RenderBox? child = FirstChild; child != null; child = ChildAfter(child))
         {
             var childParentData = (FlexParentData)child.parentData!;
-            visitor(child, childParentData.offset);
+            visitor(child, childParentData.offset, Matrix.Identity);
         }
     }
 

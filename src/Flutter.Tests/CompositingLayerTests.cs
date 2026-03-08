@@ -255,6 +255,99 @@ public sealed class CompositingLayerTests
         Assert.Equal(new Rect(3, 5, 20, 12), clipLayer.ClipRect);
     }
 
+    [Fact]
+    public void DetachedBoundaryLayer_DirtyChild_RepaintsAfterAncestorRecovery()
+    {
+        var leaf = new TestLeafRenderBox();
+        var boundary = new TestRepaintBoundaryRenderBox(leaf);
+        var root = new RenderView
+        {
+            Child = boundary
+        };
+
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+
+        pipeline.FlushLayout(new Size(300, 200));
+        pipeline.FlushCompositingBits();
+        pipeline.FlushPaint();
+
+        var boundaryLayer = Assert.IsType<OffsetLayer>(Assert.Single(pipeline.RootLayer.Children));
+        pipeline.RootLayer.Remove(boundaryLayer);
+        Assert.Null(boundaryLayer.Parent);
+
+        boundary.TriggerRepaint();
+        pipeline.FlushCompositingBits();
+        pipeline.FlushPaint();
+
+        Assert.Equal(2, boundary.PaintCount);
+        Assert.Equal(2, leaf.PaintCount);
+        Assert.Single(pipeline.RootLayer.Children);
+        Assert.Same(boundaryLayer, pipeline.RootLayer.Children[0]);
+    }
+
+    [Fact]
+    public void RepaintBoundary_ToggleToNonBoundary_DropsDedicatedLayer()
+    {
+        var leaf = new TestLeafRenderBox();
+        var toggle = new ToggleBoundaryRenderBox(initialBoundary: true, child: leaf);
+        var root = new RenderView
+        {
+            Child = toggle
+        };
+
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+
+        pipeline.FlushLayout(new Size(300, 200));
+        pipeline.FlushCompositingBits();
+        pipeline.FlushPaint();
+
+        Assert.Contains(pipeline.RootLayer.Children, static layer => layer is OffsetLayer);
+        Assert.Equal(1, toggle.PaintCount);
+        Assert.Equal(1, leaf.PaintCount);
+
+        toggle.IsBoundary = false;
+        pipeline.FlushCompositingBits();
+        pipeline.FlushPaint();
+
+        Assert.DoesNotContain(pipeline.RootLayer.Children, static layer => layer is OffsetLayer);
+        Assert.Equal(2, toggle.PaintCount);
+        Assert.Equal(2, leaf.PaintCount);
+        Assert.Null(toggle._layer);
+    }
+
+    [Fact]
+    public void RepaintBoundary_ToggleToBoundary_CreatesDedicatedLayer()
+    {
+        var leaf = new TestLeafRenderBox();
+        var toggle = new ToggleBoundaryRenderBox(initialBoundary: false, child: leaf);
+        var root = new RenderView
+        {
+            Child = toggle
+        };
+
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+
+        pipeline.FlushLayout(new Size(300, 200));
+        pipeline.FlushCompositingBits();
+        pipeline.FlushPaint();
+
+        Assert.DoesNotContain(pipeline.RootLayer.Children, static layer => layer is OffsetLayer);
+        Assert.Equal(1, toggle.PaintCount);
+        Assert.Equal(1, leaf.PaintCount);
+
+        toggle.IsBoundary = true;
+        pipeline.FlushCompositingBits();
+        pipeline.FlushPaint();
+
+        Assert.Contains(pipeline.RootLayer.Children, static layer => layer is OffsetLayer);
+        Assert.Equal(2, toggle.PaintCount);
+        Assert.Equal(2, leaf.PaintCount);
+        Assert.IsType<OffsetLayer>(toggle._layer);
+    }
+
     private sealed class TestLeafRenderBox : RenderBox
     {
         public int PaintCount { get; private set; }
@@ -338,6 +431,42 @@ public sealed class CompositingLayerTests
             LayerUpdateCount += 1;
             layer.Offset = new Point(2, 3);
         }
+
+        public override void Paint(PaintingContext ctx, Point offset)
+        {
+            PaintCount += 1;
+            base.Paint(ctx, offset);
+        }
+    }
+
+    private sealed class ToggleBoundaryRenderBox : RenderProxyBox
+    {
+        private bool _isBoundary;
+        public int PaintCount { get; private set; }
+
+        public ToggleBoundaryRenderBox(bool initialBoundary, RenderBox child)
+        {
+            _isBoundary = initialBoundary;
+            Child = child;
+        }
+
+        public bool IsBoundary
+        {
+            get => _isBoundary;
+            set
+            {
+                if (_isBoundary == value)
+                {
+                    return;
+                }
+
+                _isBoundary = value;
+                MarkNeedsCompositingBitsUpdate();
+                MarkNeedsPaint();
+            }
+        }
+
+        public override bool IsRepaintBoundary => _isBoundary;
 
         public override void Paint(PaintingContext ctx, Point offset)
         {

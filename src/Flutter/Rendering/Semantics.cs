@@ -22,6 +22,7 @@ public sealed class SemanticsConfiguration
 {
     public bool IsSemanticBoundary { get; set; }
     public bool IsMergingSemanticsOfDescendants { get; set; }
+    public bool IsBlockingSemanticsOfPreviouslyPaintedNodes { get; set; }
     public bool IsExcluded { get; set; }
     public string? Label { get; set; }
     public SemanticsFlags Flags { get; set; } = SemanticsFlags.None;
@@ -69,6 +70,7 @@ public sealed class SemanticsNode
     public SemanticsFlags Flags { get; internal set; }
     public SemanticsActions Actions { get; internal set; }
     public IReadOnlyList<SemanticsNode> Children => _children;
+    internal bool BlocksPreviousNodes { get; set; }
 
     internal void ReplaceChildren(List<SemanticsNode> children)
     {

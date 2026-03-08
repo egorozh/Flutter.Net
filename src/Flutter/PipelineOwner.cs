@@ -214,7 +214,7 @@ public sealed class PipelineOwner
                     || node._layer is not OffsetLayer layer
                     || (layer.Parent == null && node.Parent != null))
                 {
-                    RequestPaintFor(Root);
+                    node.HandleSkippedPaintingOnDetachedLayer();
                     continue;
                 }
 
@@ -298,7 +298,7 @@ public sealed class PipelineOwner
             }
 
             var roots = new List<SemanticsNode>();
-            Root.BuildSemantics(_semanticsOwner, new Point(0, 0), roots);
+            Root.BuildSemantics(_semanticsOwner, Matrix.Identity, clipRect: null, roots);
             _semanticsOwner.UpdateRoot(roots);
         }
 

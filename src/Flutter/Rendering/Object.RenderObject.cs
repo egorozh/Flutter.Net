@@ -459,7 +459,7 @@ public abstract class RenderObject : IRenderObject
         }
     }
 
-    internal void BuildSemantics(SemanticsOwner owner, Point offset, List<SemanticsNode> output)
+    internal void BuildSemantics(SemanticsOwner owner, Matrix transform, Rect? clipRect, List<SemanticsNode> output)
     {
         if (_needsSemanticsUpdate)
         {
@@ -478,7 +478,24 @@ public abstract class RenderObject : IRenderObject
         }
 
         var children = new List<SemanticsNode>();
-        VisitChildrenForSemantics((child, childOffset) => child.BuildSemantics(owner, offset + childOffset, children));
+        VisitChildrenForSemantics((child, childOffset, childTransform) =>
+        {
+            var childNodes = new List<SemanticsNode>();
+            var childMatrix =
+                transform
+                * Matrix.CreateTranslation(childOffset.X, childOffset.Y)
+                * childTransform;
+
+            var clipForChild = IntersectClip(clipRect, DescribeSemanticsClip(child), transform);
+            child.BuildSemantics(owner, childMatrix, clipForChild, childNodes);
+
+            if (childNodes.Any(static node => node.BlocksPreviousNodes))
+            {
+                children.Clear();
+            }
+
+            children.AddRange(childNodes);
+        });
 
         if (config.IsMergingSemanticsOfDescendants && children.Count > 0)
         {
@@ -488,6 +505,7 @@ public abstract class RenderObject : IRenderObject
 
         var hasOwnSemantics = config.IsSemanticBoundary
                               || config.IsMergingSemanticsOfDescendants
+                              || config.IsBlockingSemanticsOfPreviouslyPaintedNodes
                               || !string.IsNullOrEmpty(config.Label)
                               || config.Flags != SemanticsFlags.None
                               || config.Actions != SemanticsActions.None
@@ -502,11 +520,19 @@ public abstract class RenderObject : IRenderObject
 
         var semanticsNode = owner.EnsureNode(this);
         var localBounds = config.ExplicitRect ?? SemanticBounds;
+        var transformedRect = TransformRect(transform, localBounds);
 
-        semanticsNode.Rect = new Rect(localBounds.Position + offset, localBounds.Size);
+        if (clipRect.HasValue && !clipRect.Value.Intersects(transformedRect))
+        {
+            _semanticsNode = null;
+            return;
+        }
+
+        semanticsNode.Rect = transformedRect;
         semanticsNode.Label = config.Label;
         semanticsNode.Flags = config.Flags;
         semanticsNode.Actions = config.Actions;
+        semanticsNode.BlocksPreviousNodes = config.IsBlockingSemanticsOfPreviouslyPaintedNodes;
         semanticsNode.ReplaceChildren(children);
         semanticsNode.SetActionHandlers(config.ActionHandlers);
 
@@ -575,9 +601,14 @@ public abstract class RenderObject : IRenderObject
 
     protected virtual Rect SemanticBounds => new Rect();
 
-    internal virtual void VisitChildrenForSemantics(Action<RenderObject, Point> visitor)
+    internal virtual void VisitChildrenForSemantics(Action<RenderObject, Point, Matrix> visitor)
     {
-        VisitChildren(child => visitor(child, new Point(0, 0)));
+        VisitChildren(child => visitor(child, new Point(0, 0), Matrix.Identity));
+    }
+
+    protected virtual Rect? DescribeSemanticsClip(RenderObject? child)
+    {
+        return null;
     }
 
     internal bool HasBoxConstraints => _constraints is BoxConstraints;
@@ -686,7 +717,68 @@ public abstract class RenderObject : IRenderObject
             PerformSemantics();
         }
 
-        VisitChildrenForSemantics((child, _) => child.UpdateSemanticsSubtree());
+        VisitChildrenForSemantics((child, _, _) => child.UpdateSemanticsSubtree());
+    }
+
+    internal void HandleSkippedPaintingOnDetachedLayer()
+    {
+        if (!Attached || !IsRepaintBoundary || _layer is not OffsetLayer layer || layer.Parent != null)
+        {
+            return;
+        }
+
+        RenderObject? node = Parent;
+        while (node != null)
+        {
+            if (node.IsRepaintBoundary)
+            {
+                node._needsPaint = true;
+                node.Owner?.RequestPaintFor(node);
+
+                if (node._layer is not OffsetLayer ancestorLayer || ancestorLayer.Parent != null)
+                {
+                    break;
+                }
+            }
+
+            node = node.Parent;
+        }
+    }
+
+    private static Rect TransformRect(Matrix transform, Rect rect)
+    {
+        var p1 = transform.Transform(rect.TopLeft);
+        var p2 = transform.Transform(rect.TopRight);
+        var p3 = transform.Transform(rect.BottomLeft);
+        var p4 = transform.Transform(rect.BottomRight);
+
+        var minX = Math.Min(Math.Min(p1.X, p2.X), Math.Min(p3.X, p4.X));
+        var minY = Math.Min(Math.Min(p1.Y, p2.Y), Math.Min(p3.Y, p4.Y));
+        var maxX = Math.Max(Math.Max(p1.X, p2.X), Math.Max(p3.X, p4.X));
+        var maxY = Math.Max(Math.Max(p1.Y, p2.Y), Math.Max(p3.Y, p4.Y));
+        return new Rect(minX, minY, maxX - minX, maxY - minY);
+    }
+
+    private static Rect? IntersectClip(Rect? inheritedClip, Rect? localClip, Matrix transform)
+    {
+        Rect? transformedLocalClip = null;
+        if (localClip.HasValue)
+        {
+            transformedLocalClip = TransformRect(transform, localClip.Value);
+        }
+
+        if (!inheritedClip.HasValue)
+        {
+            return transformedLocalClip;
+        }
+
+        if (!transformedLocalClip.HasValue)
+        {
+            return inheritedClip;
+        }
+
+        var intersection = inheritedClip.Value.Intersect(transformedLocalClip.Value);
+        return intersection.Width <= 0 || intersection.Height <= 0 ? null : intersection;
     }
 
     /// <summary>
