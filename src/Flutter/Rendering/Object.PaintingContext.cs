@@ -61,6 +61,54 @@ public sealed class PaintingContext
         pictureLayer.AddDrawCommand((drawingContext, sceneOffset) => layout.Draw(drawingContext, point + sceneOffset));
     }
 
+    public void PushClipRect(Rect clipRect, Action<PaintingContext> painter)
+    {
+        StopRecordingIfNeeded();
+
+        var layer = new ClipRectLayer
+        {
+            ClipRect = clipRect
+        };
+
+        _containerLayer.Append(layer);
+
+        var childContext = new PaintingContext(layer);
+        painter(childContext);
+        childContext.StopRecordingIfNeeded();
+    }
+
+    public void PushTransform(Matrix transform, Action<PaintingContext> painter)
+    {
+        StopRecordingIfNeeded();
+
+        var layer = new TransformLayer
+        {
+            Transform = transform
+        };
+
+        _containerLayer.Append(layer);
+
+        var childContext = new PaintingContext(layer);
+        painter(childContext);
+        childContext.StopRecordingIfNeeded();
+    }
+
+    public void PushOpacity(double opacity, Action<PaintingContext> painter)
+    {
+        StopRecordingIfNeeded();
+
+        var layer = new OpacityLayer
+        {
+            Opacity = opacity
+        };
+
+        _containerLayer.Append(layer);
+
+        var childContext = new PaintingContext(layer);
+        painter(childContext);
+        childContext.StopRecordingIfNeeded();
+    }
+
     private PictureLayer EnsurePictureLayer()
     {
         if (_currentPictureLayer != null)

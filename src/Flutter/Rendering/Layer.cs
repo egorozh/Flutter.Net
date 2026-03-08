@@ -75,6 +75,53 @@ public sealed class OffsetLayer : ContainerLayer
     }
 }
 
+public sealed class ClipRectLayer : ContainerLayer
+{
+    public Rect ClipRect { get; set; }
+
+    internal override void AddToScene(DrawingContext context, Point offset)
+    {
+        var translatedRect = new Rect(ClipRect.Position + offset, ClipRect.Size);
+        using (context.PushClip(translatedRect))
+        {
+            base.AddToScene(context, offset);
+        }
+    }
+}
+
+public sealed class TransformLayer : ContainerLayer
+{
+    public Matrix Transform { get; set; } = Matrix.Identity;
+
+    internal override void AddToScene(DrawingContext context, Point offset)
+    {
+        using (context.PushTransform(Matrix.CreateTranslation(offset.X, offset.Y)))
+        using (context.PushTransform(Transform))
+        {
+            base.AddToScene(context, new Point(0, 0));
+        }
+    }
+}
+
+public sealed class OpacityLayer : ContainerLayer
+{
+    private double _opacity = 1.0;
+
+    public double Opacity
+    {
+        get => _opacity;
+        set => _opacity = Math.Clamp(value, 0.0, 1.0);
+    }
+
+    internal override void AddToScene(DrawingContext context, Point offset)
+    {
+        using (context.PushOpacity(Opacity))
+        {
+            base.AddToScene(context, offset);
+        }
+    }
+}
+
 public sealed class PictureLayer : Layer
 {
     private readonly List<Action<DrawingContext, Point>> _commands = [];
