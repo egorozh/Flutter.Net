@@ -394,6 +394,88 @@ public sealed class ScrollPipelineTests
         Assert.Contains(0, ActiveIndices(sliverList));
     }
 
+    [Fact]
+    public void RenderSliverGrid_ComputesVisibleChildren_AndCrossAxisOffsets()
+    {
+        double maxExtent = -1;
+        var manager = new TestSliverChildManager(childCount: 100, childExtent: 10);
+        var sliverGrid = new RenderSliverGrid(
+            gridDelegate: new SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                mainAxisExtent: 40),
+            childManager: manager);
+        manager.AttachOwner(sliverGrid);
+
+        var viewport = new RenderViewport(
+            axis: Axis.Vertical,
+            offsetPixels: 0,
+            onViewportMetricsChanged: (_, _, max) => maxExtent = max);
+        viewport.Insert(sliverGrid);
+
+        var root = new RenderView { Child = viewport };
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+        pipeline.FlushLayout(new Size(100, 200));
+
+        Assert.Equal(2290, maxExtent);
+        Assert.Contains(6, ActiveIndices(sliverGrid));
+        Assert.DoesNotContain(8, ActiveIndices(sliverGrid));
+
+        var firstChild = sliverGrid.FirstChild!;
+        var secondChild = sliverGrid.ChildAfter(firstChild)!;
+        var firstParentData = (SliverGridParentData)firstChild.parentData!;
+        var secondParentData = (SliverGridParentData)secondChild.parentData!;
+        Assert.Equal(0, firstParentData.CrossAxisOffset);
+        Assert.Equal(55, secondParentData.CrossAxisOffset);
+
+        viewport.OffsetPixels = 500;
+        pipeline.FlushLayout(new Size(100, 200));
+
+        Assert.DoesNotContain(0, ActiveIndices(sliverGrid));
+        Assert.Contains(20, ActiveIndices(sliverGrid));
+        Assert.InRange(manager.MaxCreatedIndex, 27, 40);
+    }
+
+    [Fact]
+    public void RenderSliverGrid_KeepAliveChild_IsReused_WhenReturningToViewport()
+    {
+        var manager = new TestSliverChildManager(
+            childCount: 200,
+            childExtent: 50,
+            keepAliveIndices: [0]);
+        var sliverGrid = new RenderSliverGrid(
+            gridDelegate: new SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisExtent: 50),
+            childManager: manager);
+        manager.AttachOwner(sliverGrid);
+
+        var viewport = new RenderViewport(
+            axis: Axis.Vertical,
+            offsetPixels: 0);
+        viewport.Insert(sliverGrid);
+
+        var root = new RenderView { Child = viewport };
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+
+        pipeline.FlushLayout(new Size(100, 200));
+        Assert.Equal(1, manager.CreateCountFor(0));
+        Assert.Contains(0, ActiveIndices(sliverGrid));
+
+        viewport.OffsetPixels = 600;
+        pipeline.FlushLayout(new Size(100, 200));
+        Assert.DoesNotContain(0, ActiveIndices(sliverGrid));
+        Assert.DoesNotContain(0, manager.RemovedIndices);
+
+        viewport.OffsetPixels = 0;
+        pipeline.FlushLayout(new Size(100, 200));
+        Assert.Equal(1, manager.CreateCountFor(0));
+        Assert.Contains(0, ActiveIndices(sliverGrid));
+    }
+
     private static IReadOnlyList<int> ActiveIndices(RenderSliverMultiBoxAdaptor sliverList)
     {
         var indices = new List<int>();

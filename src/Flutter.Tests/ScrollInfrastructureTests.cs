@@ -216,6 +216,139 @@ public sealed class ScrollInfrastructureTests
         Assert.IsType<SliverList>(childSliver);
     }
 
+    [Fact]
+    public void GridView_Builder_UsesSliverGrid_AndBuildsChildrenFromDelegate()
+    {
+        var owner = new BuildOwner();
+        var sampledChildren = new List<Widget?>();
+        SliverGridDelegate? sampledDelegate = null;
+
+        var root = new TestRootElement(
+            new GridViewBuildProbe(
+                gridViewFactory: () => GridView.Builder(
+                    itemCount: 3,
+                    itemBuilder: (_, index) => new ItemMarker(index),
+                    gridDelegate: new SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2),
+                    addAutomaticKeepAlives: false),
+                onBuilt: (scrollViewWidget, context) =>
+                {
+                    var scrollView = Assert.IsType<CustomScrollView>(scrollViewWidget);
+                    var sliver = Assert.IsType<SliverGrid>(Assert.Single(scrollView.Slivers));
+                    sampledDelegate = sliver.GridDelegate;
+                    sampledChildren.Add(sliver.Delegate.Build(context, 0));
+                    sampledChildren.Add(sliver.Delegate.Build(context, 1));
+                    sampledChildren.Add(sliver.Delegate.Build(context, 2));
+                    sampledChildren.Add(sliver.Delegate.Build(context, 3));
+                }));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.NotNull(sampledDelegate);
+        Assert.IsType<SliverGridDelegateWithFixedCrossAxisCount>(sampledDelegate);
+        Assert.IsType<ItemMarker>(sampledChildren[0]);
+        Assert.IsType<ItemMarker>(sampledChildren[1]);
+        Assert.IsType<ItemMarker>(sampledChildren[2]);
+        Assert.Null(sampledChildren[3]);
+    }
+
+    [Fact]
+    public void GridView_Count_UsesFixedCrossAxisDelegate()
+    {
+        var owner = new BuildOwner();
+        SliverGridDelegate? sampledDelegate = null;
+
+        var root = new TestRootElement(
+            new GridViewBuildProbe(
+                gridViewFactory: () => GridView.Count(
+                    crossAxisCount: 3,
+                    mainAxisSpacing: 4,
+                    crossAxisSpacing: 6,
+                    childAspectRatio: 1.5,
+                    children: [new ItemMarker(0), new ItemMarker(1)]),
+                onBuilt: (scrollViewWidget, _) =>
+                {
+                    var scrollView = Assert.IsType<CustomScrollView>(scrollViewWidget);
+                    var sliver = Assert.IsType<SliverGrid>(Assert.Single(scrollView.Slivers));
+                    sampledDelegate = sliver.GridDelegate;
+                }));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var fixedDelegate = Assert.IsType<SliverGridDelegateWithFixedCrossAxisCount>(sampledDelegate);
+        Assert.Equal(3, fixedDelegate.CrossAxisCount);
+        Assert.Equal(4, fixedDelegate.MainAxisSpacing);
+        Assert.Equal(6, fixedDelegate.CrossAxisSpacing);
+        Assert.Equal(1.5, fixedDelegate.ChildAspectRatio);
+    }
+
+    [Fact]
+    public void GridView_Extent_UsesMaxCrossAxisDelegate()
+    {
+        var owner = new BuildOwner();
+        SliverGridDelegate? sampledDelegate = null;
+
+        var root = new TestRootElement(
+            new GridViewBuildProbe(
+                gridViewFactory: () => GridView.Extent(
+                    maxCrossAxisExtent: 120,
+                    mainAxisSpacing: 4,
+                    crossAxisSpacing: 6,
+                    childAspectRatio: 1.2,
+                    children: [new ItemMarker(0), new ItemMarker(1)]),
+                onBuilt: (scrollViewWidget, _) =>
+                {
+                    var scrollView = Assert.IsType<CustomScrollView>(scrollViewWidget);
+                    var sliver = Assert.IsType<SliverGrid>(Assert.Single(scrollView.Slivers));
+                    sampledDelegate = sliver.GridDelegate;
+                }));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var maxExtentDelegate = Assert.IsType<SliverGridDelegateWithMaxCrossAxisExtent>(sampledDelegate);
+        Assert.Equal(120, maxExtentDelegate.MaxCrossAxisExtent);
+        Assert.Equal(4, maxExtentDelegate.MainAxisSpacing);
+        Assert.Equal(6, maxExtentDelegate.CrossAxisSpacing);
+        Assert.Equal(1.2, maxExtentDelegate.ChildAspectRatio);
+    }
+
+    [Fact]
+    public void GridView_WithPadding_WrapsSliverIntoSliverPadding()
+    {
+        var owner = new BuildOwner();
+        var expectedPadding = new Avalonia.Thickness(6, 10, 14, 18);
+        Widget? rootSliver = null;
+        Widget? childSliver = null;
+
+        var root = new TestRootElement(
+            new GridViewBuildProbe(
+                gridViewFactory: () => GridView.Count(
+                    crossAxisCount: 2,
+                    children: [new ItemMarker(0), new ItemMarker(1)],
+                    padding: expectedPadding),
+                onBuilt: (scrollViewWidget, _) =>
+                {
+                    var scrollView = Assert.IsType<CustomScrollView>(scrollViewWidget);
+                    rootSliver = Assert.Single(scrollView.Slivers);
+                    var sliverPadding = Assert.IsType<SliverPadding>(rootSliver);
+                    childSliver = sliverPadding.Child;
+                    Assert.Equal(expectedPadding, sliverPadding.Padding);
+                }));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.NotNull(rootSliver);
+        Assert.NotNull(childSliver);
+        Assert.IsType<SliverGrid>(childSliver);
+    }
+
     private sealed class NotificationEmitterWidget : StatelessWidget
     {
         public override Widget Build(BuildContext context)
@@ -307,6 +440,26 @@ public sealed class ScrollInfrastructureTests
         {
             var listView = _listViewFactory();
             var built = listView.Build(context);
+            _onBuilt(built, context);
+            return new SizedBox(width: 1, height: 1);
+        }
+    }
+
+    private sealed class GridViewBuildProbe : StatelessWidget
+    {
+        private readonly Func<GridView> _gridViewFactory;
+        private readonly Action<Widget, BuildContext> _onBuilt;
+
+        public GridViewBuildProbe(Func<GridView> gridViewFactory, Action<Widget, BuildContext> onBuilt)
+        {
+            _gridViewFactory = gridViewFactory;
+            _onBuilt = onBuilt;
+        }
+
+        public override Widget Build(BuildContext context)
+        {
+            var gridView = _gridViewFactory();
+            var built = gridView.Build(context);
             _onBuilt(built, context);
             return new SizedBox(width: 1, height: 1);
         }

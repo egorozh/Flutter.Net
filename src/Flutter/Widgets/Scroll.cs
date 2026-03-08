@@ -1103,6 +1103,99 @@ public sealed class SliverFixedExtentList : SliverMultiBoxAdaptorWidget
     }
 }
 
+public sealed class SliverGrid : SliverMultiBoxAdaptorWidget
+{
+    public SliverGrid(
+        SliverChildDelegate @delegate,
+        SliverGridDelegate gridDelegate,
+        Key? key = null) : base(@delegate, key)
+    {
+        GridDelegate = gridDelegate ?? throw new ArgumentNullException(nameof(gridDelegate));
+    }
+
+    public SliverGridDelegate GridDelegate { get; }
+
+    public static SliverGrid FromChildren(
+        IReadOnlyList<Widget> children,
+        SliverGridDelegate gridDelegate,
+        bool addAutomaticKeepAlives = true,
+        Key? key = null)
+    {
+        return new SliverGrid(
+            new SliverChildListDelegate(
+                children,
+                addAutomaticKeepAlives: addAutomaticKeepAlives),
+            gridDelegate,
+            key);
+    }
+
+    public static SliverGrid Builder(
+        int childCount,
+        IndexedWidgetBuilder itemBuilder,
+        SliverGridDelegate gridDelegate,
+        bool addAutomaticKeepAlives = true,
+        Key? key = null)
+    {
+        return new SliverGrid(
+            new SliverChildBuilderDelegate(
+                itemBuilder,
+                childCount,
+                addAutomaticKeepAlives: addAutomaticKeepAlives),
+            gridDelegate,
+            key);
+    }
+
+    public static SliverGrid Count(
+        int crossAxisCount,
+        IReadOnlyList<Widget> children,
+        double mainAxisSpacing = 0,
+        double crossAxisSpacing = 0,
+        double childAspectRatio = 1,
+        bool addAutomaticKeepAlives = true,
+        Key? key = null)
+    {
+        return FromChildren(
+            children,
+            new SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                mainAxisSpacing: mainAxisSpacing,
+                crossAxisSpacing: crossAxisSpacing,
+                childAspectRatio: childAspectRatio),
+            addAutomaticKeepAlives: addAutomaticKeepAlives,
+            key: key);
+    }
+
+    public static SliverGrid Extent(
+        double maxCrossAxisExtent,
+        IReadOnlyList<Widget> children,
+        double mainAxisSpacing = 0,
+        double crossAxisSpacing = 0,
+        double childAspectRatio = 1,
+        bool addAutomaticKeepAlives = true,
+        Key? key = null)
+    {
+        return FromChildren(
+            children,
+            new SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: maxCrossAxisExtent,
+                mainAxisSpacing: mainAxisSpacing,
+                crossAxisSpacing: crossAxisSpacing,
+                childAspectRatio: childAspectRatio),
+            addAutomaticKeepAlives: addAutomaticKeepAlives,
+            key: key);
+    }
+
+    internal override RenderObject CreateRenderObject(BuildContext context)
+    {
+        return new RenderSliverGrid(GridDelegate);
+    }
+
+    internal override void UpdateRenderObject(BuildContext context, RenderObject renderObject)
+    {
+        ((RenderSliverGrid)renderObject).GridDelegate = GridDelegate;
+    }
+}
+
 public sealed class CustomScrollView : StatelessWidget
 {
     public CustomScrollView(
@@ -1535,6 +1628,220 @@ public sealed class ListView : StatelessWidget
         }
 
         return itemCount * 2 - 1;
+    }
+
+    private static bool HasNonZeroPadding(Thickness padding)
+    {
+        return Math.Abs(padding.Left) > 0.0001
+               || Math.Abs(padding.Top) > 0.0001
+               || Math.Abs(padding.Right) > 0.0001
+               || Math.Abs(padding.Bottom) > 0.0001;
+    }
+}
+
+public sealed class GridView : StatelessWidget
+{
+    private readonly SliverGridDelegate _gridDelegate;
+    private readonly IReadOnlyList<Widget>? _children;
+    private readonly IndexedWidgetBuilder? _itemBuilder;
+    private readonly int _itemCount;
+    private readonly Thickness _padding;
+    private readonly bool _addAutomaticKeepAlives;
+    private readonly double _cacheExtent;
+    private readonly CacheExtentStyle _cacheExtentStyle;
+
+    public GridView(
+        SliverGridDelegate gridDelegate,
+        IReadOnlyList<Widget>? children = null,
+        Axis scrollDirection = Axis.Vertical,
+        bool reverse = false,
+        ScrollController? controller = null,
+        ScrollPhysics? physics = null,
+        Thickness? padding = null,
+        bool addAutomaticKeepAlives = true,
+        double cacheExtent = 250.0,
+        CacheExtentStyle cacheExtentStyle = CacheExtentStyle.Pixel,
+        Key? key = null) : base(key)
+    {
+        _gridDelegate = gridDelegate ?? throw new ArgumentNullException(nameof(gridDelegate));
+        _children = children ?? [];
+        ScrollDirection = scrollDirection;
+        Reverse = reverse;
+        Controller = controller;
+        Physics = physics;
+        _padding = padding ?? default;
+        _addAutomaticKeepAlives = addAutomaticKeepAlives;
+        _cacheExtent = cacheExtent;
+        _cacheExtentStyle = cacheExtentStyle;
+    }
+
+    private GridView(
+        SliverGridDelegate gridDelegate,
+        int itemCount,
+        IndexedWidgetBuilder itemBuilder,
+        Axis scrollDirection,
+        bool reverse,
+        ScrollController? controller,
+        ScrollPhysics? physics,
+        Thickness? padding,
+        bool addAutomaticKeepAlives,
+        double cacheExtent,
+        CacheExtentStyle cacheExtentStyle,
+        Key? key) : base(key)
+    {
+        if (itemCount < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(itemCount), "itemCount cannot be negative.");
+        }
+
+        _gridDelegate = gridDelegate ?? throw new ArgumentNullException(nameof(gridDelegate));
+        _itemCount = itemCount;
+        _itemBuilder = itemBuilder;
+        ScrollDirection = scrollDirection;
+        Reverse = reverse;
+        Controller = controller;
+        Physics = physics;
+        _padding = padding ?? default;
+        _addAutomaticKeepAlives = addAutomaticKeepAlives;
+        _cacheExtent = cacheExtent;
+        _cacheExtentStyle = cacheExtentStyle;
+    }
+
+    public Axis ScrollDirection { get; }
+
+    public bool Reverse { get; }
+
+    public ScrollController? Controller { get; }
+
+    public ScrollPhysics? Physics { get; }
+
+    public static GridView Builder(
+        int itemCount,
+        IndexedWidgetBuilder itemBuilder,
+        SliverGridDelegate gridDelegate,
+        Axis scrollDirection = Axis.Vertical,
+        bool reverse = false,
+        ScrollController? controller = null,
+        ScrollPhysics? physics = null,
+        Thickness? padding = null,
+        bool addAutomaticKeepAlives = true,
+        double cacheExtent = 250.0,
+        CacheExtentStyle cacheExtentStyle = CacheExtentStyle.Pixel,
+        Key? key = null)
+    {
+        return new GridView(
+            gridDelegate: gridDelegate,
+            itemCount: itemCount,
+            itemBuilder: itemBuilder,
+            scrollDirection: scrollDirection,
+            reverse: reverse,
+            controller: controller,
+            physics: physics,
+            padding: padding,
+            addAutomaticKeepAlives: addAutomaticKeepAlives,
+            cacheExtent: cacheExtent,
+            cacheExtentStyle: cacheExtentStyle,
+            key: key);
+    }
+
+    public static GridView Count(
+        int crossAxisCount,
+        IReadOnlyList<Widget>? children = null,
+        Axis scrollDirection = Axis.Vertical,
+        bool reverse = false,
+        ScrollController? controller = null,
+        ScrollPhysics? physics = null,
+        Thickness? padding = null,
+        double mainAxisSpacing = 0,
+        double crossAxisSpacing = 0,
+        double childAspectRatio = 1,
+        double? mainAxisExtent = null,
+        bool addAutomaticKeepAlives = true,
+        double cacheExtent = 250.0,
+        CacheExtentStyle cacheExtentStyle = CacheExtentStyle.Pixel,
+        Key? key = null)
+    {
+        return new GridView(
+            gridDelegate: new SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                mainAxisSpacing: mainAxisSpacing,
+                crossAxisSpacing: crossAxisSpacing,
+                childAspectRatio: childAspectRatio,
+                mainAxisExtent: mainAxisExtent),
+            children: children,
+            scrollDirection: scrollDirection,
+            reverse: reverse,
+            controller: controller,
+            physics: physics,
+            padding: padding,
+            addAutomaticKeepAlives: addAutomaticKeepAlives,
+            cacheExtent: cacheExtent,
+            cacheExtentStyle: cacheExtentStyle,
+            key: key);
+    }
+
+    public static GridView Extent(
+        double maxCrossAxisExtent,
+        IReadOnlyList<Widget>? children = null,
+        Axis scrollDirection = Axis.Vertical,
+        bool reverse = false,
+        ScrollController? controller = null,
+        ScrollPhysics? physics = null,
+        Thickness? padding = null,
+        double mainAxisSpacing = 0,
+        double crossAxisSpacing = 0,
+        double childAspectRatio = 1,
+        double? mainAxisExtent = null,
+        bool addAutomaticKeepAlives = true,
+        double cacheExtent = 250.0,
+        CacheExtentStyle cacheExtentStyle = CacheExtentStyle.Pixel,
+        Key? key = null)
+    {
+        return new GridView(
+            gridDelegate: new SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: maxCrossAxisExtent,
+                mainAxisSpacing: mainAxisSpacing,
+                crossAxisSpacing: crossAxisSpacing,
+                childAspectRatio: childAspectRatio,
+                mainAxisExtent: mainAxisExtent),
+            children: children,
+            scrollDirection: scrollDirection,
+            reverse: reverse,
+            controller: controller,
+            physics: physics,
+            padding: padding,
+            addAutomaticKeepAlives: addAutomaticKeepAlives,
+            cacheExtent: cacheExtent,
+            cacheExtentStyle: cacheExtentStyle,
+            key: key);
+    }
+
+    public override Widget Build(BuildContext context)
+    {
+        Widget sliver = _itemBuilder != null
+            ? SliverGrid.Builder(
+                childCount: _itemCount,
+                itemBuilder: _itemBuilder,
+                gridDelegate: _gridDelegate,
+                addAutomaticKeepAlives: _addAutomaticKeepAlives)
+            : SliverGrid.FromChildren(
+                _children ?? [],
+                _gridDelegate,
+                addAutomaticKeepAlives: _addAutomaticKeepAlives);
+
+        if (HasNonZeroPadding(_padding))
+        {
+            sliver = new SliverPadding(_padding, sliver);
+        }
+
+        return new CustomScrollView(
+            slivers: [sliver],
+            scrollDirection: ScrollDirection,
+            reverse: Reverse,
+            controller: Controller,
+            physics: Physics,
+            cacheExtent: _cacheExtent,
+            cacheExtentStyle: _cacheExtentStyle);
     }
 
     private static bool HasNonZeroPadding(Thickness padding)

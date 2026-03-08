@@ -24,6 +24,358 @@ public readonly record struct SliverGeometry(
     double ScrollOffsetCorrection = 0,
     bool HasVisualOverflow = false);
 
+public readonly record struct SliverGridGeometry(
+    double ScrollOffset,
+    double CrossAxisOffset,
+    double MainAxisExtent,
+    double CrossAxisExtent)
+{
+    public double TrailingScrollOffset => ScrollOffset + MainAxisExtent;
+
+    public BoxConstraints GetBoxConstraints(SliverConstraints constraints)
+    {
+        if (constraints.Axis == Axis.Vertical)
+        {
+            return new BoxConstraints(
+                MinWidth: CrossAxisExtent,
+                MaxWidth: CrossAxisExtent,
+                MinHeight: MainAxisExtent,
+                MaxHeight: MainAxisExtent);
+        }
+
+        return new BoxConstraints(
+            MinWidth: MainAxisExtent,
+            MaxWidth: MainAxisExtent,
+            MinHeight: CrossAxisExtent,
+            MaxHeight: CrossAxisExtent);
+    }
+}
+
+public abstract class SliverGridLayout
+{
+    public abstract int GetMinChildIndexForScrollOffset(double scrollOffset);
+
+    public abstract int GetMaxChildIndexForScrollOffset(double scrollOffset);
+
+    public abstract SliverGridGeometry GetGeometryForChildIndex(int index);
+
+    public abstract double ComputeMaxScrollOffset(int childCount);
+}
+
+public sealed class SliverGridRegularTileLayout : SliverGridLayout
+{
+    public SliverGridRegularTileLayout(
+        int crossAxisCount,
+        double mainAxisStride,
+        double crossAxisStride,
+        double childMainAxisExtent,
+        double childCrossAxisExtent,
+        bool reverseCrossAxis)
+    {
+        if (crossAxisCount <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(crossAxisCount), "crossAxisCount must be greater than 0.");
+        }
+
+        if (mainAxisStride < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(mainAxisStride), "mainAxisStride cannot be negative.");
+        }
+
+        if (crossAxisStride < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(crossAxisStride), "crossAxisStride cannot be negative.");
+        }
+
+        if (childMainAxisExtent < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(childMainAxisExtent), "childMainAxisExtent cannot be negative.");
+        }
+
+        if (childCrossAxisExtent < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(childCrossAxisExtent), "childCrossAxisExtent cannot be negative.");
+        }
+
+        CrossAxisCount = crossAxisCount;
+        MainAxisStride = mainAxisStride;
+        CrossAxisStride = crossAxisStride;
+        ChildMainAxisExtent = childMainAxisExtent;
+        ChildCrossAxisExtent = childCrossAxisExtent;
+        ReverseCrossAxis = reverseCrossAxis;
+    }
+
+    public int CrossAxisCount { get; }
+
+    public double MainAxisStride { get; }
+
+    public double CrossAxisStride { get; }
+
+    public double ChildMainAxisExtent { get; }
+
+    public double ChildCrossAxisExtent { get; }
+
+    public bool ReverseCrossAxis { get; }
+
+    public override int GetMinChildIndexForScrollOffset(double scrollOffset)
+    {
+        return MainAxisStride > 0.0001
+            ? CrossAxisCount * (int)Math.Floor(scrollOffset / MainAxisStride)
+            : 0;
+    }
+
+    public override int GetMaxChildIndexForScrollOffset(double scrollOffset)
+    {
+        if (MainAxisStride > 0)
+        {
+            var mainAxisCount = (int)Math.Ceiling(scrollOffset / MainAxisStride);
+            return Math.Max(0, CrossAxisCount * mainAxisCount - 1);
+        }
+
+        return 0;
+    }
+
+    public override SliverGridGeometry GetGeometryForChildIndex(int index)
+    {
+        var crossAxisStart = (index % CrossAxisCount) * CrossAxisStride;
+        return new SliverGridGeometry(
+            ScrollOffset: (index / CrossAxisCount) * MainAxisStride,
+            CrossAxisOffset: OffsetFromStartInCrossAxis(crossAxisStart),
+            MainAxisExtent: ChildMainAxisExtent,
+            CrossAxisExtent: ChildCrossAxisExtent);
+    }
+
+    public override double ComputeMaxScrollOffset(int childCount)
+    {
+        if (childCount == 0)
+        {
+            return 0;
+        }
+
+        var mainAxisCount = ((childCount - 1) / CrossAxisCount) + 1;
+        var mainAxisSpacing = MainAxisStride - ChildMainAxisExtent;
+        return MainAxisStride * mainAxisCount - mainAxisSpacing;
+    }
+
+    private double OffsetFromStartInCrossAxis(double crossAxisStart)
+    {
+        if (!ReverseCrossAxis)
+        {
+            return crossAxisStart;
+        }
+
+        return CrossAxisCount * CrossAxisStride
+               - crossAxisStart
+               - ChildCrossAxisExtent
+               - (CrossAxisStride - ChildCrossAxisExtent);
+    }
+}
+
+public abstract class SliverGridDelegate
+{
+    public abstract SliverGridLayout GetLayout(SliverConstraints constraints);
+
+    public abstract bool ShouldRelayout(SliverGridDelegate oldDelegate);
+}
+
+public sealed class SliverGridDelegateWithFixedCrossAxisCount : SliverGridDelegate
+{
+    public SliverGridDelegateWithFixedCrossAxisCount(
+        int crossAxisCount,
+        double mainAxisSpacing = 0,
+        double crossAxisSpacing = 0,
+        double childAspectRatio = 1,
+        double? mainAxisExtent = null)
+    {
+        if (crossAxisCount <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(crossAxisCount), "crossAxisCount must be greater than 0.");
+        }
+
+        if (mainAxisSpacing < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(mainAxisSpacing), "mainAxisSpacing cannot be negative.");
+        }
+
+        if (crossAxisSpacing < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(crossAxisSpacing), "crossAxisSpacing cannot be negative.");
+        }
+
+        if (childAspectRatio <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(childAspectRatio), "childAspectRatio must be greater than 0.");
+        }
+
+        if (mainAxisExtent.HasValue && mainAxisExtent.Value < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(mainAxisExtent), "mainAxisExtent cannot be negative.");
+        }
+
+        CrossAxisCount = crossAxisCount;
+        MainAxisSpacing = mainAxisSpacing;
+        CrossAxisSpacing = crossAxisSpacing;
+        ChildAspectRatio = childAspectRatio;
+        MainAxisExtent = mainAxisExtent;
+    }
+
+    public int CrossAxisCount { get; }
+
+    public double MainAxisSpacing { get; }
+
+    public double CrossAxisSpacing { get; }
+
+    public double ChildAspectRatio { get; }
+
+    public double? MainAxisExtent { get; }
+
+    public override SliverGridLayout GetLayout(SliverConstraints constraints)
+    {
+        var usableCrossAxisExtent = Math.Max(
+            0,
+            constraints.CrossAxisExtent - CrossAxisSpacing * (CrossAxisCount - 1));
+        var childCrossAxisExtent = usableCrossAxisExtent / CrossAxisCount;
+        var childMainAxisExtent = MainAxisExtent ?? childCrossAxisExtent / ChildAspectRatio;
+        return new SliverGridRegularTileLayout(
+            crossAxisCount: CrossAxisCount,
+            mainAxisStride: childMainAxisExtent + MainAxisSpacing,
+            crossAxisStride: childCrossAxisExtent + CrossAxisSpacing,
+            childMainAxisExtent: childMainAxisExtent,
+            childCrossAxisExtent: childCrossAxisExtent,
+            reverseCrossAxis: false);
+    }
+
+    public override bool ShouldRelayout(SliverGridDelegate oldDelegate)
+    {
+        if (oldDelegate is not SliverGridDelegateWithFixedCrossAxisCount old)
+        {
+            return true;
+        }
+
+        return old.CrossAxisCount != CrossAxisCount
+               || Math.Abs(old.MainAxisSpacing - MainAxisSpacing) > 0.0001
+               || Math.Abs(old.CrossAxisSpacing - CrossAxisSpacing) > 0.0001
+               || Math.Abs(old.ChildAspectRatio - ChildAspectRatio) > 0.0001
+               || NullableDoubleChanged(old.MainAxisExtent, MainAxisExtent);
+    }
+
+    private static bool NullableDoubleChanged(double? lhs, double? rhs)
+    {
+        if (!lhs.HasValue && !rhs.HasValue)
+        {
+            return false;
+        }
+
+        if (lhs.HasValue != rhs.HasValue)
+        {
+            return true;
+        }
+
+        return Math.Abs(lhs!.Value - rhs!.Value) > 0.0001;
+    }
+}
+
+public sealed class SliverGridDelegateWithMaxCrossAxisExtent : SliverGridDelegate
+{
+    public SliverGridDelegateWithMaxCrossAxisExtent(
+        double maxCrossAxisExtent,
+        double mainAxisSpacing = 0,
+        double crossAxisSpacing = 0,
+        double childAspectRatio = 1,
+        double? mainAxisExtent = null)
+    {
+        if (maxCrossAxisExtent <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maxCrossAxisExtent), "maxCrossAxisExtent must be greater than 0.");
+        }
+
+        if (mainAxisSpacing < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(mainAxisSpacing), "mainAxisSpacing cannot be negative.");
+        }
+
+        if (crossAxisSpacing < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(crossAxisSpacing), "crossAxisSpacing cannot be negative.");
+        }
+
+        if (childAspectRatio <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(childAspectRatio), "childAspectRatio must be greater than 0.");
+        }
+
+        if (mainAxisExtent.HasValue && mainAxisExtent.Value < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(mainAxisExtent), "mainAxisExtent cannot be negative.");
+        }
+
+        MaxCrossAxisExtent = maxCrossAxisExtent;
+        MainAxisSpacing = mainAxisSpacing;
+        CrossAxisSpacing = crossAxisSpacing;
+        ChildAspectRatio = childAspectRatio;
+        MainAxisExtent = mainAxisExtent;
+    }
+
+    public double MaxCrossAxisExtent { get; }
+
+    public double MainAxisSpacing { get; }
+
+    public double CrossAxisSpacing { get; }
+
+    public double ChildAspectRatio { get; }
+
+    public double? MainAxisExtent { get; }
+
+    public override SliverGridLayout GetLayout(SliverConstraints constraints)
+    {
+        var crossAxisCount = (int)Math.Ceiling(
+            constraints.CrossAxisExtent / (MaxCrossAxisExtent + CrossAxisSpacing));
+        crossAxisCount = Math.Max(1, crossAxisCount);
+
+        var usableCrossAxisExtent = Math.Max(
+            0,
+            constraints.CrossAxisExtent - CrossAxisSpacing * (crossAxisCount - 1));
+        var childCrossAxisExtent = usableCrossAxisExtent / crossAxisCount;
+        var childMainAxisExtent = MainAxisExtent ?? childCrossAxisExtent / ChildAspectRatio;
+        return new SliverGridRegularTileLayout(
+            crossAxisCount: crossAxisCount,
+            mainAxisStride: childMainAxisExtent + MainAxisSpacing,
+            crossAxisStride: childCrossAxisExtent + CrossAxisSpacing,
+            childMainAxisExtent: childMainAxisExtent,
+            childCrossAxisExtent: childCrossAxisExtent,
+            reverseCrossAxis: false);
+    }
+
+    public override bool ShouldRelayout(SliverGridDelegate oldDelegate)
+    {
+        if (oldDelegate is not SliverGridDelegateWithMaxCrossAxisExtent old)
+        {
+            return true;
+        }
+
+        return Math.Abs(old.MaxCrossAxisExtent - MaxCrossAxisExtent) > 0.0001
+               || Math.Abs(old.MainAxisSpacing - MainAxisSpacing) > 0.0001
+               || Math.Abs(old.CrossAxisSpacing - CrossAxisSpacing) > 0.0001
+               || Math.Abs(old.ChildAspectRatio - ChildAspectRatio) > 0.0001
+               || NullableDoubleChanged(old.MainAxisExtent, MainAxisExtent);
+    }
+
+    private static bool NullableDoubleChanged(double? lhs, double? rhs)
+    {
+        if (!lhs.HasValue && !rhs.HasValue)
+        {
+            return false;
+        }
+
+        if (lhs.HasValue != rhs.HasValue)
+        {
+            return true;
+        }
+
+        return Math.Abs(lhs!.Value - rhs!.Value) > 0.0001;
+    }
+}
+
 public interface IRenderSliverBoxChildManager
 {
     int? ChildCount { get; }
@@ -37,12 +389,17 @@ public sealed class SliverPhysicalParentData : ContainerBoxParentData<RenderSliv
 {
 }
 
-public sealed class SliverMultiBoxAdaptorParentData : ContainerBoxParentData<RenderBox>
+public class SliverMultiBoxAdaptorParentData : ContainerBoxParentData<RenderBox>
 {
     public int Index { get; set; }
     public double LayoutOffset { get; set; }
     public bool KeepAlive { get; set; }
     public bool KeptAlive { get; set; }
+}
+
+public sealed class SliverGridParentData : SliverMultiBoxAdaptorParentData
+{
+    public double CrossAxisOffset { get; set; }
 }
 
 public abstract class RenderSliver : RenderBox
@@ -1032,6 +1389,291 @@ public sealed class RenderSliverList : RenderSliverMultiBoxAdaptor
         var averageExtent = (trailingScrollOffset - leadingScrollOffset) / reifiedCount;
         var remainingCount = Math.Max(0, childCount.Value - lastIndex - 1);
         return trailingScrollOffset + averageExtent * remainingCount;
+    }
+
+    private static double CalculatePaintExtent(
+        double from,
+        double to,
+        double scrollOffset,
+        double remainingPaintExtent)
+    {
+        var visibleStart = Math.Max(from, scrollOffset);
+        var visibleEnd = Math.Min(to, scrollOffset + remainingPaintExtent);
+        return Math.Max(0, visibleEnd - visibleStart);
+    }
+}
+
+public sealed class RenderSliverGrid : RenderSliverMultiBoxAdaptor
+{
+    private SliverGridDelegate _gridDelegate;
+
+    public RenderSliverGrid(SliverGridDelegate gridDelegate, IRenderSliverBoxChildManager? childManager = null) : base(childManager)
+    {
+        _gridDelegate = gridDelegate ?? throw new ArgumentNullException(nameof(gridDelegate));
+    }
+
+    public SliverGridDelegate GridDelegate
+    {
+        get => _gridDelegate;
+        set
+        {
+            if (ReferenceEquals(_gridDelegate, value))
+            {
+                return;
+            }
+
+            var shouldRelayout = value.GetType() != _gridDelegate.GetType() || value.ShouldRelayout(_gridDelegate);
+            _gridDelegate = value;
+            if (shouldRelayout)
+            {
+                MarkNeedsLayout();
+            }
+        }
+    }
+
+    public override void SetupParentData(RenderObject child)
+    {
+        if (child.parentData is not SliverGridParentData)
+        {
+            child.parentData = new SliverGridParentData();
+        }
+    }
+
+    protected override void PerformSliverLayout(SliverConstraints constraints)
+    {
+        var childManager = ChildManager;
+        if (childManager == null)
+        {
+            Geometry = default;
+            return;
+        }
+
+        childManager.SetDidUnderflow(false);
+        var childCount = childManager.ChildCount;
+        if (childCount == 0)
+        {
+            var activeChildCount = CountActiveChildren();
+            if (activeChildCount > 0)
+            {
+                CollectGarbage(activeChildCount, 0);
+            }
+
+            Geometry = default;
+            childManager.SetDidUnderflow(true);
+            return;
+        }
+
+        var remainingCacheExtent = constraints.RemainingCacheExtent > 0
+            ? constraints.RemainingCacheExtent
+            : constraints.RemainingPaintExtent;
+        var scrollOffset = Math.Max(0, constraints.ScrollOffset + constraints.CacheOrigin);
+        var targetEndScrollOffset = scrollOffset + Math.Max(0, remainingCacheExtent);
+        var layout = _gridDelegate.GetLayout(constraints);
+
+        var firstIndex = layout.GetMinChildIndexForScrollOffset(scrollOffset);
+        var hasFiniteTarget = !double.IsInfinity(targetEndScrollOffset);
+        var targetLastIndex = hasFiniteTarget
+            ? layout.GetMaxChildIndexForScrollOffset(targetEndScrollOffset)
+            : int.MaxValue;
+
+        if (childCount.HasValue)
+        {
+            if (childCount.Value <= 0)
+            {
+                Geometry = default;
+                childManager.SetDidUnderflow(true);
+                return;
+            }
+
+            var maxIndex = childCount.Value - 1;
+            firstIndex = Math.Clamp(firstIndex, 0, maxIndex);
+            if (hasFiniteTarget)
+            {
+                targetLastIndex = Math.Clamp(targetLastIndex, 0, maxIndex);
+                if (targetLastIndex < firstIndex)
+                {
+                    targetLastIndex = firstIndex;
+                }
+            }
+        }
+
+        var firstChildGeometry = layout.GetGeometryForChildIndex(firstIndex);
+        if (FirstChild == null && !AddInitialChild(firstIndex, firstChildGeometry.ScrollOffset))
+        {
+            var max = childCount.HasValue
+                ? layout.ComputeMaxScrollOffset(childCount.Value)
+                : 0;
+            Geometry = new SliverGeometry(
+                ScrollExtent: max,
+                MaxPaintExtent: max);
+            childManager.SetDidUnderflow(true);
+            return;
+        }
+
+        var firstChild = FirstChild;
+        if (firstChild == null)
+        {
+            Geometry = default;
+            childManager.SetDidUnderflow(true);
+            return;
+        }
+
+        while (IndexOf(firstChild) > firstIndex)
+        {
+            var targetIndex = IndexOf(firstChild) - 1;
+            var gridGeometry = layout.GetGeometryForChildIndex(targetIndex);
+            var newLeadingChild = InsertAndLayoutLeadingChild(gridGeometry.GetBoxConstraints(constraints));
+            if (newLeadingChild == null)
+            {
+                childManager.SetDidUnderflow(true);
+                break;
+            }
+
+            var newLeadingParentData = (SliverGridParentData)newLeadingChild.parentData!;
+            newLeadingParentData.Index = targetIndex;
+            ApplyChildGeometry(newLeadingParentData, gridGeometry, constraints);
+            firstChild = newLeadingChild;
+        }
+
+        var leadingGarbage = 0;
+        var trailingGarbage = 0;
+        var child = firstChild;
+        var index = IndexOf(child);
+
+        while (index < firstIndex)
+        {
+            leadingGarbage += 1;
+            var nextChild = ChildAfter(child);
+            if (nextChild == null || IndexOf(nextChild) != index + 1)
+            {
+                var nextGeometry = layout.GetGeometryForChildIndex(index + 1);
+                nextChild = InsertAndLayoutChild(nextGeometry.GetBoxConstraints(constraints), child);
+                if (nextChild == null)
+                {
+                    childManager.SetDidUnderflow(true);
+                    break;
+                }
+            }
+
+            child = nextChild;
+            index += 1;
+        }
+
+        if (index != firstIndex)
+        {
+            firstIndex = index;
+            if (hasFiniteTarget && targetLastIndex < firstIndex)
+            {
+                targetLastIndex = firstIndex;
+            }
+        }
+
+        RenderBox? lastLaidOutChild = null;
+        var reachedEnd = false;
+        var leadingScrollOffset = layout.GetGeometryForChildIndex(firstIndex).ScrollOffset;
+        var trailingScrollOffset = leadingScrollOffset;
+
+        while (child != null && (!hasFiniteTarget || index <= targetLastIndex))
+        {
+            var gridGeometry = layout.GetGeometryForChildIndex(index);
+            child.Layout(gridGeometry.GetBoxConstraints(constraints), parentUsesSize: true);
+            var childParentData = (SliverGridParentData)child.parentData!;
+            childParentData.Index = index;
+            ApplyChildGeometry(childParentData, gridGeometry, constraints);
+            lastLaidOutChild = child;
+            trailingScrollOffset = Math.Max(trailingScrollOffset, gridGeometry.TrailingScrollOffset);
+
+            if (hasFiniteTarget && index == targetLastIndex)
+            {
+                child = ChildAfter(child);
+                break;
+            }
+
+            var nextChild = ChildAfter(child);
+            if (nextChild == null || IndexOf(nextChild) != index + 1)
+            {
+                var nextGeometry = layout.GetGeometryForChildIndex(index + 1);
+                nextChild = InsertAndLayoutChild(nextGeometry.GetBoxConstraints(constraints), child);
+                if (nextChild == null)
+                {
+                    reachedEnd = true;
+                    childManager.SetDidUnderflow(true);
+                    child = null;
+                    break;
+                }
+            }
+
+            child = nextChild;
+            index += 1;
+        }
+
+        if (lastLaidOutChild == null)
+        {
+            Geometry = default;
+            return;
+        }
+
+        for (var trailingChild = child; trailingChild != null; trailingChild = ChildAfter(trailingChild))
+        {
+            trailingGarbage += 1;
+        }
+
+        CollectGarbage(leadingGarbage, trailingGarbage);
+
+        var estimatedMaxScrollOffset = childCount.HasValue
+            ? layout.ComputeMaxScrollOffset(childCount.Value)
+            : reachedEnd
+                ? trailingScrollOffset
+                : double.PositiveInfinity;
+
+        var paintExtent = CalculatePaintExtent(
+            from: Math.Min(constraints.ScrollOffset, leadingScrollOffset),
+            to: trailingScrollOffset,
+            scrollOffset: constraints.ScrollOffset,
+            remainingPaintExtent: constraints.RemainingPaintExtent);
+        var layoutExtent = Math.Min(paintExtent, constraints.ViewportMainAxisExtent);
+        var cacheExtent = CalculatePaintExtent(
+            from: leadingScrollOffset,
+            to: trailingScrollOffset,
+            scrollOffset: constraints.ScrollOffset + constraints.CacheOrigin,
+            remainingPaintExtent: remainingCacheExtent);
+        var targetEndScrollOffsetForPaint = constraints.ScrollOffset + constraints.RemainingPaintExtent;
+
+        Geometry = new SliverGeometry(
+            ScrollExtent: estimatedMaxScrollOffset,
+            PaintExtent: paintExtent,
+            LayoutExtent: layoutExtent,
+            MaxPaintExtent: estimatedMaxScrollOffset,
+            CacheExtent: cacheExtent,
+            HasVisualOverflow: estimatedMaxScrollOffset > targetEndScrollOffsetForPaint || constraints.ScrollOffset > 0);
+
+        if (Math.Abs(estimatedMaxScrollOffset - trailingScrollOffset) < 0.0001)
+        {
+            childManager.SetDidUnderflow(true);
+        }
+    }
+
+    private static void ApplyChildGeometry(
+        SliverGridParentData parentData,
+        SliverGridGeometry geometry,
+        SliverConstraints constraints)
+    {
+        parentData.LayoutOffset = geometry.ScrollOffset;
+        parentData.CrossAxisOffset = geometry.CrossAxisOffset;
+        parentData.offset = constraints.Axis == Axis.Vertical
+            ? new Point(geometry.CrossAxisOffset, geometry.ScrollOffset - constraints.ScrollOffset)
+            : new Point(geometry.ScrollOffset - constraints.ScrollOffset, geometry.CrossAxisOffset);
+    }
+
+    private int CountActiveChildren()
+    {
+        var count = 0;
+        for (var child = FirstChild; child != null; child = ChildAfter(child))
+        {
+            count += 1;
+        }
+
+        return count;
     }
 
     private static double CalculatePaintExtent(

@@ -15,6 +15,7 @@ internal enum SamplePageId
     ListViewSeparated,
     ListViewFixedExtent,
     ListViewReverse,
+    GridView,
     CustomSlivers,
     Scrollbar
 }
@@ -32,6 +33,7 @@ internal sealed class SampleGalleryScreen : StatelessWidget
         new(SamplePageId.ListViewSeparated, "ListView.Separated", "item + separator builder"),
         new(SamplePageId.ListViewFixedExtent, "ListView fixed extent", "itemExtent + padding"),
         new(SamplePageId.ListViewReverse, "ListView reverse", "reverse=true behavior"),
+        new(SamplePageId.GridView, "GridView + SliverGrid", "delegate-based 2D layout"),
         new(SamplePageId.CustomSlivers, "Custom slivers", "SliverPadding + SliverFixedExtentList"),
         new(SamplePageId.Scrollbar, "Scrollbar", "controller + thumb"),
     ];
@@ -101,6 +103,7 @@ internal sealed class SampleGalleryScreen : StatelessWidget
             SamplePageId.ListViewSeparated => new ListViewSeparatedDemoPage(),
             SamplePageId.ListViewFixedExtent => new ListViewFixedExtentDemoPage(),
             SamplePageId.ListViewReverse => new ListViewReverseDemoPage(),
+            SamplePageId.GridView => new GridViewDemoPage(),
             SamplePageId.CustomSlivers => new CustomSliversDemoPage(),
             SamplePageId.Scrollbar => new ScrollbarDemoPage(),
             _ => new SizedBox()
