@@ -21,6 +21,7 @@ class SampleRoutes {
   static const String customSlivers = '/custom-slivers';
   static const String scrollbar = '/scrollbar';
   static const String editableText = '/editable-text';
+  static const String proxyWidgets = '/proxy-widgets';
 }
 
 class SampleRouteDefinition {

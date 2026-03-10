@@ -230,6 +230,11 @@ public sealed class PipelineOwner
 
                 if (node.NeedsPaint)
                 {
+                    if (node.NeedsCompositedLayerUpdate)
+                    {
+                        node.UpdateCompositedLayerProperties();
+                    }
+
                     layer.RemoveAllChildren();
                     node._paintWithContext(new PaintingContext(layer), new Point(0, 0));
                 }

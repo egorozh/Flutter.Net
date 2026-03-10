@@ -6,6 +6,13 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## [Unreleased]
 
+### Added
+
+- M3 proxy widget baseline: added framework widget wrappers for `RenderOpacity`, `RenderTransform`, and `RenderClipRect` (`Opacity`, `Transform`, `ClipRect`) with regression coverage validating widget-to-render wiring and render-object property updates through rebuilds (`src/Flutter/Widgets/Basic.cs`, `src/Flutter.Tests/BasicWidgetProxyTests.cs`).
+- M3 sample parity progression: added a new Proxy widgets route/page in both C# and Dart samples to validate interactive composition with `Opacity`, `Transform`, and `ClipRect` (`src/Sample/Flutter.Net/ProxyWidgetsDemoPage.cs`, `src/Sample/Flutter.Net/SampleGalleryScreen.cs`, `dart_sample/lib/proxy_widgets_demo_page.dart`, `dart_sample/lib/sample_gallery_screen.dart`, `dart_sample/lib/sample_routes.dart`, `docs/ai/PARITY_MATRIX.md`).
+- M3 proxy demo UX tuning: increased opacity step contrast, added explicit `Opacity 0`/`Opacity 1` controls, and switched demo layer to high-contrast black-on-white visual so opacity changes are immediately visible in sample interaction (`src/Sample/Flutter.Net/ProxyWidgetsDemoPage.cs`, `dart_sample/lib/proxy_widgets_demo_page.dart`).
+- Compositing pipeline fix: preserve and apply repaint-boundary composited-layer property updates even when repaint and layer-property invalidation happen in the same frame, preventing dropped `Opacity/Transform/ClipRect` layer updates under concurrent paint dirtiness; added regression coverage for combined repaint + layer update flow (`src/Flutter/Rendering/Object.RenderObject.cs`, `src/Flutter/PipelineOwner.cs`, `src/Flutter.Tests/CompositingLayerTests.cs`).
+
 ### Planned
 
 - Continue Flutter parity for widgets, layout, rendering, gestures, semantics, and navigation.

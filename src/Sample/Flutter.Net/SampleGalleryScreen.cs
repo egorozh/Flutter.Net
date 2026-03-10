@@ -28,6 +28,7 @@ internal static class SampleRoutes
     public const string CustomSlivers = "/custom-slivers";
     public const string Scrollbar = "/scrollbar";
     public const string EditableText = "/editable-text";
+    public const string ProxyWidgets = "/proxy-widgets";
 }
 
 internal readonly record struct SampleRouteDefinition(
@@ -49,6 +50,7 @@ internal sealed class SampleGalleryScreen : StatelessWidget
         new(SampleRoutes.CustomSlivers, "Custom slivers", "SliverPadding + SliverFixedExtentList", () => new CustomSliversDemoPage()),
         new(SampleRoutes.Scrollbar, "Scrollbar", "controller + thumb", () => new ScrollbarDemoPage()),
         new(SampleRoutes.EditableText, "EditableText", "focus + IME + multiline caret", () => new EditableTextDemoPage()),
+        new(SampleRoutes.ProxyWidgets, "Proxy widgets", "Opacity + Transform + ClipRect composition", () => new ProxyWidgetsDemoPage()),
     ];
 
     private static readonly IReadOnlyDictionary<string, SampleRouteDefinition> DemoPageByRoute =

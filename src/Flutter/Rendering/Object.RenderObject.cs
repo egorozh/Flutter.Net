@@ -567,12 +567,17 @@ public abstract class RenderObject : IRenderObject
 
     protected void MarkNeedsCompositedLayerUpdate()
     {
-        if (_needsCompositedLayerUpdate || _needsPaint)
+        if (_needsCompositedLayerUpdate)
         {
             return;
         }
 
         _needsCompositedLayerUpdate = true;
+
+        if (_needsPaint)
+        {
+            return;
+        }
 
         if (IsRepaintBoundary && _wasRepaintBoundary)
         {

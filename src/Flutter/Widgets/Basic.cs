@@ -90,6 +90,69 @@ public sealed class ColoredBox : SingleChildRenderObjectWidget
     }
 }
 
+public sealed class Opacity : SingleChildRenderObjectWidget
+{
+    public Opacity(double opacity, Widget? child = null, Key? key = null) : base(child, key)
+    {
+        Value = opacity;
+    }
+
+    public double Value { get; }
+
+    internal override RenderObject CreateRenderObject(BuildContext context)
+    {
+        return new RenderOpacity(Value);
+    }
+
+    internal override void UpdateRenderObject(BuildContext context, RenderObject renderObject)
+    {
+        ((RenderOpacity)renderObject).Opacity = Value;
+    }
+}
+
+public sealed class Transform : SingleChildRenderObjectWidget
+{
+    public Transform(Matrix transform, Widget? child = null, Key? key = null) : base(child, key)
+    {
+        Matrix = transform;
+    }
+
+    public Matrix Matrix { get; }
+
+    internal override RenderObject CreateRenderObject(BuildContext context)
+    {
+        return new RenderTransform(Matrix);
+    }
+
+    internal override void UpdateRenderObject(BuildContext context, RenderObject renderObject)
+    {
+        ((RenderTransform)renderObject).Transform = Matrix;
+    }
+}
+
+public sealed class ClipRect : SingleChildRenderObjectWidget
+{
+    public ClipRect(Rect clipRect, Widget? child = null, Key? key = null) : base(child, key)
+    {
+        Clip = clipRect;
+    }
+
+    public Rect Clip { get; }
+
+    internal override RenderObject CreateRenderObject(BuildContext context)
+    {
+        return new RenderClipRect
+        {
+            ClipRect = Clip
+        };
+    }
+
+    internal override void UpdateRenderObject(BuildContext context, RenderObject renderObject)
+    {
+        ((RenderClipRect)renderObject).ClipRect = Clip;
+    }
+}
+
 public sealed class Container : StatelessWidget
 {
     public Container(

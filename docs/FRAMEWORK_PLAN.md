@@ -102,7 +102,13 @@ Exit criteria:
 
 ### M3. Port-First Widget Set Expansion
 
-Status: `planned`
+Status: `in_progress`
+
+Progress update (2026-03-10):
+
+- Added first proxy-widget port baseline in framework widget layer: `Opacity`, `Transform`, and `ClipRect` wrappers over existing render primitives (`RenderOpacity`, `RenderTransform`, `RenderClipRect`) with focused rebuild/update regression coverage.
+- Added sample parity route/page in both C# and Dart sample galleries for interactive proxy-widget composition checks (`Opacity`, `Transform`, `ClipRect`).
+- Fixed compositing edge case where repaint-boundary layer-property updates could be dropped when repaint and composited-layer invalidation happened in the same frame.
 
 Exit criteria:
 

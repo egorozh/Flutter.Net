@@ -9,6 +9,7 @@ import 'list_view_fixed_extent_demo_page.dart';
 import 'list_view_reverse_demo_page.dart';
 import 'list_view_separated_demo_page.dart';
 import 'navigator_demo_page.dart';
+import 'proxy_widgets_demo_page.dart';
 import 'sample_routes.dart';
 import 'scrollbar_demo_page.dart';
 
@@ -69,6 +70,12 @@ class SampleGalleryScreen extends StatelessWidget {
       title: 'EditableText',
       subtitle: 'focus + IME + multiline caret',
       builder: () => const EditableTextDemoPage(),
+    ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.proxyWidgets,
+      title: 'Proxy widgets',
+      subtitle: 'Opacity + Transform + ClipRect composition',
+      builder: () => const ProxyWidgetsDemoPage(),
     ),
   ];
 

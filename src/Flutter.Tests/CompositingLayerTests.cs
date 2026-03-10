@@ -197,6 +197,36 @@ public sealed class CompositingLayerTests
     }
 
     [Fact]
+    public void RepaintBoundary_LayerPropertyUpdate_IsNotLostWhenBoundaryAlsoRepaints()
+    {
+        var leaf = new TestLeafRenderBox();
+        var boundary = new TestLayerUpdatingBoundaryRenderBox(leaf);
+        var root = new RenderView
+        {
+            Child = boundary
+        };
+
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+
+        pipeline.FlushLayout(new Size(300, 200));
+        pipeline.FlushCompositingBits();
+        pipeline.FlushPaint();
+
+        Assert.Equal(1, boundary.PaintCount);
+        Assert.Equal(1, leaf.PaintCount);
+        Assert.Equal(1, boundary.LayerUpdateCount);
+
+        boundary.TriggerRepaintAndLayerPropertyUpdate();
+        pipeline.FlushCompositingBits();
+        pipeline.FlushPaint();
+
+        Assert.Equal(2, boundary.PaintCount);
+        Assert.Equal(2, leaf.PaintCount);
+        Assert.Equal(2, boundary.LayerUpdateCount);
+    }
+
+    [Fact]
     public void RenderOpacity_UpdatesLayerOpacity_WithoutRepaintingChild()
     {
         var leaf = new TestLeafRenderBox();
@@ -477,6 +507,12 @@ public sealed class CompositingLayerTests
 
         public void TriggerLayerPropertyUpdate()
         {
+            MarkNeedsCompositedLayerUpdate();
+        }
+
+        public void TriggerRepaintAndLayerPropertyUpdate()
+        {
+            MarkNeedsPaint();
             MarkNeedsCompositedLayerUpdate();
         }
 
