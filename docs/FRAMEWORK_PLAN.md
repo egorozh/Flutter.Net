@@ -71,6 +71,12 @@ Exit criteria:
 
 Status: `in_progress`
 
+Progress update (2026-03-10):
+
+- Keyboard/focus baseline is implemented and host-wired (`KeyEvent`, `FocusNode`, `FocusManager`, `Focus`).
+- Focus scopes are now available (`FocusScopeNode`, `FocusScope`) and traversal is bounded to the active scope (Tab + basic directional keys).
+- Remaining primary gaps: geometry-aware directional policies, focus integration with editable text/IME, and host accessibility bridge documentation.
+
 Exit criteria:
 
 - Keyboard/focus flow is implemented as first-class framework behavior.

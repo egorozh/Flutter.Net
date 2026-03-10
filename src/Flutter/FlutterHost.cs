@@ -6,6 +6,7 @@ using Flutter.Gestures;
 using Flutter.Rendering;
 using Flutter.UI;
 using Flutter.Widgets;
+using FrameworkFocusManager = Flutter.Widgets.FocusManager;
 
 // Dart parity source (reference): flutter/packages/flutter/lib/src/widgets/binding.dart; flutter/packages/flutter/lib/src/rendering/binding.dart (host integration, adapted)
 
@@ -59,6 +60,20 @@ public class FlutterHost : Control
 
         if (e.Handled)
         {
+            return;
+        }
+
+        var keyEvent = new KeyEvent(
+            key: e.Key.ToString(),
+            isDown: true,
+            isShiftPressed: e.KeyModifiers.HasFlag(KeyModifiers.Shift),
+            isControlPressed: e.KeyModifiers.HasFlag(KeyModifiers.Control),
+            isAltPressed: e.KeyModifiers.HasFlag(KeyModifiers.Alt),
+            isMetaPressed: e.KeyModifiers.HasFlag(KeyModifiers.Meta));
+
+        if (FrameworkFocusManager.Instance.HandleKeyEvent(keyEvent))
+        {
+            e.Handled = true;
             return;
         }
 
