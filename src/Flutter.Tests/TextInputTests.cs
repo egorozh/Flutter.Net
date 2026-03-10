@@ -44,6 +44,22 @@ public sealed class TextInputTests : IDisposable
     }
 
     [Fact]
+    public void TextEditingController_InsertAndSelectionReplacement_Work()
+    {
+        var controller = new TextEditingController("abcd");
+        controller.Selection = TextSelection.Collapsed(2);
+
+        Assert.True(controller.Insert("X"));
+        Assert.Equal("abXcd", controller.Text);
+        Assert.Equal(TextSelection.Collapsed(3), controller.Selection);
+
+        controller.Selection = new TextSelection(1, 4);
+        Assert.True(controller.Insert("!"));
+        Assert.Equal("a!d", controller.Text);
+        Assert.Equal(TextSelection.Collapsed(2), controller.Selection);
+    }
+
+    [Fact]
     public void EditableText_TextInputAndBackspace_UpdateController()
     {
         var owner = new BuildOwner();
@@ -67,6 +83,72 @@ public sealed class TextInputTests : IDisposable
         var backspaceHandled = FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "Back", isDown: true));
         Assert.True(backspaceHandled);
         Assert.Equal("H", controller.Text);
+    }
+
+    [Fact]
+    public void EditableText_ArrowAndSelectionKeys_UpdateControllerSelection()
+    {
+        var owner = new BuildOwner();
+        var controller = new TextEditingController();
+        var root = new TestRootElement(
+            new EditableText(
+                controller: controller,
+                autofocus: true));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.True(FocusManager.Instance.HandleTextInput("abcd"));
+        Assert.Equal(TextSelection.Collapsed(4), controller.Selection);
+
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "ArrowLeft", isDown: true)));
+        Assert.Equal(TextSelection.Collapsed(3), controller.Selection);
+
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "ArrowLeft", isDown: true, isShiftPressed: true)));
+        Assert.Equal(2, controller.Selection.Start);
+        Assert.Equal(3, controller.Selection.End);
+        Assert.False(controller.Selection.IsCollapsed);
+
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "A", isDown: true, isControlPressed: true)));
+        Assert.Equal(0, controller.Selection.Start);
+        Assert.Equal(4, controller.Selection.End);
+
+        Assert.True(FocusManager.Instance.HandleTextInput("Z"));
+        Assert.Equal("Z", controller.Text);
+        Assert.Equal(TextSelection.Collapsed(1), controller.Selection);
+    }
+
+    [Fact]
+    public void EditableText_DeleteForward_AndBackspaceOnSelection_Work()
+    {
+        var owner = new BuildOwner();
+        var controller = new TextEditingController();
+        var root = new TestRootElement(
+            new EditableText(
+                controller: controller,
+                autofocus: true));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.True(FocusManager.Instance.HandleTextInput("abcd"));
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "ArrowLeft", isDown: true)));
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "ArrowLeft", isDown: true)));
+        Assert.Equal(TextSelection.Collapsed(2), controller.Selection);
+
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "Delete", isDown: true)));
+        Assert.Equal("abd", controller.Text);
+        Assert.Equal(TextSelection.Collapsed(2), controller.Selection);
+
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "ArrowLeft", isDown: true, isShiftPressed: true)));
+        Assert.Equal(1, controller.Selection.Start);
+        Assert.Equal(2, controller.Selection.End);
+
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "Backspace", isDown: true)));
+        Assert.Equal("ad", controller.Text);
+        Assert.Equal(TextSelection.Collapsed(1), controller.Selection);
     }
 
     [Fact]
@@ -110,9 +192,10 @@ public sealed class TextInputTests : IDisposable
 
         Assert.True(FocusManager.Instance.HandleTextInput("a"));
         Assert.True(FocusManager.Instance.HandleTextInput("b"));
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "ArrowLeft", isDown: true)));
         Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "Backspace", isDown: true)));
 
-        Assert.Equal(new[] { "a", "ab", "a" }, changes);
+        Assert.Equal(new[] { "a", "ab", "b" }, changes);
     }
 
     private sealed class TestRootElement : Element, IRenderObjectHost

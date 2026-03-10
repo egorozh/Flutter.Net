@@ -77,7 +77,8 @@ Progress update (2026-03-10):
 - Focus scopes are now available (`FocusScopeNode`, `FocusScope`) and traversal is bounded to the active scope (Tab + directional keys).
 - Directional traversal includes a geometry-aware policy when focus bounds are available, with deterministic sequential fallback.
 - Editable text baseline is integrated (`EditableText`, `TextEditingController`, host text input dispatch into focused node callbacks).
-- Remaining primary gaps: transform-aware/advanced directional policies, rich text editing primitives (selection/caret/composition/IME lifecycle), and host accessibility bridge documentation.
+- Editable controller/selection baseline is integrated (`TextSelection`, `TextRange`, selection-aware insert/delete/navigation, `Ctrl/Meta+A`).
+- Remaining primary gaps: transform-aware/advanced directional policies, composition/IME lifecycle + caret geometry/multiline editing, and host accessibility bridge documentation.
 
 Exit criteria:
 
