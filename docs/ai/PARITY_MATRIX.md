@@ -29,6 +29,7 @@ Status legend:
 | Proxy widgets demo | `src/Sample/Flutter.Net/ProxyWidgetsDemoPage.cs` | `dart_sample/lib/proxy_widgets_demo_page.dart` | verify-runtime | Demonstrates widget-level `Opacity`, `Transform`, and `ClipRect` composition with interactive controls. |
 | Align demo | `src/Sample/Flutter.Net/AlignDemoPage.cs` | `dart_sample/lib/align_demo_page.dart` | verify-runtime | Demonstrates widget-level `Align` and `Center` with alignment positions and shrink-wrap factors. |
 | Stack demo | `src/Sample/Flutter.Net/StackDemoPage.cs` | `dart_sample/lib/stack_demo_page.dart` | verify-runtime | Demonstrates widget-level `Stack` and `Positioned` overlay behavior with movable/pinned badge positioning. |
+| DecoratedBox demo | `src/Sample/Flutter.Net/DecoratedBoxDemoPage.cs` | `dart_sample/lib/decorated_box_demo_page.dart` | verify-runtime | Demonstrates widget-level `DecoratedBox` with `BoxDecoration`, `BorderSide`, and `BorderRadius` controls. |
 | Shared counter widgets | `src/Sample/Flutter.Net/CounterWidgets.cs` | `dart_sample/lib/counter_widgets.dart` | verify-runtime | Includes keyed/movable/keep-alive helper widgets. |
 | Counter state container | `src/Sample/Flutter.Net/CounterAppModel.cs`, `src/Sample/Flutter.Net/CounterScope.cs` | `dart_sample/lib/counter_app_model.dart`, `dart_sample/lib/counter_scope.dart` | done | |
 

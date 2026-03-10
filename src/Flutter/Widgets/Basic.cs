@@ -90,6 +90,26 @@ public sealed class ColoredBox : SingleChildRenderObjectWidget
     }
 }
 
+public sealed class DecoratedBox : SingleChildRenderObjectWidget
+{
+    public DecoratedBox(BoxDecoration decoration, Widget? child = null, Key? key = null) : base(child, key)
+    {
+        Decoration = decoration ?? new BoxDecoration();
+    }
+
+    public BoxDecoration Decoration { get; }
+
+    internal override RenderObject CreateRenderObject(BuildContext context)
+    {
+        return new RenderDecoratedBox(Decoration);
+    }
+
+    internal override void UpdateRenderObject(BuildContext context, RenderObject renderObject)
+    {
+        ((RenderDecoratedBox)renderObject).Decoration = Decoration;
+    }
+}
+
 public sealed class Opacity : SingleChildRenderObjectWidget
 {
     public Opacity(double opacity, Widget? child = null, Key? key = null) : base(child, key)
@@ -158,6 +178,7 @@ public sealed class Container : StatelessWidget
     public Container(
         Widget? child = null,
         Color? color = null,
+        BoxDecoration? decoration = null,
         Thickness? padding = null,
         double? width = null,
         double? height = null,
@@ -165,6 +186,7 @@ public sealed class Container : StatelessWidget
     {
         Child = child;
         Color = color;
+        Decoration = decoration;
         Padding = padding;
         Width = width;
         Height = height;
@@ -173,6 +195,8 @@ public sealed class Container : StatelessWidget
     public Widget? Child { get; }
 
     public Color? Color { get; }
+
+    public BoxDecoration? Decoration { get; }
 
     public Thickness? Padding { get; }
 
@@ -189,7 +213,11 @@ public sealed class Container : StatelessWidget
             current = new Padding(Padding.Value, current);
         }
 
-        if (Color.HasValue)
+        if (Decoration != null)
+        {
+            current = new DecoratedBox(Decoration, current);
+        }
+        else if (Color.HasValue)
         {
             current = new ColoredBox(Color.Value, current);
         }

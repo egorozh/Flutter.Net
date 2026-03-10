@@ -323,6 +323,59 @@ public sealed class RenderColoredBox : RenderProxyBox
     }
 }
 
+public sealed class RenderDecoratedBox : RenderProxyBox
+{
+    private BoxDecoration _decoration;
+
+    public RenderDecoratedBox(BoxDecoration decoration, RenderBox? child = null)
+    {
+        _decoration = decoration ?? new BoxDecoration();
+        Child = child;
+    }
+
+    public BoxDecoration Decoration
+    {
+        get => _decoration;
+        set
+        {
+            var next = value ?? new BoxDecoration();
+            if (_decoration == next)
+            {
+                return;
+            }
+
+            _decoration = next;
+            MarkNeedsPaint();
+        }
+    }
+
+    public override void Paint(PaintingContext ctx, Point offset)
+    {
+        var rect = new Rect(offset, Size);
+        var radius = _decoration.EffectiveBorderRadius.Radius;
+        IBrush? fill = _decoration.Color.HasValue
+            ? new SolidColorBrush(_decoration.Color.Value)
+            : null;
+
+        IPen? borderPen = null;
+        if (_decoration.Border.HasValue)
+        {
+            var border = _decoration.Border.Value;
+            if (border.Width > 0)
+            {
+                borderPen = new Pen(new SolidColorBrush(border.Color), border.Width);
+            }
+        }
+
+        if (fill != null || borderPen != null)
+        {
+            ctx.DrawRectangle(fill ?? Brushes.Transparent, borderPen, rect, radius, radius);
+        }
+
+        base.Paint(ctx, offset);
+    }
+}
+
 public sealed class RenderOpacity : RenderProxyBox
 {
     private double _opacity;

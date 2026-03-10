@@ -4,6 +4,7 @@ import 'align_demo_page.dart';
 import 'counter_screen.dart';
 import 'counter_widgets.dart';
 import 'custom_slivers_demo_page.dart';
+import 'decorated_box_demo_page.dart';
 import 'editable_text_demo_page.dart';
 import 'grid_view_demo_page.dart';
 import 'list_view_fixed_extent_demo_page.dart';
@@ -90,6 +91,12 @@ class SampleGalleryScreen extends StatelessWidget {
       title: 'Stack + Positioned',
       subtitle: 'multi-child overlay layout',
       builder: () => const StackDemoPage(),
+    ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.decoratedBox,
+      title: 'DecoratedBox',
+      subtitle: 'border + radius + fill decoration',
+      builder: () => const DecoratedBoxDemoPage(),
     ),
   ];
 

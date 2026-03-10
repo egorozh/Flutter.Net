@@ -24,6 +24,7 @@ class SampleRoutes {
   static const String proxyWidgets = '/proxy-widgets';
   static const String align = '/align';
   static const String stack = '/stack';
+  static const String decoratedBox = '/decorated-box';
 }
 
 class SampleRouteDefinition {
