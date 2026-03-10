@@ -167,11 +167,49 @@ public sealed class TextEditingController : ChangeNotifier
         var end = _selection.End;
         var nextText = _text[..start] + text + _text[end..];
         var caretOffset = start + text.Length;
-        SetValue(
+        return ApplyAndReportChange(
             text: nextText,
             selection: TextSelection.Collapsed(caretOffset),
             composing: null);
-        return true;
+    }
+
+    public bool SetComposing(string text)
+    {
+        var composingText = text ?? string.Empty;
+        var rangeStart = _composing?.Start ?? _selection.Start;
+        var rangeEnd = _composing?.End ?? _selection.End;
+        var clampedStart = Math.Clamp(rangeStart, 0, _text.Length);
+        var clampedEnd = Math.Clamp(rangeEnd, 0, _text.Length);
+
+        var nextText = _text[..clampedStart] + composingText + _text[clampedEnd..];
+        var composingEnd = clampedStart + composingText.Length;
+        var nextComposing = new TextRange(clampedStart, composingEnd);
+        var collapsedSelection = TextSelection.Collapsed(composingEnd);
+        return ApplyAndReportChange(nextText, collapsedSelection, nextComposing);
+    }
+
+    public bool CommitComposing(string text)
+    {
+        if (!_composing.HasValue)
+        {
+            return Insert(text);
+        }
+
+        var composingText = text ?? string.Empty;
+        var currentComposing = _composing.Value.Clamp(_text.Length);
+        var nextText = _text[..currentComposing.Start] + composingText + _text[currentComposing.End..];
+        var collapsedSelection = TextSelection.Collapsed(currentComposing.Start + composingText.Length);
+        return ApplyAndReportChange(nextText, collapsedSelection, composing: null);
+    }
+
+    public bool ClearComposing()
+    {
+        if (!_composing.HasValue)
+        {
+            return false;
+        }
+
+        return ApplyAndReportChange(_text, _selection, composing: null);
     }
 
     public bool DeleteBackward()
@@ -189,11 +227,10 @@ public sealed class TextEditingController : ChangeNotifier
         }
 
         var nextText = _text[..start] + _text[end..];
-        SetValue(
+        return ApplyAndReportChange(
             text: nextText,
             selection: TextSelection.Collapsed(start),
             composing: null);
-        return true;
     }
 
     public bool DeleteForward()
@@ -211,11 +248,10 @@ public sealed class TextEditingController : ChangeNotifier
         }
 
         var nextText = _text[..start] + _text[end..];
-        SetValue(
+        return ApplyAndReportChange(
             text: nextText,
             selection: TextSelection.Collapsed(start),
             composing: null);
-        return true;
     }
 
     public void Clear()
@@ -228,16 +264,21 @@ public sealed class TextEditingController : ChangeNotifier
 
     private bool UpdateSelection(TextSelection nextSelection)
     {
-        var normalizedSelection = nextSelection.Clamp(_text.Length);
-        if (_selection.Equals(normalizedSelection))
-        {
-            return false;
-        }
+        return ApplyAndReportChange(_text, nextSelection, composing: null);
+    }
 
-        _selection = normalizedSelection;
-        _composing = null;
-        NotifyListeners();
-        return true;
+    private bool ApplyAndReportChange(
+        string text,
+        TextSelection selection,
+        TextRange? composing)
+    {
+        var previousText = _text;
+        var previousSelection = _selection;
+        var previousComposing = _composing;
+        SetValue(text, selection, composing);
+        return !string.Equals(previousText, _text, StringComparison.Ordinal)
+               || !previousSelection.Equals(_selection)
+               || !Nullable.Equals(previousComposing, _composing);
     }
 }
 
@@ -346,7 +387,8 @@ public sealed class EditableText : StatefulWidget
                 showPlaceholder: showPlaceholder,
                 placeholder: Widget.Placeholder,
                 hasFocus: _focusNode!.HasFocus,
-                selection: _controller.Selection);
+                selection: _controller.Selection,
+                composing: _controller.Composing);
             var textColor = showPlaceholder ? Widget.PlaceholderColor : Widget.TextColor;
             var backgroundColor = _focusNode!.HasFocus ? Widget.FocusedBackgroundColor : Widget.BackgroundColor;
 
@@ -356,6 +398,7 @@ public sealed class EditableText : StatefulWidget
                 canRequestFocus: Widget.Enabled,
                 onKeyEvent: HandleKeyEvent,
                 onTextInput: HandleTextInput,
+                onTextComposition: HandleTextComposition,
                 child: new Container(
                     color: backgroundColor,
                     padding: Widget.Padding,
@@ -399,6 +442,7 @@ public sealed class EditableText : StatefulWidget
             {
                 _focusNode.OnKeyEvent = null;
                 _focusNode.OnTextInput = null;
+                _focusNode.OnTextComposition = null;
             }
 
             if (disposeOwned && _ownsFocusNode)
@@ -454,6 +498,10 @@ public sealed class EditableText : StatefulWidget
             {
                 _ = controller.MoveCaretToEnd(extendSelection: @event.IsShiftPressed);
             }
+            else if (string.Equals(key, "Escape", StringComparison.Ordinal))
+            {
+                _ = controller.ClearComposing();
+            }
             else
             {
                 return KeyEventResult.Ignored;
@@ -474,13 +522,33 @@ public sealed class EditableText : StatefulWidget
                 return false;
             }
 
-            var inserted = _controller!.Insert(text);
-            if (inserted)
+            var changed = _controller!.Composing.HasValue
+                ? _controller.CommitComposing(text)
+                : _controller.Insert(text);
+            if (changed)
             {
                 Widget.OnChanged?.Invoke(_controller.Text);
             }
 
-            return inserted;
+            return changed;
+        }
+
+        private bool HandleTextComposition(FocusNode node, string text, bool isCommit)
+        {
+            if (!Widget.Enabled)
+            {
+                return false;
+            }
+
+            var changed = isCommit
+                ? _controller!.CommitComposing(text)
+                : _controller!.SetComposing(text);
+            if (changed)
+            {
+                Widget.OnChanged?.Invoke(_controller.Text);
+            }
+
+            return changed;
         }
 
         private void HandleControllerChanged()
@@ -498,7 +566,8 @@ public sealed class EditableText : StatefulWidget
             bool showPlaceholder,
             string? placeholder,
             bool hasFocus,
-            TextSelection selection)
+            TextSelection selection,
+            TextRange? composing)
         {
             if (showPlaceholder)
             {
@@ -508,6 +577,15 @@ public sealed class EditableText : StatefulWidget
             if (!hasFocus)
             {
                 return text;
+            }
+
+            if (composing.HasValue)
+            {
+                var composingRange = composing.Value.Clamp(text.Length);
+                if (!composingRange.IsCollapsed)
+                {
+                    return text[..composingRange.Start] + "{" + text[composingRange.Start..composingRange.End] + "}" + text[composingRange.End..];
+                }
             }
 
             var clampedSelection = selection.Clamp(text.Length);

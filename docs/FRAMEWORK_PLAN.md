@@ -78,7 +78,8 @@ Progress update (2026-03-10):
 - Directional traversal includes a geometry-aware policy when focus bounds are available, with deterministic sequential fallback.
 - Editable text baseline is integrated (`EditableText`, `TextEditingController`, host text input dispatch into focused node callbacks).
 - Editable controller/selection baseline is integrated (`TextSelection`, `TextRange`, selection-aware insert/delete/navigation, `Ctrl/Meta+A`).
-- Remaining primary gaps: transform-aware/advanced directional policies, composition/IME lifecycle + caret geometry/multiline editing, and host accessibility bridge documentation.
+- Editable composition lifecycle baseline is integrated (focus-manager composition update/commit dispatch, controller composing state, editable-widget composition handling).
+- Remaining primary gaps: transform-aware/advanced directional policies, host-native IME preedit bridge + caret geometry/multiline editing, and host accessibility bridge documentation.
 
 Exit criteria:
 

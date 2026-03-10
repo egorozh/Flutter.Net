@@ -15,6 +15,7 @@ public enum KeyEventResult
 
 public delegate KeyEventResult FocusOnKeyEventCallback(FocusNode node, KeyEvent @event);
 public delegate bool FocusOnTextInputCallback(FocusNode node, string text);
+public delegate bool FocusOnTextCompositionCallback(FocusNode node, string text, bool isCommit);
 
 public class FocusNode : ChangeNotifier
 {
@@ -52,6 +53,8 @@ public class FocusNode : ChangeNotifier
     public FocusOnKeyEventCallback? OnKeyEvent { get; set; }
 
     public FocusOnTextInputCallback? OnTextInput { get; set; }
+
+    public FocusOnTextCompositionCallback? OnTextComposition { get; set; }
 
     public Rect? TraversalRect { get; set; }
 
@@ -126,6 +129,11 @@ public class FocusNode : ChangeNotifier
     internal bool HandleTextInput(string text)
     {
         return OnTextInput?.Invoke(this, text) ?? false;
+    }
+
+    internal bool HandleTextComposition(string text, bool isCommit)
+    {
+        return OnTextComposition?.Invoke(this, text, isCommit) ?? false;
     }
 
     internal Rect? ResolveTraversalRect()
@@ -389,6 +397,26 @@ public sealed class FocusManager
         }
 
         return PrimaryFocus.HandleTextInput(text);
+    }
+
+    public bool HandleTextCompositionUpdate(string text)
+    {
+        if (PrimaryFocus == null)
+        {
+            return false;
+        }
+
+        return PrimaryFocus.HandleTextComposition(text ?? string.Empty, isCommit: false);
+    }
+
+    public bool HandleTextCompositionCommit(string text)
+    {
+        if (PrimaryFocus == null)
+        {
+            return false;
+        }
+
+        return PrimaryFocus.HandleTextComposition(text ?? string.Empty, isCommit: true);
     }
 
     internal void ResetForTests()
@@ -784,6 +812,7 @@ public sealed class Focus : StatefulWidget
         bool skipTraversal = false,
         FocusOnKeyEventCallback? onKeyEvent = null,
         FocusOnTextInputCallback? onTextInput = null,
+        FocusOnTextCompositionCallback? onTextComposition = null,
         Key? key = null) : base(key)
     {
         Child = child;
@@ -793,6 +822,7 @@ public sealed class Focus : StatefulWidget
         SkipTraversal = skipTraversal;
         OnKeyEvent = onKeyEvent;
         OnTextInput = onTextInput;
+        OnTextComposition = onTextComposition;
     }
 
     public Widget Child { get; }
@@ -808,6 +838,8 @@ public sealed class Focus : StatefulWidget
     public FocusOnKeyEventCallback? OnKeyEvent { get; }
 
     public FocusOnTextInputCallback? OnTextInput { get; }
+
+    public FocusOnTextCompositionCallback? OnTextComposition { get; }
 
     public override State CreateState()
     {
@@ -906,6 +938,7 @@ public sealed class Focus : StatefulWidget
             {
                 _focusNode.OnKeyEvent = null;
                 _focusNode.OnTextInput = null;
+                _focusNode.OnTextComposition = null;
             }
 
             if (disposeOwned && _ownsFocusNode)
@@ -930,6 +963,7 @@ public sealed class Focus : StatefulWidget
             node.SkipTraversal = Widget.SkipTraversal;
             node.OnKeyEvent = Widget.OnKeyEvent;
             node.OnTextInput = Widget.OnTextInput;
+            node.OnTextComposition = Widget.OnTextComposition;
         }
 
         private void ApplyAutofocusIfNeeded()

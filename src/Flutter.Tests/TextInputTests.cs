@@ -44,6 +44,33 @@ public sealed class TextInputTests : IDisposable
     }
 
     [Fact]
+    public void FocusManager_HandleTextComposition_InvokesPrimaryFocusCallback()
+    {
+        var manager = new FocusManager();
+        var captured = new List<(string Text, bool IsCommit)>();
+        var node = new FocusNode
+        {
+            OnTextComposition = (_, text, isCommit) =>
+            {
+                captured.Add((text, isCommit));
+                return true;
+            }
+        };
+
+        manager.RegisterNode(node);
+        manager.RequestFocus(node);
+
+        var updateHandled = manager.HandleTextCompositionUpdate("pre");
+        var commitHandled = manager.HandleTextCompositionCommit("final");
+
+        Assert.True(updateHandled);
+        Assert.True(commitHandled);
+        Assert.Equal(2, captured.Count);
+        Assert.Equal(("pre", false), captured[0]);
+        Assert.Equal(("final", true), captured[1]);
+    }
+
+    [Fact]
     public void TextEditingController_InsertAndSelectionReplacement_Work()
     {
         var controller = new TextEditingController("abcd");
@@ -57,6 +84,33 @@ public sealed class TextInputTests : IDisposable
         Assert.True(controller.Insert("!"));
         Assert.Equal("a!d", controller.Text);
         Assert.Equal(TextSelection.Collapsed(2), controller.Selection);
+    }
+
+    [Fact]
+    public void TextEditingController_CompositionLifecycle_UpdateCommitAndClear_Work()
+    {
+        var controller = new TextEditingController("ab");
+        controller.Selection = TextSelection.Collapsed(1);
+
+        Assert.True(controller.SetComposing("ni"));
+        Assert.Equal("anib", controller.Text);
+        Assert.Equal(new TextRange(1, 3), controller.Composing);
+        Assert.Equal(TextSelection.Collapsed(3), controller.Selection);
+
+        Assert.True(controller.SetComposing("N"));
+        Assert.Equal("aNb", controller.Text);
+        Assert.Equal(new TextRange(1, 2), controller.Composing);
+        Assert.Equal(TextSelection.Collapsed(2), controller.Selection);
+
+        Assert.True(controller.ClearComposing());
+        Assert.Null(controller.Composing);
+        Assert.Equal("aNb", controller.Text);
+
+        Assert.True(controller.SetComposing("x"));
+        Assert.True(controller.CommitComposing("!"));
+        Assert.Equal("aN!b", controller.Text);
+        Assert.Null(controller.Composing);
+        Assert.Equal(TextSelection.Collapsed(3), controller.Selection);
     }
 
     [Fact]
@@ -83,6 +137,45 @@ public sealed class TextInputTests : IDisposable
         var backspaceHandled = FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "Back", isDown: true));
         Assert.True(backspaceHandled);
         Assert.Equal("H", controller.Text);
+    }
+
+    [Fact]
+    public void EditableText_CompositionUpdateCommitAndEscape_Work()
+    {
+        var owner = new BuildOwner();
+        var controller = new TextEditingController();
+        var root = new TestRootElement(
+            new EditableText(
+                controller: controller,
+                autofocus: true));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.True(FocusManager.Instance.HandleTextCompositionUpdate("ni"));
+        Assert.Equal("ni", controller.Text);
+        Assert.Equal(new TextRange(0, 2), controller.Composing);
+        Assert.Equal(TextSelection.Collapsed(2), controller.Selection);
+
+        Assert.True(FocusManager.Instance.HandleTextCompositionCommit("N"));
+        Assert.Equal("N", controller.Text);
+        Assert.Null(controller.Composing);
+        Assert.Equal(TextSelection.Collapsed(1), controller.Selection);
+
+        Assert.True(FocusManager.Instance.HandleTextCompositionUpdate("yz"));
+        Assert.Equal("Nyz", controller.Text);
+        Assert.Equal(new TextRange(1, 3), controller.Composing);
+
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "Escape", isDown: true)));
+        Assert.Equal("Nyz", controller.Text);
+        Assert.Null(controller.Composing);
+
+        controller.Clear();
+        Assert.True(FocusManager.Instance.HandleTextCompositionUpdate("x"));
+        Assert.True(FocusManager.Instance.HandleTextInput("X"));
+        Assert.Equal("X", controller.Text);
+        Assert.Null(controller.Composing);
     }
 
     [Fact]
@@ -167,11 +260,16 @@ public sealed class TextInputTests : IDisposable
         owner.FlushBuild();
 
         var textHandled = FocusManager.Instance.HandleTextInput("x");
+        var compositionUpdateHandled = FocusManager.Instance.HandleTextCompositionUpdate("y");
+        var compositionCommitHandled = FocusManager.Instance.HandleTextCompositionCommit("z");
         var keyHandled = FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "Back", isDown: true));
 
         Assert.False(textHandled);
+        Assert.False(compositionUpdateHandled);
+        Assert.False(compositionCommitHandled);
         Assert.False(keyHandled);
         Assert.Equal(string.Empty, controller.Text);
+        Assert.Null(controller.Composing);
     }
 
     [Fact]
