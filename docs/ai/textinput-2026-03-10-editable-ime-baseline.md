@@ -37,14 +37,21 @@
   - `src/Flutter/FlutterHost.cs`
   - `src/Flutter/Widgets/TextInput.cs`
   - `src/Flutter.Tests/TextInputTests.cs`
+  - `src/Sample/Flutter.Net/EditableTextDemoPage.cs`
+  - `src/Sample/Flutter.Net/SampleGalleryScreen.cs`
+  - `dart_sample/lib/editable_text_demo_page.dart`
+  - `dart_sample/lib/sample_gallery_screen.dart`
+  - `dart_sample/lib/sample_routes.dart`
   - `docs/FRAMEWORK_PLAN.md`
   - `docs/ai/TEST_MATRIX.md`
+  - `docs/ai/PARITY_MATRIX.md`
   - `CHANGELOG.md`
 - Brief intent per file:
   - `src/Flutter/Widgets/Focus.cs`: add text input callback path on focused node/manager.
   - `src/Flutter/FlutterHost.cs`: dispatch Avalonia `OnTextInput` into framework focus manager.
   - `src/Flutter/Widgets/TextInput.cs`: introduce `TextEditingController` and baseline `EditableText` widget.
   - `src/Flutter.Tests/TextInputTests.cs`: add regression coverage for text input dispatch and editable behavior.
+  - Sample files: add mirrored `EditableText` demo route/page in C# and Dart galleries.
   - Tracking docs: reflect shipped M2 progress and remaining gaps.
 
 ## Test Plan
@@ -60,7 +67,7 @@
 - [x] Dart sample parity checked
 - [x] `docs/ai/PARITY_MATRIX.md` updated (if needed)
 - Notes:
-  - No sample route/module delta in this iteration; parity matrix update not required.
+  - Added a mirrored `EditableText` demo route/page in both sample galleries and updated parity matrix row.
 
 ## Docs and Tracking
 

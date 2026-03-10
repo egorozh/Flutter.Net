@@ -48,7 +48,7 @@ next_milestones:
 - [x] Navigation stack is implemented (`Navigator`, routes, named routes, observers, back handling).
 - [x] Scroll/sliver stack is implemented (`Scrollable`, `Viewport`, sliver lists/grids, keep-alive, notifications).
 - [x] Widget host path is active on desktop (`FlutterExtensions.Run` + `WidgetHost`).
-- [x] Sample gallery demonstrates navigation and scrolling demos through framework widgets.
+- [x] Sample gallery demonstrates navigation, scrolling, and editable text/focus demos through framework widgets.
 - [x] Automated test project exists and covers lifecycle, rendering, layers, semantics, gestures, navigation, and scrolling.
 
 ## Global Plan
