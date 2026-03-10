@@ -204,6 +204,11 @@ public sealed class RenderColoredBox : RenderProxyBox
         get => _color;
         set
         {
+            if (_color == value)
+            {
+                return;
+            }
+
             _color = value;
             MarkNeedsPaint();
         }

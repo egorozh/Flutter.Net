@@ -8,9 +8,9 @@ Use this block as the fastest machine-readable status summary.
 
 ```yaml
 framework_plan_version: 1
-last_updated: 2026-03-08
+last_updated: 2026-03-10
 north_star: "Flutter-like widget/rendering framework in C# with Avalonia as host infrastructure."
-current_phase: "Stabilize implemented core and increase practical Flutter parity."
+current_phase: "Core parity hardening closed; advancing input/focus/accessibility completion."
 status:
   widget_element_state_lifecycle: done
   render_pipeline_layout_paint_compositing_semantics: done
@@ -25,10 +25,10 @@ status:
 next_milestones:
   - id: M1
     title: "Core parity hardening"
-    status: in_progress
+    status: done
   - id: M2
     title: "Input/focus/accessibility completion"
-    status: planned
+    status: in_progress
   - id: M3
     title: "Port-first widget set expansion"
     status: planned
@@ -55,7 +55,11 @@ next_milestones:
 
 ### M1. Core Parity Hardening
 
-Status: `in_progress`
+Status: `done`
+
+Completion note:
+
+- Closed on 2026-03-10 after targeted parity hardening passes for layout exception surfacing, constraint clamping behavior, and render/compositing invalidation no-op guards.
 
 Exit criteria:
 
@@ -65,7 +69,7 @@ Exit criteria:
 
 ### M2. Input, Focus, and Accessibility Completion
 
-Status: `planned`
+Status: `in_progress`
 
 Exit criteria:
 

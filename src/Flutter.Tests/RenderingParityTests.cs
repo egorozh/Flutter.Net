@@ -99,6 +99,94 @@ public sealed class RenderingParityTests
     }
 
     [Fact]
+    public void RenderFlex_IgnoresNoOpDirectionUpdate()
+    {
+        var flex = new RenderFlex(children: [new CountingRenderBox()], direction: Axis.Horizontal);
+        var parent = new ParentUsesSizeRenderBox(flex);
+        var root = new RenderView
+        {
+            Child = parent
+        };
+
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+
+        pipeline.FlushLayout(new Size(300, 200));
+        Assert.Equal(1, parent.LayoutCount);
+
+        flex.Direction = Axis.Horizontal;
+        pipeline.FlushLayout(new Size(300, 200));
+
+        Assert.Equal(1, parent.LayoutCount);
+    }
+
+    [Fact]
+    public void RenderFlex_IgnoresNoOpMainAxisSizeUpdate()
+    {
+        var flex = new RenderFlex(children: [new CountingRenderBox()], mainAxisSize: MainAxisSize.Max);
+        var parent = new ParentUsesSizeRenderBox(flex);
+        var root = new RenderView
+        {
+            Child = parent
+        };
+
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+
+        pipeline.FlushLayout(new Size(300, 200));
+        Assert.Equal(1, parent.LayoutCount);
+
+        flex.MainAxisSize = MainAxisSize.Max;
+        pipeline.FlushLayout(new Size(300, 200));
+
+        Assert.Equal(1, parent.LayoutCount);
+    }
+
+    [Fact]
+    public void RenderFlex_IgnoresNoOpMainAxisAlignmentUpdate()
+    {
+        var flex = new RenderFlex(children: [new CountingRenderBox()], mainAxisAlignment: MainAxisAlignment.Start);
+        var parent = new ParentUsesSizeRenderBox(flex);
+        var root = new RenderView
+        {
+            Child = parent
+        };
+
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+
+        pipeline.FlushLayout(new Size(300, 200));
+        Assert.Equal(1, parent.LayoutCount);
+
+        flex.MainAxisAlignment = MainAxisAlignment.Start;
+        pipeline.FlushLayout(new Size(300, 200));
+
+        Assert.Equal(1, parent.LayoutCount);
+    }
+
+    [Fact]
+    public void RenderFlex_IgnoresNoOpCrossAxisAlignmentUpdate()
+    {
+        var flex = new RenderFlex(children: [new CountingRenderBox()], crossAxisAlignment: CrossAxisAlignment.Center);
+        var parent = new ParentUsesSizeRenderBox(flex);
+        var root = new RenderView
+        {
+            Child = parent
+        };
+
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+
+        pipeline.FlushLayout(new Size(300, 200));
+        Assert.Equal(1, parent.LayoutCount);
+
+        flex.CrossAxisAlignment = CrossAxisAlignment.Center;
+        pipeline.FlushLayout(new Size(300, 200));
+
+        Assert.Equal(1, parent.LayoutCount);
+    }
+
+    [Fact]
     public void RelayoutBoundary_ChildDirty_RelayoutsOnlyBoundary()
     {
         var child = new CountingRenderBox();
