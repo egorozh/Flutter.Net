@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'align_demo_page.dart';
 import 'counter_screen.dart';
 import 'counter_widgets.dart';
+import 'container_demo_page.dart';
 import 'custom_slivers_demo_page.dart';
 import 'decorated_box_demo_page.dart';
 import 'editable_text_demo_page.dart';
@@ -97,6 +98,12 @@ class SampleGalleryScreen extends StatelessWidget {
       title: 'DecoratedBox',
       subtitle: 'border + radius + fill decoration',
       builder: () => const DecoratedBoxDemoPage(),
+    ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.container,
+      title: 'Container',
+      subtitle: 'alignment + margin composition',
+      builder: () => const ContainerDemoPage(),
     ),
   ];
 

@@ -25,6 +25,7 @@ class SampleRoutes {
   static const String align = '/align';
   static const String stack = '/stack';
   static const String decoratedBox = '/decorated-box';
+  static const String container = '/container';
 }
 
 class SampleRouteDefinition {

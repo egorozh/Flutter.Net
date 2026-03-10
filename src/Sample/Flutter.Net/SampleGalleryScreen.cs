@@ -32,6 +32,7 @@ internal static class SampleRoutes
     public const string Align = "/align";
     public const string Stack = "/stack";
     public const string DecoratedBox = "/decorated-box";
+    public const string Container = "/container";
 }
 
 internal readonly record struct SampleRouteDefinition(
@@ -57,6 +58,7 @@ internal sealed class SampleGalleryScreen : StatelessWidget
         new(SampleRoutes.Align, "Align + Center", "single-child alignment and shrink factors", () => new AlignDemoPage()),
         new(SampleRoutes.Stack, "Stack + Positioned", "multi-child overlay layout", () => new StackDemoPage()),
         new(SampleRoutes.DecoratedBox, "DecoratedBox", "border + radius + fill decoration", () => new DecoratedBoxDemoPage()),
+        new(SampleRoutes.Container, "Container", "alignment + margin composition", () => new ContainerDemoPage()),
     ];
 
     private static readonly IReadOnlyDictionary<string, SampleRouteDefinition> DemoPageByRoute =

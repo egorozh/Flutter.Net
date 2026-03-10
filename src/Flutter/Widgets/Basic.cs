@@ -179,6 +179,8 @@ public sealed class Container : StatelessWidget
         Widget? child = null,
         Color? color = null,
         BoxDecoration? decoration = null,
+        Alignment? alignment = null,
+        Thickness? margin = null,
         Thickness? padding = null,
         double? width = null,
         double? height = null,
@@ -187,6 +189,8 @@ public sealed class Container : StatelessWidget
         Child = child;
         Color = color;
         Decoration = decoration;
+        Alignment = alignment;
+        Margin = margin;
         Padding = padding;
         Width = width;
         Height = height;
@@ -198,6 +202,10 @@ public sealed class Container : StatelessWidget
 
     public BoxDecoration? Decoration { get; }
 
+    public Alignment? Alignment { get; }
+
+    public Thickness? Margin { get; }
+
     public Thickness? Padding { get; }
 
     public double? Width { get; }
@@ -207,6 +215,13 @@ public sealed class Container : StatelessWidget
     public override Widget Build(BuildContext context)
     {
         Widget current = Child ?? new SizedBox();
+
+        if (Alignment.HasValue)
+        {
+            current = new Align(
+                alignment: Alignment.Value,
+                child: current);
+        }
 
         if (Padding.HasValue)
         {
@@ -225,6 +240,11 @@ public sealed class Container : StatelessWidget
         if (Width.HasValue || Height.HasValue)
         {
             current = new SizedBox(width: Width, height: Height, child: current);
+        }
+
+        if (Margin.HasValue)
+        {
+            current = new Padding(Margin.Value, current);
         }
 
         return current;
