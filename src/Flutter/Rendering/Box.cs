@@ -112,8 +112,21 @@ public readonly record struct BoxConstraints(
 
     public static BoxConstraints Loose(Size s) => new BoxConstraints(0, s.Width, 0, s.Height);
 
-    public BoxConstraints Tighten(double? width = null, double? height = null) =>
-        new BoxConstraints(width ?? MinWidth, width ?? MaxWidth, height ?? MinHeight, height ?? MaxHeight);
+    public BoxConstraints Tighten(double? width = null, double? height = null)
+    {
+        var tightenedWidth = width.HasValue
+            ? Math.Clamp(width.Value, MinWidth, MaxWidth)
+            : (double?)null;
+        var tightenedHeight = height.HasValue
+            ? Math.Clamp(height.Value, MinHeight, MaxHeight)
+            : (double?)null;
+
+        return new BoxConstraints(
+            MinWidth: tightenedWidth ?? MinWidth,
+            MaxWidth: tightenedWidth ?? MaxWidth,
+            MinHeight: tightenedHeight ?? MinHeight,
+            MaxHeight: tightenedHeight ?? MaxHeight);
+    }
 
     public BoxConstraints Enforce(BoxConstraints constraints) =>
         new(

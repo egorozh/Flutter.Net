@@ -35,6 +35,20 @@ public sealed class RenderingParityTests
     }
 
     [Fact]
+    public void BoxConstraints_Tighten_ClampsRequestedSizeToCurrentRange()
+    {
+        var constraints = new BoxConstraints(MinWidth: 10, MaxWidth: 100, MinHeight: 20, MaxHeight: 200);
+
+        var tightened = constraints.Tighten(width: 300, height: 5);
+
+        Assert.Equal(100, tightened.MinWidth);
+        Assert.Equal(100, tightened.MaxWidth);
+        Assert.Equal(20, tightened.MinHeight);
+        Assert.Equal(20, tightened.MaxHeight);
+        Assert.True(tightened.IsNormalized);
+    }
+
+    [Fact]
     public void RelayoutBoundary_ChildDirty_RelayoutsOnlyBoundary()
     {
         var child = new CountingRenderBox();
