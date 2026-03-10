@@ -10,7 +10,7 @@ Use this block as the fastest machine-readable status summary.
 framework_plan_version: 1
 last_updated: 2026-03-10
 north_star: "Flutter-like widget/rendering framework in C# with Avalonia as host infrastructure."
-current_phase: "Input/focus/accessibility completion closed; preparing port-first expansion."
+current_phase: "Port-first widget set expansion (M3) in progress."
 status:
   widget_element_state_lifecycle: done
   render_pipeline_layout_paint_compositing_semantics: done
@@ -31,7 +31,7 @@ next_milestones:
     status: done
   - id: M3
     title: "Port-first widget set expansion"
-    status: planned
+    status: in_progress
   - id: M4
     title: "Cross-host sample parity and stability"
     status: planned

@@ -6,6 +6,14 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## [Unreleased]
 
+### Planned
+
+- Continue Flutter parity for widgets, layout, rendering, gestures, semantics, and navigation.
+- Expand host/runtime validation for desktop, browser, and mobile.
+- Improve architecture docs and migration guidance for Dart-to-C# rewrites.
+
+## [2026-03-10] - M1/M2 completion snapshot
+
 ### Added
 
 - Lifecycle parity hardening: added element reconciliation tests for mixed keyed/unkeyed updates, including nested multi-parent reorder scenarios, to verify keyed state retention, stable-tail reuse, and disposal of moved unkeyed states (`src/Flutter.Tests/ElementLifecycleTests.cs`).
@@ -33,12 +41,6 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Sample parity update: added `EditableText` demo route/page in both C# sample and `dart_sample` gallery menus, including baseline input flow (`enable/disable`, `clear`, change summary) to validate framework text-input integration in app context (`src/Sample/Flutter.Net/EditableTextDemoPage.cs`, `src/Sample/Flutter.Net/SampleGalleryScreen.cs`, `dart_sample/lib/editable_text_demo_page.dart`, `dart_sample/lib/sample_gallery_screen.dart`, `dart_sample/lib/sample_routes.dart`, `docs/ai/PARITY_MATRIX.md`).
 - Sample parity progression: upgraded the `EditableText` demo in both C# and Dart samples to showcase multiline behavior (newline insertion, vertical caret travel hints, seeded multiline content) and escaped live value visualization for IME/manual input checks (`src/Sample/Flutter.Net/EditableTextDemoPage.cs`, `src/Sample/Flutter.Net/SampleGalleryScreen.cs`, `dart_sample/lib/editable_text_demo_page.dart`, `dart_sample/lib/sample_gallery_screen.dart`, `docs/ai/PARITY_MATRIX.md`).
 - Dart source traceability: annotated all solution-tracked C# files with `Dart parity source (reference)` comments to speed up Dart-to-C# parity review and future porting iterations.
-
-### Planned
-
-- Continue Flutter parity for widgets, layout, rendering, gestures, semantics, and navigation.
-- Expand host/runtime validation for desktop, browser, and mobile.
-- Improve architecture docs and migration guidance for Dart-to-C# rewrites.
 
 ## [2026-03-08] - Baseline framework snapshot
 
