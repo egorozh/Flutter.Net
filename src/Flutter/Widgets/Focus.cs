@@ -14,6 +14,7 @@ public enum KeyEventResult
 }
 
 public delegate KeyEventResult FocusOnKeyEventCallback(FocusNode node, KeyEvent @event);
+public delegate bool FocusOnTextInputCallback(FocusNode node, string text);
 
 public class FocusNode : ChangeNotifier
 {
@@ -49,6 +50,8 @@ public class FocusNode : ChangeNotifier
     }
 
     public FocusOnKeyEventCallback? OnKeyEvent { get; set; }
+
+    public FocusOnTextInputCallback? OnTextInput { get; set; }
 
     public Rect? TraversalRect { get; set; }
 
@@ -118,6 +121,11 @@ public class FocusNode : ChangeNotifier
     internal KeyEventResult HandleKeyEvent(KeyEvent @event)
     {
         return OnKeyEvent?.Invoke(this, @event) ?? KeyEventResult.Ignored;
+    }
+
+    internal bool HandleTextInput(string text)
+    {
+        return OnTextInput?.Invoke(this, text) ?? false;
     }
 
     internal Rect? ResolveTraversalRect()
@@ -371,6 +379,16 @@ public sealed class FocusManager
         }
 
         return @event.IsShiftPressed ? FocusPrevious() : FocusNext();
+    }
+
+    public bool HandleTextInput(string text)
+    {
+        if (PrimaryFocus == null || string.IsNullOrEmpty(text))
+        {
+            return false;
+        }
+
+        return PrimaryFocus.HandleTextInput(text);
     }
 
     internal void ResetForTests()
@@ -765,6 +783,7 @@ public sealed class Focus : StatefulWidget
         bool canRequestFocus = true,
         bool skipTraversal = false,
         FocusOnKeyEventCallback? onKeyEvent = null,
+        FocusOnTextInputCallback? onTextInput = null,
         Key? key = null) : base(key)
     {
         Child = child;
@@ -773,6 +792,7 @@ public sealed class Focus : StatefulWidget
         CanRequestFocus = canRequestFocus;
         SkipTraversal = skipTraversal;
         OnKeyEvent = onKeyEvent;
+        OnTextInput = onTextInput;
     }
 
     public Widget Child { get; }
@@ -786,6 +806,8 @@ public sealed class Focus : StatefulWidget
     public bool SkipTraversal { get; }
 
     public FocusOnKeyEventCallback? OnKeyEvent { get; }
+
+    public FocusOnTextInputCallback? OnTextInput { get; }
 
     public override State CreateState()
     {
@@ -883,6 +905,7 @@ public sealed class Focus : StatefulWidget
             if (_ownsFocusNode)
             {
                 _focusNode.OnKeyEvent = null;
+                _focusNode.OnTextInput = null;
             }
 
             if (disposeOwned && _ownsFocusNode)
@@ -906,6 +929,7 @@ public sealed class Focus : StatefulWidget
             node.CanRequestFocus = Widget.CanRequestFocus;
             node.SkipTraversal = Widget.SkipTraversal;
             node.OnKeyEvent = Widget.OnKeyEvent;
+            node.OnTextInput = Widget.OnTextInput;
         }
 
         private void ApplyAutofocusIfNeeded()

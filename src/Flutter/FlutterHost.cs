@@ -92,6 +92,21 @@ public class FlutterHost : Control
         }
     }
 
+    protected override void OnTextInput(TextInputEventArgs e)
+    {
+        base.OnTextInput(e);
+
+        if (e.Handled || string.IsNullOrEmpty(e.Text))
+        {
+            return;
+        }
+
+        if (FrameworkFocusManager.Instance.HandleTextInput(e.Text))
+        {
+            e.Handled = true;
+        }
+    }
+
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);

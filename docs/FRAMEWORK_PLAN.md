@@ -76,7 +76,8 @@ Progress update (2026-03-10):
 - Keyboard/focus baseline is implemented and host-wired (`KeyEvent`, `FocusNode`, `FocusManager`, `Focus`).
 - Focus scopes are now available (`FocusScopeNode`, `FocusScope`) and traversal is bounded to the active scope (Tab + directional keys).
 - Directional traversal includes a geometry-aware policy when focus bounds are available, with deterministic sequential fallback.
-- Remaining primary gaps: transform-aware/advanced directional policies, focus integration with editable text/IME, and host accessibility bridge documentation.
+- Editable text baseline is integrated (`EditableText`, `TextEditingController`, host text input dispatch into focused node callbacks).
+- Remaining primary gaps: transform-aware/advanced directional policies, rich text editing primitives (selection/caret/composition/IME lifecycle), and host accessibility bridge documentation.
 
 Exit criteria:
 
