@@ -58,7 +58,7 @@ internal sealed class SampleGalleryScreen : StatelessWidget
         new(SampleRoutes.Align, "Align + Center", "single-child alignment and shrink factors", () => new AlignDemoPage()),
         new(SampleRoutes.Stack, "Stack + Positioned", "multi-child overlay layout", () => new StackDemoPage()),
         new(SampleRoutes.DecoratedBox, "DecoratedBox", "border + radius + fill decoration", () => new DecoratedBoxDemoPage()),
-        new(SampleRoutes.Container, "Container", "alignment + margin composition", () => new ContainerDemoPage()),
+        new(SampleRoutes.Container, "Container", "alignment + margin + constraints + transform", () => new ContainerDemoPage()),
     ];
 
     private static readonly IReadOnlyDictionary<string, SampleRouteDefinition> DemoPageByRoute =

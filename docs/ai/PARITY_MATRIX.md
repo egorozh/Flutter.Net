@@ -30,7 +30,7 @@ Status legend:
 | Align demo | `src/Sample/Flutter.Net/AlignDemoPage.cs` | `dart_sample/lib/align_demo_page.dart` | verify-runtime | Demonstrates widget-level `Align` and `Center` with alignment positions and shrink-wrap factors. |
 | Stack demo | `src/Sample/Flutter.Net/StackDemoPage.cs` | `dart_sample/lib/stack_demo_page.dart` | verify-runtime | Demonstrates widget-level `Stack` and `Positioned` overlay behavior with movable/pinned badge positioning. |
 | DecoratedBox demo | `src/Sample/Flutter.Net/DecoratedBoxDemoPage.cs` | `dart_sample/lib/decorated_box_demo_page.dart` | verify-runtime | Demonstrates widget-level `DecoratedBox` with `BoxDecoration`, `BorderSide`, and `BorderRadius` controls. |
-| Container demo | `src/Sample/Flutter.Net/ContainerDemoPage.cs` | `dart_sample/lib/container_demo_page.dart` | verify-runtime | Demonstrates `Container` composition with `alignment` and `margin` wrapping behavior. |
+| Container demo | `src/Sample/Flutter.Net/ContainerDemoPage.cs` | `dart_sample/lib/container_demo_page.dart` | verify-runtime | Demonstrates `Container` composition with `alignment`, `margin`, `constraints`, and `transform` behavior (including clamp/tighten interaction). |
 | Shared counter widgets | `src/Sample/Flutter.Net/CounterWidgets.cs` | `dart_sample/lib/counter_widgets.dart` | verify-runtime | Includes keyed/movable/keep-alive helper widgets. |
 | Counter state container | `src/Sample/Flutter.Net/CounterAppModel.cs`, `src/Sample/Flutter.Net/CounterScope.cs` | `dart_sample/lib/counter_app_model.dart`, `dart_sample/lib/counter_scope.dart` | done | |
 

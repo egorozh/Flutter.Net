@@ -181,6 +181,8 @@ public sealed class Container : StatelessWidget
         BoxDecoration? decoration = null,
         Alignment? alignment = null,
         Thickness? margin = null,
+        BoxConstraints? constraints = null,
+        Matrix? transform = null,
         Thickness? padding = null,
         double? width = null,
         double? height = null,
@@ -191,6 +193,8 @@ public sealed class Container : StatelessWidget
         Decoration = decoration;
         Alignment = alignment;
         Margin = margin;
+        Constraints = constraints;
+        Transform = transform;
         Padding = padding;
         Width = width;
         Height = height;
@@ -205,6 +209,10 @@ public sealed class Container : StatelessWidget
     public Alignment? Alignment { get; }
 
     public Thickness? Margin { get; }
+
+    public BoxConstraints? Constraints { get; }
+
+    public Matrix? Transform { get; }
 
     public Thickness? Padding { get; }
 
@@ -237,14 +245,27 @@ public sealed class Container : StatelessWidget
             current = new ColoredBox(Color.Value, current);
         }
 
+        BoxConstraints? effectiveConstraints = Constraints;
         if (Width.HasValue || Height.HasValue)
         {
-            current = new SizedBox(width: Width, height: Height, child: current);
+            effectiveConstraints = effectiveConstraints.HasValue
+                ? effectiveConstraints.Value.Tighten(width: Width, height: Height)
+                : BoxConstraints.TightFor(width: Width, height: Height);
+        }
+
+        if (effectiveConstraints.HasValue)
+        {
+            current = new ConstrainedBox(effectiveConstraints.Value, current);
         }
 
         if (Margin.HasValue)
         {
             current = new Padding(Margin.Value, current);
+        }
+
+        if (Transform.HasValue)
+        {
+            current = new Transform(Transform.Value, current);
         }
 
         return current;

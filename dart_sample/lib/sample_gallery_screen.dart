@@ -102,7 +102,7 @@ class SampleGalleryScreen extends StatelessWidget {
     SampleRouteDefinition(
       routeName: SampleRoutes.container,
       title: 'Container',
-      subtitle: 'alignment + margin composition',
+      subtitle: 'alignment + margin + constraints + transform',
       builder: () => const ContainerDemoPage(),
     ),
   ];

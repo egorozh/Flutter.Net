@@ -12,12 +12,25 @@ class ContainerDemoPage extends StatefulWidget {
 class _ContainerDemoPageState extends State<ContainerDemoPage> {
   Alignment _alignment = Alignment.center;
   bool _withMargin = false;
+  bool _clampConstraints = false;
+  double _shiftX = 0;
 
   @override
   Widget build(BuildContext context) {
     final EdgeInsetsGeometry? margin = _withMargin
         ? const EdgeInsets.fromLTRB(12, 8, 12, 8)
         : null;
+    final BoxConstraints? constraints = _clampConstraints
+        ? const BoxConstraints(
+            minWidth: 80,
+            maxWidth: 120,
+            minHeight: 50,
+            maxHeight: 76,
+          )
+        : null;
+    final Matrix4? transform = _shiftX.abs() < 0.001
+        ? null
+        : Matrix4.translationValues(_shiftX, 0, 0);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -65,8 +78,37 @@ class _ContainerDemoPageState extends State<ContainerDemoPage> {
             ),
           ],
         ),
+        Row(
+          spacing: 8,
+          children: <Widget>[
+            _buildButton(
+              label: 'Left',
+              onTap: () => _move(-20),
+              width: 88,
+              background: const Color(0xFFF3E8D8),
+            ),
+            _buildButton(
+              label: 'Right',
+              onTap: () => _move(20),
+              width: 88,
+              background: const Color(0xFFF3E8D8),
+            ),
+            _buildButton(
+              label: _clampConstraints ? 'Clamp: on' : 'Clamp: off',
+              onTap: _toggleConstraints,
+              width: 120,
+              background: const Color(0xFFE8EDF9),
+            ),
+            _buildButton(
+              label: 'Reset',
+              onTap: _reset,
+              width: 88,
+              background: const Color(0xFFE8EDF9),
+            ),
+          ],
+        ),
         Text(
-          'alignment=${_alignmentLabel(_alignment)}, margin=${_withMargin ? 'on' : 'off'}',
+          'alignment=${_alignmentLabel(_alignment)}, margin=${_withMargin ? 'on' : 'off'}, clamp=${_clampConstraints ? 'on' : 'off'}, shiftX=${_shiftX.toStringAsFixed(0)}',
           style: const TextStyle(fontSize: 12, color: Colors.blueGrey),
         ),
         Container(
@@ -78,6 +120,8 @@ class _ContainerDemoPageState extends State<ContainerDemoPage> {
             margin: margin,
             width: 150,
             height: 90,
+            constraints: constraints,
+            transform: transform,
             alignment: _alignment,
             decoration: BoxDecoration(
               color: const Color(0xFFCCE3FF),
@@ -129,6 +173,27 @@ class _ContainerDemoPageState extends State<ContainerDemoPage> {
   void _toggleMargin() {
     setState(() {
       _withMargin = !_withMargin;
+    });
+  }
+
+  void _move(double delta) {
+    setState(() {
+      _shiftX = (_shiftX + delta).clamp(-40.0, 40.0);
+    });
+  }
+
+  void _toggleConstraints() {
+    setState(() {
+      _clampConstraints = !_clampConstraints;
+    });
+  }
+
+  void _reset() {
+    setState(() {
+      _alignment = Alignment.center;
+      _withMargin = false;
+      _clampConstraints = false;
+      _shiftX = 0;
     });
   }
 
