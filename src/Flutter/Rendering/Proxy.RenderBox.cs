@@ -189,6 +189,108 @@ public sealed class RenderPadding : RenderProxyBox
     }
 }
 
+public sealed class RenderAlign : RenderProxyBox
+{
+    private Alignment _alignment;
+    private double? _widthFactor;
+    private double? _heightFactor;
+
+    public RenderAlign(
+        Alignment alignment = default,
+        double? widthFactor = null,
+        double? heightFactor = null,
+        RenderBox? child = null)
+    {
+        _alignment = alignment;
+        _widthFactor = ValidateFactor(widthFactor, nameof(widthFactor));
+        _heightFactor = ValidateFactor(heightFactor, nameof(heightFactor));
+        Child = child;
+    }
+
+    public Alignment Alignment
+    {
+        get => _alignment;
+        set
+        {
+            if (_alignment == value)
+            {
+                return;
+            }
+
+            _alignment = value;
+            MarkNeedsLayout();
+        }
+    }
+
+    public double? WidthFactor
+    {
+        get => _widthFactor;
+        set
+        {
+            var normalized = ValidateFactor(value, nameof(value));
+            if (_widthFactor == normalized)
+            {
+                return;
+            }
+
+            _widthFactor = normalized;
+            MarkNeedsLayout();
+        }
+    }
+
+    public double? HeightFactor
+    {
+        get => _heightFactor;
+        set
+        {
+            var normalized = ValidateFactor(value, nameof(value));
+            if (_heightFactor == normalized)
+            {
+                return;
+            }
+
+            _heightFactor = normalized;
+            MarkNeedsLayout();
+        }
+    }
+
+    protected override void PerformLayout()
+    {
+        var shrinkWrapWidth = _widthFactor.HasValue;
+        var shrinkWrapHeight = _heightFactor.HasValue;
+
+        if (Child == null)
+        {
+            var fallbackWidth = shrinkWrapWidth ? 0.0 : double.PositiveInfinity;
+            var fallbackHeight = shrinkWrapHeight ? 0.0 : double.PositiveInfinity;
+            Size = Constraints.Constrain(new Size(fallbackWidth, fallbackHeight));
+            return;
+        }
+
+        Child.Layout(BoxConstraints.Loose(Constraints.Biggest), parentUsesSize: true);
+        var childSize = Child.Size;
+        var targetWidth = shrinkWrapWidth ? childSize.Width * _widthFactor!.Value : double.PositiveInfinity;
+        var targetHeight = shrinkWrapHeight ? childSize.Height * _heightFactor!.Value : double.PositiveInfinity;
+        Size = Constraints.Constrain(new Size(targetWidth, targetHeight));
+        ((BoxParentData)Child.parentData!).offset = _alignment.AlongOffset(Size, childSize);
+    }
+
+    private static double? ValidateFactor(double? value, string parameterName)
+    {
+        if (!value.HasValue)
+        {
+            return null;
+        }
+
+        if (value.Value < 0)
+        {
+            throw new ArgumentOutOfRangeException(parameterName, "Factor must be non-negative.");
+        }
+
+        return value.Value;
+    }
+}
+
 public sealed class RenderColoredBox : RenderProxyBox
 {
     private Color _color;

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'align_demo_page.dart';
 import 'counter_screen.dart';
 import 'counter_widgets.dart';
 import 'custom_slivers_demo_page.dart';
@@ -12,6 +13,7 @@ import 'navigator_demo_page.dart';
 import 'proxy_widgets_demo_page.dart';
 import 'sample_routes.dart';
 import 'scrollbar_demo_page.dart';
+import 'stack_demo_page.dart';
 
 class SampleGalleryScreen extends StatelessWidget {
   const SampleGalleryScreen({super.key});
@@ -76,6 +78,18 @@ class SampleGalleryScreen extends StatelessWidget {
       title: 'Proxy widgets',
       subtitle: 'Opacity + Transform + ClipRect composition',
       builder: () => const ProxyWidgetsDemoPage(),
+    ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.align,
+      title: 'Align + Center',
+      subtitle: 'single-child alignment and shrink factors',
+      builder: () => const AlignDemoPage(),
+    ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.stack,
+      title: 'Stack + Positioned',
+      subtitle: 'multi-child overlay layout',
+      builder: () => const StackDemoPage(),
     ),
   ];
 

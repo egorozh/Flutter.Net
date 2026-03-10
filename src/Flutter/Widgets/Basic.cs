@@ -203,6 +203,59 @@ public sealed class Container : StatelessWidget
     }
 }
 
+public class Align : SingleChildRenderObjectWidget
+{
+    public Align(
+        Widget? child = null,
+        Alignment alignment = default,
+        double? widthFactor = null,
+        double? heightFactor = null,
+        Key? key = null) : base(child, key)
+    {
+        Alignment = alignment;
+        WidthFactor = widthFactor;
+        HeightFactor = heightFactor;
+    }
+
+    public Alignment Alignment { get; }
+
+    public double? WidthFactor { get; }
+
+    public double? HeightFactor { get; }
+
+    internal override RenderObject CreateRenderObject(BuildContext context)
+    {
+        return new RenderAlign(
+            alignment: Alignment,
+            widthFactor: WidthFactor,
+            heightFactor: HeightFactor);
+    }
+
+    internal override void UpdateRenderObject(BuildContext context, RenderObject renderObject)
+    {
+        var align = (RenderAlign)renderObject;
+        align.Alignment = Alignment;
+        align.WidthFactor = WidthFactor;
+        align.HeightFactor = HeightFactor;
+    }
+}
+
+public sealed class Center : Align
+{
+    public Center(
+        Widget? child = null,
+        double? widthFactor = null,
+        double? heightFactor = null,
+        Key? key = null) : base(
+        child: child,
+        alignment: Alignment.Center,
+        widthFactor: widthFactor,
+        heightFactor: heightFactor,
+        key: key)
+    {
+    }
+}
+
 public class Flex : MultiChildRenderObjectWidget
 {
     public Flex(
@@ -333,5 +386,128 @@ public sealed class Column : Flex
         spacing: spacing,
         key: key)
     {
+    }
+}
+
+public sealed class Stack : MultiChildRenderObjectWidget
+{
+    public Stack(
+        IReadOnlyList<Widget>? children = null,
+        Alignment alignment = default,
+        StackFit fit = StackFit.Loose,
+        Key? key = null) : base(children, key)
+    {
+        Alignment = alignment;
+        Fit = fit;
+    }
+
+    public Alignment Alignment { get; }
+
+    public StackFit Fit { get; }
+
+    internal override RenderObject CreateRenderObject(BuildContext context)
+    {
+        return new RenderStack(
+            alignment: Alignment,
+            fit: Fit);
+    }
+
+    internal override void UpdateRenderObject(BuildContext context, RenderObject renderObject)
+    {
+        var stack = (RenderStack)renderObject;
+        stack.Alignment = Alignment;
+        stack.Fit = Fit;
+    }
+}
+
+public sealed class Positioned : ParentDataWidget<StackParentData>
+{
+    public Positioned(
+        Widget child,
+        double? left = null,
+        double? top = null,
+        double? right = null,
+        double? bottom = null,
+        double? width = null,
+        double? height = null,
+        Key? key = null) : base(child, key)
+    {
+        if (left.HasValue && right.HasValue && width.HasValue)
+        {
+            throw new ArgumentException("Cannot provide left, right, and width simultaneously.");
+        }
+
+        if (top.HasValue && bottom.HasValue && height.HasValue)
+        {
+            throw new ArgumentException("Cannot provide top, bottom, and height simultaneously.");
+        }
+
+        Left = left;
+        Top = top;
+        Right = right;
+        Bottom = bottom;
+        Width = width;
+        Height = height;
+    }
+
+    public double? Left { get; }
+
+    public double? Top { get; }
+
+    public double? Right { get; }
+
+    public double? Bottom { get; }
+
+    public double? Width { get; }
+
+    public double? Height { get; }
+
+    public override Type DebugTypicalAncestorWidgetType => typeof(Stack);
+
+    protected override void ApplyParentData(RenderObject renderObject)
+    {
+        var parentData = (StackParentData)renderObject.parentData!;
+        var needsLayout = false;
+
+        if (parentData.Left != Left)
+        {
+            parentData.Left = Left;
+            needsLayout = true;
+        }
+
+        if (parentData.Top != Top)
+        {
+            parentData.Top = Top;
+            needsLayout = true;
+        }
+
+        if (parentData.Right != Right)
+        {
+            parentData.Right = Right;
+            needsLayout = true;
+        }
+
+        if (parentData.Bottom != Bottom)
+        {
+            parentData.Bottom = Bottom;
+            needsLayout = true;
+        }
+
+        if (parentData.Width != Width)
+        {
+            parentData.Width = Width;
+            needsLayout = true;
+        }
+
+        if (parentData.Height != Height)
+        {
+            parentData.Height = Height;
+            needsLayout = true;
+        }
+
+        if (needsLayout)
+        {
+            renderObject.Parent?.MarkNeedsLayout();
+        }
     }
 }
