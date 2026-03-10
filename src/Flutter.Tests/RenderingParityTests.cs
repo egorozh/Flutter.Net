@@ -49,6 +49,56 @@ public sealed class RenderingParityTests
     }
 
     [Fact]
+    public void RenderConstrainedBox_IgnoresNoOpAdditionalConstraintsUpdate()
+    {
+        var child = new CountingRenderBox();
+        var constrained = new RenderConstrainedBox(
+            additionalConstraints: new BoxConstraints(MinWidth: 10, MaxWidth: 120, MinHeight: 5, MaxHeight: 80),
+            child: child);
+        var parent = new ParentUsesSizeRenderBox(constrained);
+        var root = new RenderView
+        {
+            Child = parent
+        };
+
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+
+        var viewport = new Size(400, 300);
+        pipeline.FlushLayout(viewport);
+        Assert.Equal(1, parent.LayoutCount);
+
+        constrained.AdditionalConstraints = new BoxConstraints(MinWidth: 10, MaxWidth: 120, MinHeight: 5, MaxHeight: 80);
+        pipeline.FlushLayout(viewport);
+
+        Assert.Equal(1, parent.LayoutCount);
+    }
+
+    [Fact]
+    public void RenderPadding_IgnoresNoOpPaddingUpdate()
+    {
+        var child = new CountingRenderBox();
+        var padding = new RenderPadding(new Thickness(8, 10, 12, 14), child);
+        var parent = new ParentUsesSizeRenderBox(padding);
+        var root = new RenderView
+        {
+            Child = parent
+        };
+
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+
+        var viewport = new Size(300, 200);
+        pipeline.FlushLayout(viewport);
+        Assert.Equal(1, parent.LayoutCount);
+
+        padding.Padding = new Thickness(8, 10, 12, 14);
+        pipeline.FlushLayout(viewport);
+
+        Assert.Equal(1, parent.LayoutCount);
+    }
+
+    [Fact]
     public void RelayoutBoundary_ChildDirty_RelayoutsOnlyBoundary()
     {
         var child = new CountingRenderBox();
@@ -177,6 +227,44 @@ public sealed class RenderingParityTests
         {
             LayoutCount += 1;
             _child.Layout(Constraints, parentUsesSize: false);
+            Size = Constraints.Constrain(_child.Size);
+            ((BoxParentData)_child.parentData!).offset = new Point(0, 0);
+        }
+
+        public override void Paint(PaintingContext ctx, Point offset)
+        {
+            ctx.PaintChild(_child, offset);
+        }
+    }
+
+    private sealed class ParentUsesSizeRenderBox : RenderBox
+    {
+        private readonly RenderBox _child;
+        public int LayoutCount { get; private set; }
+
+        public ParentUsesSizeRenderBox(RenderBox child)
+        {
+            _child = child;
+            AdoptChild(_child);
+        }
+
+        public override void SetupParentData(RenderObject child)
+        {
+            if (child.parentData is not BoxParentData)
+            {
+                child.parentData = new BoxParentData();
+            }
+        }
+
+        public override void VisitChildren(Action<RenderObject> visitor)
+        {
+            visitor(_child);
+        }
+
+        protected override void PerformLayout()
+        {
+            LayoutCount += 1;
+            _child.Layout(Constraints, parentUsesSize: true);
             Size = Constraints.Constrain(_child.Size);
             ((BoxParentData)_child.parentData!).offset = new Point(0, 0);
         }

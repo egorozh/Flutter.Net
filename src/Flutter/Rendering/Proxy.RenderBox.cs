@@ -118,6 +118,11 @@ public sealed class RenderConstrainedBox : RenderProxyBox
         get => _additionalConstraints;
         set
         {
+            if (_additionalConstraints.Equals(value))
+            {
+                return;
+            }
+
             _additionalConstraints = value;
             MarkNeedsLayout();
         }
@@ -155,6 +160,11 @@ public sealed class RenderPadding : RenderProxyBox
         get => _padding;
         set
         {
+            if (_padding.Equals(value))
+            {
+                return;
+            }
+
             _padding = value;
             MarkNeedsLayout();
         }
