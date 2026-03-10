@@ -2,7 +2,7 @@
 
 Scope: structural parity of sample routes/modules between C# and Dart samples.
 
-Last checked: 2026-03-08
+Last checked: 2026-03-10
 
 Status legend:
 
@@ -25,6 +25,7 @@ Status legend:
 | GridView demo | `src/Sample/Flutter.Net/GridViewDemoPage.cs` | `dart_sample/lib/grid_view_demo_page.dart` | verify-runtime | |
 | Custom slivers demo | `src/Sample/Flutter.Net/CustomSliversDemoPage.cs` | `dart_sample/lib/custom_slivers_demo_page.dart` | verify-runtime | |
 | Scrollbar demo | `src/Sample/Flutter.Net/ScrollbarDemoPage.cs` | `dart_sample/lib/scrollbar_demo_page.dart` | verify-runtime | |
+| Editable text demo | `src/Sample/Flutter.Net/EditableTextDemoPage.cs` | `dart_sample/lib/editable_text_demo_page.dart` | verify-runtime | Includes baseline input flow plus multiline Notes demo (`Enter` newline, Up/Down caret travel), seed action, and escaped live value summary. |
 | Shared counter widgets | `src/Sample/Flutter.Net/CounterWidgets.cs` | `dart_sample/lib/counter_widgets.dart` | verify-runtime | Includes keyed/movable/keep-alive helper widgets. |
 | Counter state container | `src/Sample/Flutter.Net/CounterAppModel.cs`, `src/Sample/Flutter.Net/CounterScope.cs` | `dart_sample/lib/counter_app_model.dart`, `dart_sample/lib/counter_scope.dart` | done | |
 

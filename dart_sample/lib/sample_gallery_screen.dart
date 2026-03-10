@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'counter_screen.dart';
 import 'counter_widgets.dart';
 import 'custom_slivers_demo_page.dart';
+import 'editable_text_demo_page.dart';
 import 'grid_view_demo_page.dart';
 import 'list_view_fixed_extent_demo_page.dart';
 import 'list_view_reverse_demo_page.dart';
@@ -62,6 +63,12 @@ class SampleGalleryScreen extends StatelessWidget {
       title: 'Scrollbar',
       subtitle: 'controller + thumb',
       builder: () => const ScrollbarDemoPage(),
+    ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.editableText,
+      title: 'EditableText',
+      subtitle: 'focus + IME + multiline caret',
+      builder: () => const EditableTextDemoPage(),
     ),
   ];
 

@@ -1,11 +1,15 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
+using Avalonia.Input.TextInput;
 using Avalonia.Media;
 using Flutter.Gestures;
 using Flutter.Rendering;
 using Flutter.UI;
 using Flutter.Widgets;
+using FrameworkFocusManager = Flutter.Widgets.FocusManager;
+using AvaloniaTextSelection = Avalonia.Input.TextInput.TextSelection;
 
 // Dart parity source (reference): flutter/packages/flutter/lib/src/widgets/binding.dart; flutter/packages/flutter/lib/src/rendering/binding.dart (host integration, adapted)
 
@@ -13,16 +17,28 @@ namespace Flutter;
 
 public class FlutterHost : Control
 {
+    static FlutterHost()
+    {
+        TextInputMethodClientRequestedEvent.AddClassHandler<FlutterHost>((host, e) =>
+        {
+            e.Client = host._textInputClient;
+        });
+    }
+
     private readonly RenderView _root = new();
     private readonly PipelineOwner _pipeline;
     private readonly GestureBinding _gestureBinding = GestureBinding.Instance;
+    private readonly FlutterTextInputMethodClient _textInputClient;
     private bool _isSubscribedToScheduler;
+
+    public event Action<SemanticsNode?>? SemanticsUpdated;
 
     public FlutterHost()
     {
         _pipeline = new PipelineOwner(_root);
         _pipeline.OnNeedVisualUpdate = ScheduleVisualUpdate;
         _pipeline.Attach(_root);
+        _textInputClient = new FlutterTextInputMethodClient(this);
 
         ClipToBounds = true;
         Focusable = true;
@@ -30,6 +46,8 @@ public class FlutterHost : Control
     }
 
     internal RenderBox? RootChild => _root.Child;
+
+    public SemanticsNode? SemanticsRoot => _pipeline.SemanticsOwner.RootNode;
 
     public void SetRootChild(RenderBox? child)
     {
@@ -62,6 +80,32 @@ public class FlutterHost : Control
             return;
         }
 
+        if (IsPasteShortcut(e))
+        {
+            e.Handled = true;
+            _ = HandleSystemPasteShortcutAsync();
+            return;
+        }
+
+        var keyEvent = new KeyEvent(
+            key: e.Key.ToString(),
+            isDown: true,
+            isShiftPressed: e.KeyModifiers.HasFlag(KeyModifiers.Shift),
+            isControlPressed: e.KeyModifiers.HasFlag(KeyModifiers.Control),
+            isAltPressed: e.KeyModifiers.HasFlag(KeyModifiers.Alt),
+            isMetaPressed: e.KeyModifiers.HasFlag(KeyModifiers.Meta));
+
+        if (FrameworkFocusManager.Instance.HandleKeyEvent(keyEvent))
+        {
+            e.Handled = true;
+            if (IsCopyOrCutShortcut(e))
+            {
+                _ = PushFrameworkClipboardToSystemAsync();
+            }
+
+            return;
+        }
+
         var keyName = e.Key.ToString();
         var isBackKey = e.Key == Key.Escape
                         || string.Equals(keyName, "Back", StringComparison.Ordinal)
@@ -72,6 +116,21 @@ public class FlutterHost : Control
         }
 
         if (Navigator.TryHandleBackButton())
+        {
+            e.Handled = true;
+        }
+    }
+
+    protected override void OnTextInput(TextInputEventArgs e)
+    {
+        base.OnTextInput(e);
+
+        if (e.Handled || string.IsNullOrEmpty(e.Text))
+        {
+            return;
+        }
+
+        if (FrameworkFocusManager.Instance.HandleTextInput(e.Text))
         {
             e.Handled = true;
         }
@@ -154,7 +213,7 @@ public class FlutterHost : Control
         _pipeline.FlushCompositingBits();
         _pipeline.FlushPaint();
         _pipeline.CompositeFrame(context);
-        _pipeline.FlushSemantics();
+        FlushSemanticsAndNotify();
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
@@ -195,8 +254,21 @@ public class FlutterHost : Control
         }
         else
         {
-            _pipeline.FlushSemantics();
+            FlushSemanticsAndNotify();
         }
+    }
+
+    public bool PerformSemanticsAction(int nodeId, SemanticsActions action)
+    {
+        return _pipeline.SemanticsOwner.PerformAction(nodeId, action);
+    }
+
+    internal void FlushPipelineForTests(Size? viewport = null)
+    {
+        _pipeline.FlushLayout(viewport ?? Bounds.Size);
+        _pipeline.FlushCompositingBits();
+        _pipeline.FlushPaint();
+        FlushSemanticsAndNotify();
     }
 
     private void EnsureSchedulerSubscription()
@@ -224,6 +296,62 @@ public class FlutterHost : Control
     private void DispatchPointerEvent(PointerEvent @event)
     {
         _gestureBinding.HandlePointerEvent(_root, @event);
+    }
+
+    private void FlushSemanticsAndNotify()
+    {
+        var hadPendingSemantics = _pipeline.PendingSemanticsNodeCount > 0;
+        _pipeline.FlushSemantics();
+        if (hadPendingSemantics)
+        {
+            SemanticsUpdated?.Invoke(_pipeline.SemanticsOwner.RootNode);
+        }
+    }
+
+    private static bool IsPasteShortcut(KeyEventArgs e)
+    {
+        return (e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta))
+               && e.Key == Key.V;
+    }
+
+    private static bool IsCopyOrCutShortcut(KeyEventArgs e)
+    {
+        if (!e.KeyModifiers.HasFlag(KeyModifiers.Control) && !e.KeyModifiers.HasFlag(KeyModifiers.Meta))
+        {
+            return false;
+        }
+
+        return e.Key is Key.C or Key.X;
+    }
+
+    private async Task HandleSystemPasteShortcutAsync()
+    {
+        var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+        if (clipboard != null)
+        {
+            var systemText = await clipboard.TryGetTextAsync();
+            if (!string.IsNullOrEmpty(systemText))
+            {
+                TextClipboard.SetText(systemText);
+            }
+        }
+
+        var textToPaste = TextClipboard.GetText() ?? string.Empty;
+        if (!string.IsNullOrEmpty(textToPaste))
+        {
+            _ = FrameworkFocusManager.Instance.HandleTextInput(textToPaste);
+        }
+    }
+
+    private async Task PushFrameworkClipboardToSystemAsync()
+    {
+        var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+        if (clipboard == null)
+        {
+            return;
+        }
+
+        await clipboard.SetTextAsync(TextClipboard.CurrentText);
     }
 
     private PointerDownEvent ToPointerDownEvent(PointerPressedEventArgs e)
@@ -267,5 +395,61 @@ public class FlutterHost : Control
             PointerType.Pen => PointerDeviceKind.Stylus,
             _ => PointerDeviceKind.Unknown
         };
+    }
+
+    private sealed class FlutterTextInputMethodClient : TextInputMethodClient
+    {
+        private readonly FlutterHost _host;
+        private AvaloniaTextSelection _selection;
+
+        public FlutterTextInputMethodClient(FlutterHost host)
+        {
+            _host = host;
+        }
+
+        public override Visual TextViewVisual => _host;
+
+        public override bool SupportsPreedit => true;
+
+        public override bool SupportsSurroundingText => ResolveTextInputState().HasValue;
+
+        public override string SurroundingText => ResolveTextInputState()?.SurroundingText ?? string.Empty;
+
+        public override Rect CursorRectangle => ResolveTextInputState()?.CursorRectangle ?? default;
+
+        public override AvaloniaTextSelection Selection
+        {
+            get
+            {
+                var state = ResolveTextInputState();
+                if (!state.HasValue)
+                {
+                    return _selection;
+                }
+
+                _selection = new AvaloniaTextSelection(state.Value.SelectionStart, state.Value.SelectionEnd);
+                return _selection;
+            }
+            set
+            {
+                _selection = value;
+                _ = FrameworkFocusManager.Instance.HandleTextSelectionChanged(value.Start, value.End);
+            }
+        }
+
+        public override void SetPreeditText(string? preeditText)
+        {
+            _ = FrameworkFocusManager.Instance.HandleTextCompositionUpdate(preeditText ?? string.Empty);
+        }
+
+        public override void SetPreeditText(string? preeditText, int? cursorPos)
+        {
+            SetPreeditText(preeditText);
+        }
+
+        private static FocusTextInputState? ResolveTextInputState()
+        {
+            return FrameworkFocusManager.Instance.ResolveTextInputState();
+        }
     }
 }
