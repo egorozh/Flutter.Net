@@ -284,24 +284,10 @@ public abstract class RenderObject : IRenderObject
 
         if (SizedByParent)
         {
-            try
-            {
-                PerformResize();
-            }
-            catch (Exception)
-            {
-                // ignored
-            }
+            PerformResize();
         }
 
-        try
-        {
-            PerformLayout();
-        }
-        catch (Exception)
-        {
-            // ignored
-        }
+        PerformLayout();
 
         _needsLayout = false;
         _descendantNeedsLayout = false;

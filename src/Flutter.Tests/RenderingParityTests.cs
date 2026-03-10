@@ -81,6 +81,22 @@ public sealed class RenderingParityTests
         Assert.Equal(2, child.LayoutCount);
     }
 
+    [Fact]
+    public void Layout_PropagatesPerformLayoutException_AndStaysDirty()
+    {
+        var box = new ThrowingRenderBox();
+        var constraints = new BoxConstraints(0, 200, 0, 100);
+
+        var exception = Assert.Throws<InvalidOperationException>(() => box.Layout(constraints));
+        Assert.Equal("layout boom", exception.Message);
+        Assert.True(box.NeedsLayout);
+
+        box.Layout(constraints);
+
+        Assert.Equal(2, box.LayoutAttemptCount);
+        Assert.False(box.NeedsLayout);
+    }
+
     private sealed class CountingRenderBox : RenderBox
     {
         public int LayoutCount { get; private set; }
@@ -88,6 +104,29 @@ public sealed class RenderingParityTests
         protected override void PerformLayout()
         {
             LayoutCount += 1;
+            Size = Constraints.Constrain(new Size(20, 10));
+        }
+
+        public override void Paint(PaintingContext ctx, Point offset)
+        {
+        }
+    }
+
+    private sealed class ThrowingRenderBox : RenderBox
+    {
+        public int LayoutAttemptCount { get; private set; }
+        private bool _throwOnFirstLayout = true;
+
+        protected override void PerformLayout()
+        {
+            LayoutAttemptCount += 1;
+
+            if (_throwOnFirstLayout)
+            {
+                _throwOnFirstLayout = false;
+                throw new InvalidOperationException("layout boom");
+            }
+
             Size = Constraints.Constrain(new Size(20, 10));
         }
 

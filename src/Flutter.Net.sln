@@ -27,6 +27,16 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Sample", "Sample", "{46D891
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Flutter.Tests", "Flutter.Tests\Flutter.Tests.csproj", "{9869C57B-3AB5-4967-855B-9E6E15C968F6}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ai", "ai", "{55D8FD4B-7A91-4067-BFEA-E80B0F767D4E}"
+	ProjectSection(SolutionItems) = preProject
+		..\docs\ai\rendering-2026-03-10-layout-exception-surfacing.md = ..\docs\ai\rendering-2026-03-10-layout-exception-surfacing.md
+		..\docs\ai\TEST_MATRIX.md = ..\docs\ai\TEST_MATRIX.md
+		..\docs\ai\FEATURE_TEMPLATE.md = ..\docs\ai\FEATURE_TEMPLATE.md
+		..\docs\ai\INVARIANTS.md = ..\docs\ai\INVARIANTS.md
+		..\docs\ai\MODULE_INDEX.md = ..\docs\ai\MODULE_INDEX.md
+		..\docs\ai\PARITY_MATRIX.md = ..\docs\ai\PARITY_MATRIX.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -131,6 +141,7 @@ Global
 		{1C1A049E-235C-4CD0-B6FA-D53AC418F4DA} = {46D891D7-0DAC-4F08-BA48-49F968F1EDCE}
 		{EBD9022F-BC83-4846-9A11-6F7F3772DC64} = {46D891D7-0DAC-4F08-BA48-49F968F1EDCE}
 		{7AD1DAC8-7FBE-49D5-8614-7321233DB82E} = {46D891D7-0DAC-4F08-BA48-49F968F1EDCE}
+		{55D8FD4B-7A91-4067-BFEA-E80B0F767D4E} = {3DA99C4E-89E3-4049-9C22-0A7EC60D83D8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {83CB65B8-011F-4ED7-BCD3-A6CFA935EF7E}
