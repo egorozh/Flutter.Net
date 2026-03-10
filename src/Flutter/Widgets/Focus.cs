@@ -13,9 +13,34 @@ public enum KeyEventResult
     Handled
 }
 
+public readonly record struct FocusTextInputState(
+    string SurroundingText,
+    int SelectionBaseOffset,
+    int SelectionExtentOffset,
+    Rect CursorRectangle)
+{
+    public int SelectionStart => Math.Min(SelectionBaseOffset, SelectionExtentOffset);
+
+    public int SelectionEnd => Math.Max(SelectionBaseOffset, SelectionExtentOffset);
+
+    internal FocusTextInputState Normalize()
+    {
+        var normalizedText = SurroundingText ?? string.Empty;
+        var clampedBaseOffset = Math.Clamp(SelectionBaseOffset, 0, normalizedText.Length);
+        var clampedExtentOffset = Math.Clamp(SelectionExtentOffset, 0, normalizedText.Length);
+        return new FocusTextInputState(
+            normalizedText,
+            clampedBaseOffset,
+            clampedExtentOffset,
+            CursorRectangle);
+    }
+}
+
 public delegate KeyEventResult FocusOnKeyEventCallback(FocusNode node, KeyEvent @event);
 public delegate bool FocusOnTextInputCallback(FocusNode node, string text);
 public delegate bool FocusOnTextCompositionCallback(FocusNode node, string text, bool isCommit);
+public delegate FocusTextInputState? FocusOnTextInputStateCallback(FocusNode node);
+public delegate bool FocusOnTextSelectionChangedCallback(FocusNode node, int baseOffset, int extentOffset);
 
 public class FocusNode : ChangeNotifier
 {
@@ -55,6 +80,10 @@ public class FocusNode : ChangeNotifier
     public FocusOnTextInputCallback? OnTextInput { get; set; }
 
     public FocusOnTextCompositionCallback? OnTextComposition { get; set; }
+
+    public FocusOnTextInputStateCallback? OnTextInputState { get; set; }
+
+    public FocusOnTextSelectionChangedCallback? OnTextSelectionChanged { get; set; }
 
     public Rect? TraversalRect { get; set; }
 
@@ -134,6 +163,16 @@ public class FocusNode : ChangeNotifier
     internal bool HandleTextComposition(string text, bool isCommit)
     {
         return OnTextComposition?.Invoke(this, text, isCommit) ?? false;
+    }
+
+    internal FocusTextInputState? ResolveTextInputState()
+    {
+        return OnTextInputState?.Invoke(this);
+    }
+
+    internal bool HandleTextSelectionChanged(int baseOffset, int extentOffset)
+    {
+        return OnTextSelectionChanged?.Invoke(this, baseOffset, extentOffset) ?? false;
     }
 
     internal Rect? ResolveTraversalRect()
@@ -417,6 +456,21 @@ public sealed class FocusManager
         }
 
         return PrimaryFocus.HandleTextComposition(text ?? string.Empty, isCommit: true);
+    }
+
+    public FocusTextInputState? ResolveTextInputState()
+    {
+        return PrimaryFocus?.ResolveTextInputState()?.Normalize();
+    }
+
+    public bool HandleTextSelectionChanged(int baseOffset, int extentOffset)
+    {
+        if (PrimaryFocus == null)
+        {
+            return false;
+        }
+
+        return PrimaryFocus.HandleTextSelectionChanged(baseOffset, extentOffset);
     }
 
     internal void ResetForTests()
@@ -813,6 +867,8 @@ public sealed class Focus : StatefulWidget
         FocusOnKeyEventCallback? onKeyEvent = null,
         FocusOnTextInputCallback? onTextInput = null,
         FocusOnTextCompositionCallback? onTextComposition = null,
+        FocusOnTextInputStateCallback? onTextInputState = null,
+        FocusOnTextSelectionChangedCallback? onTextSelectionChanged = null,
         Key? key = null) : base(key)
     {
         Child = child;
@@ -823,6 +879,8 @@ public sealed class Focus : StatefulWidget
         OnKeyEvent = onKeyEvent;
         OnTextInput = onTextInput;
         OnTextComposition = onTextComposition;
+        OnTextInputState = onTextInputState;
+        OnTextSelectionChanged = onTextSelectionChanged;
     }
 
     public Widget Child { get; }
@@ -840,6 +898,10 @@ public sealed class Focus : StatefulWidget
     public FocusOnTextInputCallback? OnTextInput { get; }
 
     public FocusOnTextCompositionCallback? OnTextComposition { get; }
+
+    public FocusOnTextInputStateCallback? OnTextInputState { get; }
+
+    public FocusOnTextSelectionChangedCallback? OnTextSelectionChanged { get; }
 
     public override State CreateState()
     {
@@ -939,6 +1001,8 @@ public sealed class Focus : StatefulWidget
                 _focusNode.OnKeyEvent = null;
                 _focusNode.OnTextInput = null;
                 _focusNode.OnTextComposition = null;
+                _focusNode.OnTextInputState = null;
+                _focusNode.OnTextSelectionChanged = null;
             }
 
             if (disposeOwned && _ownsFocusNode)
@@ -964,6 +1028,8 @@ public sealed class Focus : StatefulWidget
             node.OnKeyEvent = Widget.OnKeyEvent;
             node.OnTextInput = Widget.OnTextInput;
             node.OnTextComposition = Widget.OnTextComposition;
+            node.OnTextInputState = Widget.OnTextInputState;
+            node.OnTextSelectionChanged = Widget.OnTextSelectionChanged;
         }
 
         private void ApplyAutofocusIfNeeded()

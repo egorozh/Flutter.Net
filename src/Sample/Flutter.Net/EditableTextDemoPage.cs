@@ -1,3 +1,4 @@
+using System;
 using Avalonia;
 using Avalonia.Media;
 using Flutter.Rendering;
@@ -36,6 +37,8 @@ internal sealed class EditableTextDemoPageState : State
 
     public override Widget Build(BuildContext context)
     {
+        var notesLineCount = CountLines(_notesController.Text);
+
         return new Column(
             crossAxisAlignment: CrossAxisAlignment.Stretch,
             spacing: 10,
@@ -43,7 +46,7 @@ internal sealed class EditableTextDemoPageState : State
             [
                 new Text("EditableText + Focus/IME", fontSize: 20, color: Colors.Black),
                 new Text(
-                    "Baseline text input flow: tap field, type, Backspace, and Tab between fields.",
+                    "Baseline input + multiline: Enter adds new line in Notes; ArrowUp/ArrowDown moves caret between lines.",
                     fontSize: 14,
                     color: Colors.DimGray),
                 new Row(
@@ -74,6 +77,19 @@ internal sealed class EditableTextDemoPageState : State
                                 fontSize: 12,
                                 padding: new Thickness(10, 8))),
                     ]),
+                new SizedBox(
+                    width: 170,
+                    child: new CounterTapButton(
+                        label: "Seed notes",
+                        onTap: () => SetState(() =>
+                        {
+                            _notesController.Text = "First line\nSecond line\nThird line";
+                            _lastChange = "(seeded notes)";
+                        }),
+                        background: Color.Parse("#FFF3E8D8"),
+                        foreground: Colors.Black,
+                        fontSize: 12,
+                        padding: new Thickness(10, 8))),
                 new Text($"last change: {_lastChange}", fontSize: 12, color: Colors.DarkSlateGray),
                 new Text("Name", fontSize: 12, color: Colors.DimGray),
                 new EditableText(
@@ -81,16 +97,47 @@ internal sealed class EditableTextDemoPageState : State
                     enabled: _enabled,
                     placeholder: "Type your name",
                     onChanged: value => SetState(() => _lastChange = $"name = {value}")),
-                new Text("Notes", fontSize: 12, color: Colors.DimGray),
+                new Text("Notes (multiline)", fontSize: 12, color: Colors.DimGray),
                 new EditableText(
                     controller: _notesController,
                     enabled: _enabled,
-                    placeholder: "Type a short note",
-                    onChanged: value => SetState(() => _lastChange = $"notes = {value}")),
+                    multiline: true,
+                    placeholder: "Type notes (Enter creates new line)",
+                    onChanged: value => SetState(() => _lastChange = $"notes = {EscapeMultiline(value)}")),
                 new Text(
-                    $"current: name='{_nameController.Text}', notes='{_notesController.Text}'",
+                    $"notes lines: {notesLineCount}",
+                    fontSize: 12,
+                    color: Colors.DarkSlateGray),
+                new Text(
+                    $"current: name='{_nameController.Text}', notes='{EscapeMultiline(_notesController.Text)}'",
                     fontSize: 12,
                     color: Colors.Black),
             ]);
+    }
+
+    private static string EscapeMultiline(string value)
+    {
+        return value.Replace("\r", string.Empty, StringComparison.Ordinal)
+            .Replace("\n", "\\n", StringComparison.Ordinal);
+    }
+
+    private static int CountLines(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return 1;
+        }
+
+        var normalized = value.Replace("\r", string.Empty, StringComparison.Ordinal);
+        var lines = 1;
+        foreach (var character in normalized)
+        {
+            if (character == '\n')
+            {
+                lines++;
+            }
+        }
+
+        return lines;
     }
 }

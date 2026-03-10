@@ -1,12 +1,14 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.TextInput;
 using Avalonia.Media;
 using Flutter.Gestures;
 using Flutter.Rendering;
 using Flutter.UI;
 using Flutter.Widgets;
 using FrameworkFocusManager = Flutter.Widgets.FocusManager;
+using AvaloniaTextSelection = Avalonia.Input.TextInput.TextSelection;
 
 // Dart parity source (reference): flutter/packages/flutter/lib/src/widgets/binding.dart; flutter/packages/flutter/lib/src/rendering/binding.dart (host integration, adapted)
 
@@ -14,9 +16,18 @@ namespace Flutter;
 
 public class FlutterHost : Control
 {
+    static FlutterHost()
+    {
+        TextInputMethodClientRequestedEvent.AddClassHandler<FlutterHost>((host, e) =>
+        {
+            e.Client = host._textInputClient;
+        });
+    }
+
     private readonly RenderView _root = new();
     private readonly PipelineOwner _pipeline;
     private readonly GestureBinding _gestureBinding = GestureBinding.Instance;
+    private readonly FlutterTextInputMethodClient _textInputClient;
     private bool _isSubscribedToScheduler;
 
     public FlutterHost()
@@ -24,6 +35,7 @@ public class FlutterHost : Control
         _pipeline = new PipelineOwner(_root);
         _pipeline.OnNeedVisualUpdate = ScheduleVisualUpdate;
         _pipeline.Attach(_root);
+        _textInputClient = new FlutterTextInputMethodClient(this);
 
         ClipToBounds = true;
         Focusable = true;
@@ -297,5 +309,61 @@ public class FlutterHost : Control
             PointerType.Pen => PointerDeviceKind.Stylus,
             _ => PointerDeviceKind.Unknown
         };
+    }
+
+    private sealed class FlutterTextInputMethodClient : TextInputMethodClient
+    {
+        private readonly FlutterHost _host;
+        private AvaloniaTextSelection _selection;
+
+        public FlutterTextInputMethodClient(FlutterHost host)
+        {
+            _host = host;
+        }
+
+        public override Visual TextViewVisual => _host;
+
+        public override bool SupportsPreedit => true;
+
+        public override bool SupportsSurroundingText => ResolveTextInputState().HasValue;
+
+        public override string SurroundingText => ResolveTextInputState()?.SurroundingText ?? string.Empty;
+
+        public override Rect CursorRectangle => ResolveTextInputState()?.CursorRectangle ?? default;
+
+        public override AvaloniaTextSelection Selection
+        {
+            get
+            {
+                var state = ResolveTextInputState();
+                if (!state.HasValue)
+                {
+                    return _selection;
+                }
+
+                _selection = new AvaloniaTextSelection(state.Value.SelectionStart, state.Value.SelectionEnd);
+                return _selection;
+            }
+            set
+            {
+                _selection = value;
+                _ = FrameworkFocusManager.Instance.HandleTextSelectionChanged(value.Start, value.End);
+            }
+        }
+
+        public override void SetPreeditText(string? preeditText)
+        {
+            _ = FrameworkFocusManager.Instance.HandleTextCompositionUpdate(preeditText ?? string.Empty);
+        }
+
+        public override void SetPreeditText(string? preeditText, int? cursorPos)
+        {
+            SetPreeditText(preeditText);
+        }
+
+        private static FocusTextInputState? ResolveTextInputState()
+        {
+            return FrameworkFocusManager.Instance.ResolveTextInputState();
+        }
     }
 }

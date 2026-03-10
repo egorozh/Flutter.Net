@@ -79,7 +79,10 @@ Progress update (2026-03-10):
 - Editable text baseline is integrated (`EditableText`, `TextEditingController`, host text input dispatch into focused node callbacks).
 - Editable controller/selection baseline is integrated (`TextSelection`, `TextRange`, selection-aware insert/delete/navigation, `Ctrl/Meta+A`).
 - Editable composition lifecycle baseline is integrated (focus-manager composition update/commit dispatch, controller composing state, editable-widget composition handling).
-- Remaining primary gaps: transform-aware/advanced directional policies, host-native IME preedit bridge + caret geometry/multiline editing, and host accessibility bridge documentation.
+- Host-native IME preedit bridge baseline is integrated (`TextInputMethodClientRequested` -> `TextInputMethodClient.SetPreeditText` -> focus-manager composition updates).
+- IME state sync baseline is integrated (`surrounding text`, selection sync, and cursor rectangle exposure from focused editable state through host text-input client).
+- Multiline editing + glyph-aware caret baseline is integrated (multiline mode with `Enter` newline insertion, `ArrowUp/ArrowDown` vertical navigation, and `TextLayout`-driven caret rectangle with host-less fallback).
+- Remaining primary gaps: transform-aware/advanced directional policies, advanced text-editing ergonomics (word-level shortcuts, clipboard/actions parity), and host accessibility bridge documentation.
 
 Exit criteria:
 

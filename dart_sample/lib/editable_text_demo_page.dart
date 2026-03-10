@@ -29,6 +29,8 @@ class _EditableTextDemoPageState extends State<EditableTextDemoPage> {
 
   @override
   Widget build(BuildContext context) {
+    final int notesLineCount = _countLines(_notesController.text);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: 10,
@@ -38,7 +40,7 @@ class _EditableTextDemoPageState extends State<EditableTextDemoPage> {
           style: TextStyle(fontSize: 20, color: Colors.black),
         ),
         const Text(
-          'Baseline text input flow: tap field, type, Backspace, and Tab between fields.',
+          'Baseline input + multiline: Enter adds new line in Notes; ArrowUp/ArrowDown moves caret between lines.',
           style: TextStyle(fontSize: 14, color: Colors.black54),
         ),
         Row(
@@ -68,6 +70,19 @@ class _EditableTextDemoPageState extends State<EditableTextDemoPage> {
             ),
           ],
         ),
+        SizedBox(
+          width: 170,
+          child: _MenuButton(
+            label: 'Seed notes',
+            onTap: () {
+              setState(() {
+                _notesController.text = 'First line\nSecond line\nThird line';
+                _lastChange = '(seeded notes)';
+              });
+            },
+            background: const Color(0xFFF3E8D8),
+          ),
+        ),
         Text(
           'last change: $_lastChange',
           style: const TextStyle(fontSize: 12, color: Colors.blueGrey),
@@ -83,17 +98,23 @@ class _EditableTextDemoPageState extends State<EditableTextDemoPage> {
               setState(() => _lastChange = 'name = $value'),
         ),
         const Text(
-          'Notes',
+          'Notes (multiline)',
           style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
         _buildTextField(
           controller: _notesController,
-          placeholder: 'Type a short note',
-          onChanged: (String value) =>
-              setState(() => _lastChange = 'notes = $value'),
+          multiline: true,
+          placeholder: 'Type notes (Enter creates new line)',
+          onChanged: (String value) => setState(
+            () => _lastChange = 'notes = ${_escapeMultiline(value)}',
+          ),
         ),
         Text(
-          "current: name='${_nameController.text}', notes='${_notesController.text}'",
+          'notes lines: $notesLineCount',
+          style: const TextStyle(fontSize: 12, color: Colors.blueGrey),
+        ),
+        Text(
+          "current: name='${_nameController.text}', notes='${_escapeMultiline(_notesController.text)}'",
           style: const TextStyle(fontSize: 12, color: Colors.black),
         ),
       ],
@@ -104,10 +125,12 @@ class _EditableTextDemoPageState extends State<EditableTextDemoPage> {
     required TextEditingController controller,
     required String placeholder,
     required ValueChanged<String> onChanged,
+    bool multiline = false,
   }) {
     return TextField(
       controller: controller,
       enabled: _enabled,
+      maxLines: multiline ? null : 1,
       onChanged: onChanged,
       decoration: InputDecoration(
         hintText: placeholder,
@@ -117,6 +140,19 @@ class _EditableTextDemoPageState extends State<EditableTextDemoPage> {
         border: const OutlineInputBorder(),
       ),
     );
+  }
+
+  String _escapeMultiline(String value) {
+    return value.replaceAll('\r', '').replaceAll('\n', r'\n');
+  }
+
+  int _countLines(String value) {
+    if (value.isEmpty) {
+      return 1;
+    }
+
+    final String normalized = value.replaceAll('\r', '');
+    return '\n'.allMatches(normalized).length + 1;
   }
 }
 

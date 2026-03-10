@@ -1,6 +1,10 @@
+using Flutter;
 using Flutter.Rendering;
 using Flutter.UI;
 using Flutter.Widgets;
+using AvaloniaInputElement = Avalonia.Input.InputElement;
+using AvaloniaTextSelection = Avalonia.Input.TextInput.TextSelection;
+using TextInputMethodClientRequestedEventArgs = Avalonia.Input.TextInput.TextInputMethodClientRequestedEventArgs;
 using Xunit;
 
 // Dart parity source (reference): flutter/packages/flutter/lib/src/widgets/editable_text.dart; flutter/packages/flutter/test/widgets/editable_text_test.dart (parity regression tests)
@@ -68,6 +72,114 @@ public sealed class TextInputTests : IDisposable
         Assert.Equal(2, captured.Count);
         Assert.Equal(("pre", false), captured[0]);
         Assert.Equal(("final", true), captured[1]);
+    }
+
+    [Fact]
+    public void FlutterHost_TextInputMethodClientRequested_ProvidesPreeditBridge()
+    {
+        var owner = new BuildOwner();
+        var controller = new TextEditingController();
+        var root = new TestRootElement(
+            new EditableText(
+                controller: controller,
+                autofocus: true));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var host = new FlutterHost();
+        var requestArgs = new TextInputMethodClientRequestedEventArgs
+        {
+            RoutedEvent = AvaloniaInputElement.TextInputMethodClientRequestedEvent
+        };
+
+        host.RaiseEvent(requestArgs);
+
+        Assert.NotNull(requestArgs.Client);
+        Assert.True(requestArgs.Client!.SupportsPreedit);
+
+        requestArgs.Client.SetPreeditText("ni");
+        Assert.Equal("ni", controller.Text);
+        Assert.Equal(new TextRange(0, 2), controller.Composing);
+        Assert.Equal(TextSelection.Collapsed(2), controller.Selection);
+
+        requestArgs.Client.SetPreeditText(null);
+        Assert.Equal(string.Empty, controller.Text);
+        Assert.Null(controller.Composing);
+        Assert.Equal(TextSelection.Collapsed(0), controller.Selection);
+    }
+
+    [Fact]
+    public void FlutterHost_TextInputMethodClient_ReflectsSurroundingTextSelectionAndCursorGeometry()
+    {
+        var owner = new BuildOwner();
+        var controller = new TextEditingController();
+        var root = new TestRootElement(
+            new EditableText(
+                controller: controller,
+                autofocus: true));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.True(FocusManager.Instance.HandleTextInput("abcd"));
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "ArrowLeft", isDown: true)));
+
+        var host = new FlutterHost();
+        var requestArgs = new TextInputMethodClientRequestedEventArgs
+        {
+            RoutedEvent = AvaloniaInputElement.TextInputMethodClientRequestedEvent
+        };
+
+        host.RaiseEvent(requestArgs);
+        var client = requestArgs.Client;
+
+        Assert.NotNull(client);
+        Assert.True(client!.SupportsSurroundingText);
+        Assert.Equal("abcd", client.SurroundingText);
+        Assert.Equal(new AvaloniaTextSelection(3, 3), client.Selection);
+
+        var cursorRect = client.CursorRectangle;
+        Assert.True(cursorRect.Width > 0);
+        Assert.True(cursorRect.Height > 0);
+
+        client.Selection = new AvaloniaTextSelection(1, 3);
+        Assert.Equal(1, controller.Selection.Start);
+        Assert.Equal(3, controller.Selection.End);
+    }
+
+    [Fact]
+    public void EditableText_Multiline_EnterAndVerticalCaretNavigation_Work()
+    {
+        var owner = new BuildOwner();
+        var controller = new TextEditingController();
+        var root = new TestRootElement(
+            new EditableText(
+                controller: controller,
+                autofocus: true,
+                multiline: true));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.True(FocusManager.Instance.HandleTextInput("ab"));
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "Enter", isDown: true)));
+        Assert.True(FocusManager.Instance.HandleTextInput("cd"));
+        Assert.Equal("ab\ncd", controller.Text);
+        Assert.Equal(TextSelection.Collapsed(5), controller.Selection);
+
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "ArrowUp", isDown: true)));
+        Assert.Equal(TextSelection.Collapsed(2), controller.Selection);
+
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "ArrowDown", isDown: true)));
+        Assert.Equal(TextSelection.Collapsed(5), controller.Selection);
+
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "ArrowUp", isDown: true, isShiftPressed: true)));
+        Assert.Equal(2, controller.Selection.Start);
+        Assert.Equal(5, controller.Selection.End);
     }
 
     [Fact]

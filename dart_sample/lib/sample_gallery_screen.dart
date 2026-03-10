@@ -67,7 +67,7 @@ class SampleGalleryScreen extends StatelessWidget {
     SampleRouteDefinition(
       routeName: SampleRoutes.editableText,
       title: 'EditableText',
-      subtitle: 'focus + IME baseline',
+      subtitle: 'focus + IME + multiline caret',
       builder: () => const EditableTextDemoPage(),
     ),
   ];
