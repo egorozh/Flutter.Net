@@ -53,6 +53,32 @@ public sealed class CompositingLayerTests
     }
 
     [Fact]
+    public void ReplaceRootLayer_WithSameLayer_DoesNotRepaintTree()
+    {
+        var leaf = new TestLeafRenderBox();
+        var renderView = new RenderView
+        {
+            Child = leaf
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+
+        pipeline.FlushLayout(new Size(300, 200));
+        pipeline.FlushCompositingBits();
+        pipeline.FlushPaint();
+
+        Assert.Equal(1, leaf.PaintCount);
+
+        var sameRootLayer = pipeline.RootLayer;
+        pipeline.ReplaceRootLayer(sameRootLayer);
+        pipeline.FlushCompositingBits();
+        pipeline.FlushPaint();
+
+        Assert.Equal(1, leaf.PaintCount);
+    }
+
+    [Fact]
     public void RepaintBoundary_CreatesDedicatedOffsetLayer()
     {
         var leaf = new TestLeafRenderBox();
@@ -255,6 +281,32 @@ public sealed class CompositingLayerTests
 
         Assert.Equal(1, leaf.PaintCount);
         Assert.Equal(new Rect(3, 5, 20, 12), clipLayer.ClipRect);
+    }
+
+    [Fact]
+    public void RenderColoredBox_NoOpColorUpdate_DoesNotRepaintChild()
+    {
+        var leaf = new TestLeafRenderBox();
+        var coloredBox = new RenderColoredBox(Colors.CadetBlue, leaf);
+        var root = new RenderView
+        {
+            Child = coloredBox
+        };
+
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+
+        pipeline.FlushLayout(new Size(300, 200));
+        pipeline.FlushCompositingBits();
+        pipeline.FlushPaint();
+
+        Assert.Equal(1, leaf.PaintCount);
+
+        coloredBox.Color = Colors.CadetBlue;
+        pipeline.FlushCompositingBits();
+        pipeline.FlushPaint();
+
+        Assert.Equal(1, leaf.PaintCount);
     }
 
     [Fact]

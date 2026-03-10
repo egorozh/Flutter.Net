@@ -106,6 +106,11 @@ public sealed class RenderView : RenderBox
 
     internal void ReplaceRootLayer(OffsetLayer rootLayer)
     {
+        if (ReferenceEquals(_layer, rootLayer))
+        {
+            return;
+        }
+
         _layer = rootLayer;
         MarkNeedsPaint();
     }

@@ -2,6 +2,7 @@
 using Avalonia.Media;
 using Avalonia.Media.TextFormatting;
 using Flutter.Rendering;
+using Flutter.UI;
 
 // Dart parity source (reference): flutter/packages/flutter/lib/src/rendering/paragraph.dart (approximate)
 
@@ -19,15 +20,25 @@ public sealed class RenderParagraph : RenderBox
 
     protected override void PerformLayout()
     {
-        _layout = new TextLayout(
-            text: Text,
-            typeface: Typeface,
-            fontSize: FontSize,
-            foreground: Foreground,
-            maxWidth: double.IsInfinity(Constraints.MaxWidth) ? 1000 : Constraints.MaxWidth
-        );
+        var maxWidth = double.IsInfinity(Constraints.MaxWidth) ? 1000 : Constraints.MaxWidth;
 
-        Size = Constraints.Constrain(new Size(_layout.Width, _layout.Height));
+        try
+        {
+            _layout = new TextLayout(
+                text: Text,
+                typeface: Typeface,
+                fontSize: FontSize,
+                foreground: Foreground,
+                maxWidth: maxWidth
+            );
+
+            Size = Constraints.Constrain(new Size(_layout.Width, _layout.Height));
+        }
+        catch (Exception exception) when (TextLayoutFallback.IsMissingFontManager(exception))
+        {
+            _layout = null;
+            Size = Constraints.Constrain(TextLayoutFallback.EstimateTextSize(Text, FontSize, maxWidth));
+        }
     }
 
     public override void Paint(PaintingContext ctx, Point offset)

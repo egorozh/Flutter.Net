@@ -114,18 +114,31 @@ public sealed class RenderButton : RenderBox
 
     protected override void PerformLayout()
     {
-        _layout = new TextLayout(
-            text: Label,
-            typeface: new Typeface("Segoe UI"),
-            fontSize: FontSize,
-            foreground: new SolidColorBrush(Foreground),
-            maxWidth: double.IsInfinity(Constraints.MaxWidth)
-                ? double.PositiveInfinity
-                : Math.Max(0, Constraints.MaxWidth - _padding.Left - _padding.Right));
+        var maxTextWidth = double.IsInfinity(Constraints.MaxWidth)
+            ? double.PositiveInfinity
+            : Math.Max(0, Constraints.MaxWidth - _padding.Left - _padding.Right);
+        Size measuredTextSize;
+
+        try
+        {
+            _layout = new TextLayout(
+                text: Label,
+                typeface: new Typeface("Segoe UI"),
+                fontSize: FontSize,
+                foreground: new SolidColorBrush(Foreground),
+                maxWidth: maxTextWidth);
+
+            measuredTextSize = new Size(_layout.Width, _layout.Height);
+        }
+        catch (Exception exception) when (TextLayoutFallback.IsMissingFontManager(exception))
+        {
+            _layout = null;
+            measuredTextSize = TextLayoutFallback.EstimateTextSize(Label, FontSize, maxTextWidth);
+        }
 
         var desired = new Size(
-            _layout.Width + _padding.Left + _padding.Right,
-            _layout.Height + _padding.Top + _padding.Bottom);
+            measuredTextSize.Width + _padding.Left + _padding.Right,
+            measuredTextSize.Height + _padding.Top + _padding.Bottom);
 
         Size = Constraints.Constrain(desired);
     }

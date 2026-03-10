@@ -55,6 +55,11 @@ public class RenderFlex : RenderBox, IRenderBoxContainerDefaultsMixin<RenderBox,
         get => _direction;
         set
         {
+            if (_direction == value)
+            {
+                return;
+            }
+
             _direction = value;
             MarkNeedsLayout();
         }
@@ -67,6 +72,11 @@ public class RenderFlex : RenderBox, IRenderBoxContainerDefaultsMixin<RenderBox,
         get => _mainAxisSize;
         set
         {
+            if (_mainAxisSize == value)
+            {
+                return;
+            }
+
             _mainAxisSize = value;
             MarkNeedsLayout();
         }
@@ -79,6 +89,11 @@ public class RenderFlex : RenderBox, IRenderBoxContainerDefaultsMixin<RenderBox,
         get => _mainAxisAlignment;
         set
         {
+            if (_mainAxisAlignment == value)
+            {
+                return;
+            }
+
             _mainAxisAlignment = value;
             MarkNeedsLayout();
         }
@@ -91,6 +106,11 @@ public class RenderFlex : RenderBox, IRenderBoxContainerDefaultsMixin<RenderBox,
         get => _crossAxisAlignment;
         set
         {
+            if (_crossAxisAlignment == value)
+            {
+                return;
+            }
+
             _crossAxisAlignment = value;
             MarkNeedsLayout();
         }
@@ -414,6 +434,7 @@ public class RenderFlex : RenderBox, IRenderBoxContainerDefaultsMixin<RenderBox,
 
                 _ => throw new ArgumentOutOfRangeException()
             },
+            _ => throw new ArgumentOutOfRangeException()
         };
 
     private BoxConstraints _constraintsForFlexChild(
