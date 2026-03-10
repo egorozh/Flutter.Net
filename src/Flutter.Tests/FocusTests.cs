@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Media;
 using Flutter.Rendering;
 using Flutter.UI;
 using Flutter.Widgets;
@@ -199,6 +200,48 @@ public sealed class FocusTests : IDisposable
 
         Assert.True(manager.HandleKeyEvent(new KeyEvent(key: "ArrowLeft", isDown: true)));
         Assert.Same(source, manager.PrimaryFocus);
+    }
+
+    [Fact]
+    public void FocusManager_DirectionalKeys_ResolveTraversalRectsThroughRenderTransforms()
+    {
+        var owner = new BuildOwner();
+        var source = new FocusNode();
+        var right = new FocusNode();
+        var transformedDown = new FocusNode();
+        var root = new TestRootElement(
+            new Row(children:
+            [
+                new Focus(
+                    focusNode: source,
+                    autofocus: true,
+                    child: new SizedBox(width: 20, height: 20)),
+                new SizedBox(width: 100),
+                new Focus(
+                    focusNode: right,
+                    child: new SizedBox(width: 20, height: 20)),
+                new SizedBox(width: 100),
+                new TestTransform(
+                    transform: Matrix.CreateTranslation(-120, 120),
+                    child: new Focus(
+                        focusNode: transformedDown,
+                        child: new SizedBox(width: 20, height: 20))),
+            ]));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.Same(source, FocusManager.Instance.PrimaryFocus);
+
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "ArrowRight", isDown: true)));
+        Assert.Same(right, FocusManager.Instance.PrimaryFocus);
+
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "ArrowDown", isDown: true)));
+        Assert.Same(transformedDown, FocusManager.Instance.PrimaryFocus);
+
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "ArrowUp", isDown: true)));
+        Assert.Same(right, FocusManager.Instance.PrimaryFocus);
     }
 
     [Fact]
@@ -441,6 +484,26 @@ public sealed class FocusTests : IDisposable
             {
                 throw new InvalidOperationException("TestRootElement expects null slot.");
             }
+        }
+    }
+
+    private sealed class TestTransform : SingleChildRenderObjectWidget
+    {
+        public TestTransform(Matrix transform, Widget child) : base(child)
+        {
+            Transform = transform;
+        }
+
+        public Matrix Transform { get; }
+
+        internal override RenderObject CreateRenderObject(BuildContext context)
+        {
+            return new RenderTransform(Transform);
+        }
+
+        internal override void UpdateRenderObject(BuildContext context, RenderObject renderObject)
+        {
+            ((RenderTransform)renderObject).Transform = Transform;
         }
     }
 }

@@ -10,7 +10,7 @@ Use this block as the fastest machine-readable status summary.
 framework_plan_version: 1
 last_updated: 2026-03-10
 north_star: "Flutter-like widget/rendering framework in C# with Avalonia as host infrastructure."
-current_phase: "Core parity hardening closed; advancing input/focus/accessibility completion."
+current_phase: "Input/focus/accessibility completion closed; preparing port-first expansion."
 status:
   widget_element_state_lifecycle: done
   render_pipeline_layout_paint_compositing_semantics: done
@@ -28,7 +28,7 @@ next_milestones:
     status: done
   - id: M2
     title: "Input/focus/accessibility completion"
-    status: in_progress
+    status: done
   - id: M3
     title: "Port-first widget set expansion"
     status: planned
@@ -69,20 +69,30 @@ Exit criteria:
 
 ### M2. Input, Focus, and Accessibility Completion
 
-Status: `in_progress`
+Status: `done`
+
+Completion note:
+
+- Closed on 2026-03-10 after delivering text-editing ergonomics baselines (word/paragraph shortcuts, clipboard copy/cut/paste, grapheme-safe caret/delete behavior), transform-aware directional traversal rect resolution, and host semantics bridge runtime surface (`SemanticsRoot`, `SemanticsUpdated`, action dispatch) with coverage in framework tests.
 
 Progress update (2026-03-10):
 
 - Keyboard/focus baseline is implemented and host-wired (`KeyEvent`, `FocusNode`, `FocusManager`, `Focus`).
 - Focus scopes are now available (`FocusScopeNode`, `FocusScope`) and traversal is bounded to the active scope (Tab + directional keys).
 - Directional traversal includes a geometry-aware policy when focus bounds are available, with deterministic sequential fallback.
+- Directional traversal now resolves traversal geometry through attached render-object transforms (including `RenderTransform`) before directional candidate ranking.
 - Editable text baseline is integrated (`EditableText`, `TextEditingController`, host text input dispatch into focused node callbacks).
 - Editable controller/selection baseline is integrated (`TextSelection`, `TextRange`, selection-aware insert/delete/navigation, `Ctrl/Meta+A`).
 - Editable composition lifecycle baseline is integrated (focus-manager composition update/commit dispatch, controller composing state, editable-widget composition handling).
 - Host-native IME preedit bridge baseline is integrated (`TextInputMethodClientRequested` -> `TextInputMethodClient.SetPreeditText` -> focus-manager composition updates).
 - IME state sync baseline is integrated (`surrounding text`, selection sync, and cursor rectangle exposure from focused editable state through host text-input client).
 - Multiline editing + glyph-aware caret baseline is integrated (multiline mode with `Enter` newline insertion, `ArrowUp/ArrowDown` vertical navigation, and `TextLayout`-driven caret rectangle with host-less fallback).
-- Remaining primary gaps: transform-aware/advanced directional policies, advanced text-editing ergonomics (word-level shortcuts, clipboard/actions parity), and host accessibility bridge documentation.
+- Word-level text-editing shortcuts baseline is integrated (`Ctrl/Alt + ArrowLeft/ArrowRight` word navigation and `Ctrl/Alt + Backspace/Delete` word deletion in `EditableText`).
+- Paragraph-level caret shortcuts baseline is integrated for multiline editing (`Ctrl/Alt + ArrowUp/ArrowDown` paragraph start/end navigation with selection extension support).
+- Clipboard/action shortcut baseline is integrated (`Ctrl/Meta + C/X/V`) with framework clipboard cache and host clipboard synchronization hooks in `FlutterHost`.
+- Grapheme-aware editing baseline is integrated (caret and delete operations move by text elements instead of UTF-16 code units).
+- Host accessibility bridge documentation baseline is now captured (host-side semantics tree consumption and action dispatch expectations per target host).
+- Host accessibility bridge runtime baseline is integrated in `FlutterHost` (semantics root exposure, semantics-updated event, and action routing API), with regression coverage.
 
 Exit criteria:
 

@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Media;
 using Flutter.Foundation;
 using Flutter.Rendering;
 using Flutter.UI;
@@ -187,19 +188,34 @@ public class FocusNode : ChangeNotifier
             return null;
         }
 
-        var origin = new Point(0, 0);
-        RenderObject? node = renderBox;
-        while (node != null && node.Parent != null)
+        var localRect = new Rect(new Point(0, 0), renderBox.Size);
+        var transformToRoot = ResolveRenderObjectTransformToRoot(renderBox);
+        return RenderObject.TransformRect(transformToRoot, localRect);
+    }
+
+    private static Matrix ResolveRenderObjectTransformToRoot(RenderObject renderObject)
+    {
+        var transformToRoot = Matrix.Identity;
+        RenderObject? child = renderObject;
+
+        while (child?.Parent != null)
         {
-            if (node.parentData is BoxParentData boxParentData)
+            var parent = child.Parent;
+            var childOffset = child.parentData is BoxParentData boxParentData
+                ? boxParentData.offset
+                : default;
+            var childToParentTransform = Matrix.CreateTranslation(childOffset.X, childOffset.Y);
+
+            if (parent is RenderTransform renderTransform)
             {
-                origin += boxParentData.offset;
+                childToParentTransform *= renderTransform.Transform;
             }
 
-            node = node.Parent;
+            transformToRoot = childToParentTransform * transformToRoot;
+            child = parent;
         }
 
-        return new Rect(origin, renderBox.Size);
+        return transformToRoot;
     }
 
     public override void Dispose()

@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Input.TextInput;
 using Avalonia.Media;
 using Flutter.Gestures;
@@ -30,6 +31,8 @@ public class FlutterHost : Control
     private readonly FlutterTextInputMethodClient _textInputClient;
     private bool _isSubscribedToScheduler;
 
+    public event Action<SemanticsNode?>? SemanticsUpdated;
+
     public FlutterHost()
     {
         _pipeline = new PipelineOwner(_root);
@@ -43,6 +46,8 @@ public class FlutterHost : Control
     }
 
     internal RenderBox? RootChild => _root.Child;
+
+    public SemanticsNode? SemanticsRoot => _pipeline.SemanticsOwner.RootNode;
 
     public void SetRootChild(RenderBox? child)
     {
@@ -75,6 +80,13 @@ public class FlutterHost : Control
             return;
         }
 
+        if (IsPasteShortcut(e))
+        {
+            e.Handled = true;
+            _ = HandleSystemPasteShortcutAsync();
+            return;
+        }
+
         var keyEvent = new KeyEvent(
             key: e.Key.ToString(),
             isDown: true,
@@ -86,6 +98,11 @@ public class FlutterHost : Control
         if (FrameworkFocusManager.Instance.HandleKeyEvent(keyEvent))
         {
             e.Handled = true;
+            if (IsCopyOrCutShortcut(e))
+            {
+                _ = PushFrameworkClipboardToSystemAsync();
+            }
+
             return;
         }
 
@@ -196,7 +213,7 @@ public class FlutterHost : Control
         _pipeline.FlushCompositingBits();
         _pipeline.FlushPaint();
         _pipeline.CompositeFrame(context);
-        _pipeline.FlushSemantics();
+        FlushSemanticsAndNotify();
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
@@ -237,8 +254,21 @@ public class FlutterHost : Control
         }
         else
         {
-            _pipeline.FlushSemantics();
+            FlushSemanticsAndNotify();
         }
+    }
+
+    public bool PerformSemanticsAction(int nodeId, SemanticsActions action)
+    {
+        return _pipeline.SemanticsOwner.PerformAction(nodeId, action);
+    }
+
+    internal void FlushPipelineForTests(Size? viewport = null)
+    {
+        _pipeline.FlushLayout(viewport ?? Bounds.Size);
+        _pipeline.FlushCompositingBits();
+        _pipeline.FlushPaint();
+        FlushSemanticsAndNotify();
     }
 
     private void EnsureSchedulerSubscription()
@@ -266,6 +296,62 @@ public class FlutterHost : Control
     private void DispatchPointerEvent(PointerEvent @event)
     {
         _gestureBinding.HandlePointerEvent(_root, @event);
+    }
+
+    private void FlushSemanticsAndNotify()
+    {
+        var hadPendingSemantics = _pipeline.PendingSemanticsNodeCount > 0;
+        _pipeline.FlushSemantics();
+        if (hadPendingSemantics)
+        {
+            SemanticsUpdated?.Invoke(_pipeline.SemanticsOwner.RootNode);
+        }
+    }
+
+    private static bool IsPasteShortcut(KeyEventArgs e)
+    {
+        return (e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta))
+               && e.Key == Key.V;
+    }
+
+    private static bool IsCopyOrCutShortcut(KeyEventArgs e)
+    {
+        if (!e.KeyModifiers.HasFlag(KeyModifiers.Control) && !e.KeyModifiers.HasFlag(KeyModifiers.Meta))
+        {
+            return false;
+        }
+
+        return e.Key is Key.C or Key.X;
+    }
+
+    private async Task HandleSystemPasteShortcutAsync()
+    {
+        var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+        if (clipboard != null)
+        {
+            var systemText = await clipboard.TryGetTextAsync();
+            if (!string.IsNullOrEmpty(systemText))
+            {
+                TextClipboard.SetText(systemText);
+            }
+        }
+
+        var textToPaste = TextClipboard.GetText() ?? string.Empty;
+        if (!string.IsNullOrEmpty(textToPaste))
+        {
+            _ = FrameworkFocusManager.Instance.HandleTextInput(textToPaste);
+        }
+    }
+
+    private async Task PushFrameworkClipboardToSystemAsync()
+    {
+        var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+        if (clipboard == null)
+        {
+            return;
+        }
+
+        await clipboard.SetTextAsync(TextClipboard.CurrentText);
     }
 
     private PointerDownEvent ToPointerDownEvent(PointerPressedEventArgs e)

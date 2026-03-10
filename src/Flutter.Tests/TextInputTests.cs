@@ -17,11 +17,13 @@ public sealed class TextInputTests : IDisposable
     public TextInputTests()
     {
         FocusManager.Instance.ResetForTests();
+        TextClipboard.ResetForTests();
     }
 
     public void Dispose()
     {
         FocusManager.Instance.ResetForTests();
+        TextClipboard.ResetForTests();
     }
 
     [Fact]
@@ -183,6 +185,85 @@ public sealed class TextInputTests : IDisposable
     }
 
     [Fact]
+    public void TextEditingController_WordNavigationAndDeletion_Work()
+    {
+        const string initialText = "alpha beta_gamma delta";
+        var betaStart = initialText.IndexOf("beta_gamma", StringComparison.Ordinal);
+        var deltaStart = initialText.IndexOf("delta", StringComparison.Ordinal);
+
+        var controller = new TextEditingController(initialText);
+        controller.Selection = TextSelection.Collapsed(initialText.Length);
+
+        Assert.True(controller.MoveCaretToPreviousWord());
+        Assert.Equal(TextSelection.Collapsed(deltaStart), controller.Selection);
+
+        Assert.True(controller.MoveCaretToPreviousWord());
+        Assert.Equal(TextSelection.Collapsed(betaStart), controller.Selection);
+
+        Assert.True(controller.MoveCaretToPreviousWord());
+        Assert.Equal(TextSelection.Collapsed(0), controller.Selection);
+
+        Assert.False(controller.MoveCaretToPreviousWord());
+
+        Assert.True(controller.MoveCaretToNextWord());
+        Assert.Equal(TextSelection.Collapsed(5), controller.Selection);
+
+        Assert.True(controller.MoveCaretToNextWord());
+        Assert.Equal(TextSelection.Collapsed(betaStart), controller.Selection);
+
+        Assert.True(controller.MoveCaretToNextWord(extendSelection: true));
+        Assert.Equal(betaStart, controller.Selection.Start);
+        Assert.Equal(deltaStart - 1, controller.Selection.End);
+
+        Assert.True(controller.MoveCaretToNextWord(extendSelection: true));
+        Assert.Equal(betaStart, controller.Selection.Start);
+        Assert.Equal(deltaStart, controller.Selection.End);
+
+        controller.Selection = TextSelection.Collapsed(deltaStart);
+        Assert.True(controller.DeleteBackwardByWord());
+        Assert.Equal("alpha delta", controller.Text);
+        Assert.Equal(TextSelection.Collapsed(6), controller.Selection);
+
+        Assert.True(controller.DeleteForwardByWord());
+        Assert.Equal("alpha ", controller.Text);
+        Assert.Equal(TextSelection.Collapsed(6), controller.Selection);
+
+        Assert.False(controller.DeleteForwardByWord());
+    }
+
+    [Fact]
+    public void TextEditingController_ParagraphNavigation_Work()
+    {
+        const string initialText = "aa\nbbb\ncccc";
+        var secondParagraphStart = initialText.IndexOf("bbb", StringComparison.Ordinal);
+        var thirdParagraphStart = initialText.IndexOf("cccc", StringComparison.Ordinal);
+
+        var controller = new TextEditingController(initialText);
+        controller.Selection = TextSelection.Collapsed(initialText.Length);
+
+        Assert.True(controller.MoveCaretToParagraphStart());
+        Assert.Equal(TextSelection.Collapsed(thirdParagraphStart), controller.Selection);
+
+        Assert.True(controller.MoveCaretToParagraphStart());
+        Assert.Equal(TextSelection.Collapsed(secondParagraphStart), controller.Selection);
+
+        Assert.True(controller.MoveCaretToParagraphStart());
+        Assert.Equal(TextSelection.Collapsed(0), controller.Selection);
+
+        Assert.False(controller.MoveCaretToParagraphStart());
+
+        Assert.True(controller.MoveCaretToParagraphEnd());
+        Assert.Equal(TextSelection.Collapsed(2), controller.Selection);
+
+        Assert.True(controller.MoveCaretToParagraphEnd());
+        Assert.Equal(TextSelection.Collapsed(6), controller.Selection);
+
+        Assert.True(controller.MoveCaretToParagraphEnd(extendSelection: true));
+        Assert.Equal(6, controller.Selection.Start);
+        Assert.Equal(initialText.Length, controller.Selection.End);
+    }
+
+    [Fact]
     public void TextEditingController_InsertAndSelectionReplacement_Work()
     {
         var controller = new TextEditingController("abcd");
@@ -321,6 +402,175 @@ public sealed class TextInputTests : IDisposable
 
         Assert.True(FocusManager.Instance.HandleTextInput("Z"));
         Assert.Equal("Z", controller.Text);
+        Assert.Equal(TextSelection.Collapsed(1), controller.Selection);
+    }
+
+    [Fact]
+    public void EditableText_WordShortcuts_UseCtrlAndAltModifiers()
+    {
+        var owner = new BuildOwner();
+        var controller = new TextEditingController();
+        var root = new TestRootElement(
+            new EditableText(
+                controller: controller,
+                autofocus: true));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.True(FocusManager.Instance.HandleTextInput("alpha beta gamma"));
+        Assert.Equal(TextSelection.Collapsed(16), controller.Selection);
+
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(
+            key: "ArrowLeft",
+            isDown: true,
+            isControlPressed: true)));
+        Assert.Equal(TextSelection.Collapsed(11), controller.Selection);
+
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(
+            key: "ArrowLeft",
+            isDown: true,
+            isShiftPressed: true,
+            isControlPressed: true)));
+        Assert.Equal(6, controller.Selection.Start);
+        Assert.Equal(11, controller.Selection.End);
+
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(
+            key: "ArrowRight",
+            isDown: true,
+            isControlPressed: true)));
+        Assert.Equal(TextSelection.Collapsed(11), controller.Selection);
+
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(
+            key: "Backspace",
+            isDown: true,
+            isControlPressed: true)));
+        Assert.Equal("alpha gamma", controller.Text);
+        Assert.Equal(TextSelection.Collapsed(6), controller.Selection);
+
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(
+            key: "Delete",
+            isDown: true,
+            isControlPressed: true)));
+        Assert.Equal("alpha ", controller.Text);
+        Assert.Equal(TextSelection.Collapsed(6), controller.Selection);
+
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(
+            key: "ArrowLeft",
+            isDown: true,
+            isAltPressed: true)));
+        Assert.Equal(TextSelection.Collapsed(0), controller.Selection);
+
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(
+            key: "ArrowRight",
+            isDown: true,
+            isAltPressed: true)));
+        Assert.Equal(TextSelection.Collapsed(5), controller.Selection);
+    }
+
+    [Fact]
+    public void EditableText_Multiline_ParagraphShortcuts_UseCtrlAndAltArrowUpDown()
+    {
+        var owner = new BuildOwner();
+        var controller = new TextEditingController();
+        var root = new TestRootElement(
+            new EditableText(
+                controller: controller,
+                autofocus: true,
+                multiline: true));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.True(FocusManager.Instance.HandleTextInput("one\ntwo\nthree"));
+        Assert.Equal(TextSelection.Collapsed(13), controller.Selection);
+
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(
+            key: "ArrowUp",
+            isDown: true,
+            isControlPressed: true)));
+        Assert.Equal(TextSelection.Collapsed(8), controller.Selection);
+
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(
+            key: "ArrowUp",
+            isDown: true,
+            isControlPressed: true)));
+        Assert.Equal(TextSelection.Collapsed(4), controller.Selection);
+
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(
+            key: "ArrowDown",
+            isDown: true,
+            isControlPressed: true,
+            isShiftPressed: true)));
+        Assert.Equal(4, controller.Selection.Start);
+        Assert.Equal(7, controller.Selection.End);
+
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(
+            key: "ArrowDown",
+            isDown: true,
+            isAltPressed: true)));
+        Assert.Equal(TextSelection.Collapsed(7), controller.Selection);
+    }
+
+    [Fact]
+    public void EditableText_ClipboardShortcuts_CopyCutPaste_Work()
+    {
+        var owner = new BuildOwner();
+        var controller = new TextEditingController();
+        var root = new TestRootElement(
+            new EditableText(
+                controller: controller,
+                autofocus: true));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.True(FocusManager.Instance.HandleTextInput("alpha"));
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "A", isDown: true, isControlPressed: true)));
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "C", isDown: true, isControlPressed: true)));
+        Assert.Equal("alpha", TextClipboard.GetText());
+
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "X", isDown: true, isControlPressed: true)));
+        Assert.Equal(string.Empty, controller.Text);
+        Assert.Equal("alpha", TextClipboard.GetText());
+
+        TextClipboard.SetText("beta");
+        Assert.True(FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "V", isDown: true, isControlPressed: true)));
+        Assert.Equal("beta", controller.Text);
+        Assert.Equal(TextSelection.Collapsed(4), controller.Selection);
+    }
+
+    [Fact]
+    public void TextEditingController_GraphemeNavigationAndDeletion_Work()
+    {
+        const string familyEmoji = "👨‍👩‍👧‍👦";
+        const string combining = "e\u0301";
+        var text = $"A{familyEmoji}{combining}B";
+        var familyStart = 1;
+        var combiningStart = familyStart + familyEmoji.Length;
+        var endOffset = text.Length;
+
+        var controller = new TextEditingController(text);
+        controller.Selection = TextSelection.Collapsed(endOffset);
+
+        Assert.True(controller.MoveCaretLeft());
+        Assert.Equal(TextSelection.Collapsed(endOffset - 1), controller.Selection);
+
+        Assert.True(controller.MoveCaretLeft());
+        Assert.Equal(TextSelection.Collapsed(combiningStart), controller.Selection);
+
+        Assert.True(controller.MoveCaretLeft());
+        Assert.Equal(TextSelection.Collapsed(familyStart), controller.Selection);
+
+        Assert.True(controller.DeleteForward());
+        Assert.Equal($"A{combining}B", controller.Text);
+        Assert.Equal(TextSelection.Collapsed(1), controller.Selection);
+
+        Assert.True(controller.DeleteForward());
+        Assert.Equal("AB", controller.Text);
         Assert.Equal(TextSelection.Collapsed(1), controller.Selection);
     }
 

@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.TextFormatting;
+using System.Globalization;
 using Flutter.Foundation;
 using Flutter.UI;
 
@@ -120,7 +121,7 @@ public sealed class TextEditingController : ChangeNotifier
             return UpdateSelection(TextSelection.Collapsed(_selection.Start));
         }
 
-        var nextExtentOffset = Math.Max(0, _selection.ExtentOffset - 1);
+        var nextExtentOffset = FindPreviousTextElementBoundary(_selection.ExtentOffset);
         var nextSelection = extendSelection
             ? new TextSelection(_selection.BaseOffset, nextExtentOffset)
             : TextSelection.Collapsed(nextExtentOffset);
@@ -134,7 +135,7 @@ public sealed class TextEditingController : ChangeNotifier
             return UpdateSelection(TextSelection.Collapsed(_selection.End));
         }
 
-        var nextExtentOffset = Math.Min(_text.Length, _selection.ExtentOffset + 1);
+        var nextExtentOffset = FindNextTextElementBoundary(_selection.ExtentOffset);
         var nextSelection = extendSelection
             ? new TextSelection(_selection.BaseOffset, nextExtentOffset)
             : TextSelection.Collapsed(nextExtentOffset);
@@ -154,6 +155,62 @@ public sealed class TextEditingController : ChangeNotifier
         var nextSelection = extendSelection
             ? new TextSelection(_selection.BaseOffset, _text.Length)
             : TextSelection.Collapsed(_text.Length);
+        return UpdateSelection(nextSelection);
+    }
+
+    public bool MoveCaretToPreviousWord(bool extendSelection = false)
+    {
+        if (!extendSelection && !_selection.IsCollapsed)
+        {
+            return UpdateSelection(TextSelection.Collapsed(_selection.Start));
+        }
+
+        var nextExtentOffset = FindPreviousWordBoundary(_selection.ExtentOffset);
+        var nextSelection = extendSelection
+            ? new TextSelection(_selection.BaseOffset, nextExtentOffset)
+            : TextSelection.Collapsed(nextExtentOffset);
+        return UpdateSelection(nextSelection);
+    }
+
+    public bool MoveCaretToNextWord(bool extendSelection = false)
+    {
+        if (!extendSelection && !_selection.IsCollapsed)
+        {
+            return UpdateSelection(TextSelection.Collapsed(_selection.End));
+        }
+
+        var nextExtentOffset = FindNextWordBoundary(_selection.ExtentOffset, includeWordAfterSeparator: false);
+        var nextSelection = extendSelection
+            ? new TextSelection(_selection.BaseOffset, nextExtentOffset)
+            : TextSelection.Collapsed(nextExtentOffset);
+        return UpdateSelection(nextSelection);
+    }
+
+    public bool MoveCaretToParagraphStart(bool extendSelection = false)
+    {
+        if (!extendSelection && !_selection.IsCollapsed)
+        {
+            return UpdateSelection(TextSelection.Collapsed(_selection.Start));
+        }
+
+        var nextExtentOffset = FindParagraphStart(_selection.ExtentOffset);
+        var nextSelection = extendSelection
+            ? new TextSelection(_selection.BaseOffset, nextExtentOffset)
+            : TextSelection.Collapsed(nextExtentOffset);
+        return UpdateSelection(nextSelection);
+    }
+
+    public bool MoveCaretToParagraphEnd(bool extendSelection = false)
+    {
+        if (!extendSelection && !_selection.IsCollapsed)
+        {
+            return UpdateSelection(TextSelection.Collapsed(_selection.End));
+        }
+
+        var nextExtentOffset = FindParagraphEnd(_selection.ExtentOffset);
+        var nextSelection = extendSelection
+            ? new TextSelection(_selection.BaseOffset, nextExtentOffset)
+            : TextSelection.Collapsed(nextExtentOffset);
         return UpdateSelection(nextSelection);
     }
 
@@ -224,7 +281,33 @@ public sealed class TextEditingController : ChangeNotifier
         var end = _selection.End;
         if (start == end)
         {
-            start = end - 1;
+            start = FindPreviousTextElementBoundary(end);
+        }
+
+        var nextText = _text[..start] + _text[end..];
+        return ApplyAndReportChange(
+            text: nextText,
+            selection: TextSelection.Collapsed(start),
+            composing: null);
+    }
+
+    public bool DeleteBackwardByWord()
+    {
+        if (!_selection.IsCollapsed)
+        {
+            return DeleteBackward();
+        }
+
+        var end = _selection.ExtentOffset;
+        if (end <= 0)
+        {
+            return false;
+        }
+
+        var start = FindPreviousWordBoundary(end);
+        if (start >= end)
+        {
+            return false;
         }
 
         var nextText = _text[..start] + _text[end..];
@@ -245,7 +328,33 @@ public sealed class TextEditingController : ChangeNotifier
         var end = _selection.End;
         if (start == end)
         {
-            end = start + 1;
+            end = FindNextTextElementBoundary(start);
+        }
+
+        var nextText = _text[..start] + _text[end..];
+        return ApplyAndReportChange(
+            text: nextText,
+            selection: TextSelection.Collapsed(start),
+            composing: null);
+    }
+
+    public bool DeleteForwardByWord()
+    {
+        if (!_selection.IsCollapsed)
+        {
+            return DeleteForward();
+        }
+
+        var start = _selection.ExtentOffset;
+        if (start >= _text.Length)
+        {
+            return false;
+        }
+
+        var end = FindNextWordBoundary(start, includeWordAfterSeparator: true);
+        if (end <= start)
+        {
+            return false;
         }
 
         var nextText = _text[..start] + _text[end..];
@@ -263,9 +372,177 @@ public sealed class TextEditingController : ChangeNotifier
             composing: null);
     }
 
+    public string SelectedText
+    {
+        get
+        {
+            var start = _selection.Start;
+            var end = _selection.End;
+            if (start >= end)
+            {
+                return string.Empty;
+            }
+
+            return _text[start..end];
+        }
+    }
+
     private bool UpdateSelection(TextSelection nextSelection)
     {
         return ApplyAndReportChange(_text, nextSelection, composing: null);
+    }
+
+    private int FindPreviousWordBoundary(int offset)
+    {
+        var index = Math.Clamp(offset, 0, _text.Length);
+        while (index > 0 && !IsWordCharacter(_text[index - 1]))
+        {
+            index--;
+        }
+
+        while (index > 0 && IsWordCharacter(_text[index - 1]))
+        {
+            index--;
+        }
+
+        return index;
+    }
+
+    private int FindNextWordBoundary(int offset, bool includeWordAfterSeparator)
+    {
+        var index = Math.Clamp(offset, 0, _text.Length);
+        if (index >= _text.Length)
+        {
+            return _text.Length;
+        }
+
+        if (IsWordCharacter(_text[index]))
+        {
+            while (index < _text.Length && IsWordCharacter(_text[index]))
+            {
+                index++;
+            }
+
+            return index;
+        }
+
+        while (index < _text.Length && !IsWordCharacter(_text[index]))
+        {
+            index++;
+        }
+
+        if (!includeWordAfterSeparator)
+        {
+            return index;
+        }
+
+        while (index < _text.Length && IsWordCharacter(_text[index]))
+        {
+            index++;
+        }
+
+        return index;
+    }
+
+    private static bool IsWordCharacter(char character)
+    {
+        return char.IsLetterOrDigit(character) || character == '_';
+    }
+
+    private int FindPreviousTextElementBoundary(int offset)
+    {
+        var index = Math.Clamp(offset, 0, _text.Length);
+        if (index <= 0 || string.IsNullOrEmpty(_text))
+        {
+            return 0;
+        }
+
+        var boundaries = StringInfo.ParseCombiningCharacters(_text);
+        if (boundaries.Length == 0)
+        {
+            return Math.Max(0, index - 1);
+        }
+
+        var previous = 0;
+        foreach (var boundary in boundaries)
+        {
+            if (boundary >= index)
+            {
+                break;
+            }
+
+            previous = boundary;
+        }
+
+        return previous;
+    }
+
+    private int FindNextTextElementBoundary(int offset)
+    {
+        var index = Math.Clamp(offset, 0, _text.Length);
+        if (index >= _text.Length || string.IsNullOrEmpty(_text))
+        {
+            return _text.Length;
+        }
+
+        var boundaries = StringInfo.ParseCombiningCharacters(_text);
+        if (boundaries.Length == 0)
+        {
+            return Math.Min(_text.Length, index + 1);
+        }
+
+        for (var i = 0; i < boundaries.Length; i++)
+        {
+            var start = boundaries[i];
+            var end = i + 1 < boundaries.Length ? boundaries[i + 1] : _text.Length;
+            if (index < end)
+            {
+                return end;
+            }
+        }
+
+        return _text.Length;
+    }
+
+    private int FindParagraphStart(int offset)
+    {
+        var index = Math.Clamp(offset, 0, _text.Length);
+        if (index <= 0)
+        {
+            return 0;
+        }
+
+        var searchFrom = index - 1;
+        if (searchFrom >= 0 && _text[searchFrom] == '\n')
+        {
+            searchFrom -= 1;
+        }
+
+        if (searchFrom < 0)
+        {
+            return 0;
+        }
+
+        var lastNewline = _text.LastIndexOf('\n', searchFrom);
+        return lastNewline < 0 ? 0 : lastNewline + 1;
+    }
+
+    private int FindParagraphEnd(int offset)
+    {
+        var index = Math.Clamp(offset, 0, _text.Length);
+        if (index >= _text.Length)
+        {
+            return _text.Length;
+        }
+
+        var searchFrom = _text[index] == '\n' ? index + 1 : index;
+        if (searchFrom >= _text.Length)
+        {
+            return _text.Length;
+        }
+
+        var nextNewline = _text.IndexOf('\n', searchFrom);
+        return nextNewline < 0 ? _text.Length : nextNewline;
     }
 
     private bool ApplyAndReportChange(
@@ -476,10 +753,61 @@ public sealed class EditableText : StatefulWidget
             var key = @event.Key;
             var textChanged = false;
             var keepVerticalNavigationX = false;
+            var isEditingShortcut = @event.IsControlPressed || @event.IsMetaPressed;
+            var isWordShortcut = @event.IsControlPressed || @event.IsAltPressed;
+            var isParagraphShortcut = Widget.Multiline && isWordShortcut;
 
-            if ((@event.IsControlPressed || @event.IsMetaPressed) && string.Equals(key, "A", StringComparison.Ordinal))
+            if (isEditingShortcut && string.Equals(key, "A", StringComparison.Ordinal))
             {
                 _ = controller.SelectAll();
+                _verticalNavigationX = null;
+                _verticalNavigationColumn = null;
+                return KeyEventResult.Handled;
+            }
+
+            if (isEditingShortcut && string.Equals(key, "C", StringComparison.Ordinal))
+            {
+                if (!controller.Selection.IsCollapsed)
+                {
+                    TextClipboard.SetText(controller.SelectedText);
+                }
+
+                _verticalNavigationX = null;
+                _verticalNavigationColumn = null;
+                return KeyEventResult.Handled;
+            }
+
+            if (isEditingShortcut && string.Equals(key, "X", StringComparison.Ordinal))
+            {
+                if (!controller.Selection.IsCollapsed)
+                {
+                    TextClipboard.SetText(controller.SelectedText);
+                    textChanged = controller.DeleteBackward();
+                    if (textChanged)
+                    {
+                        Widget.OnChanged?.Invoke(controller.Text);
+                    }
+                }
+
+                _verticalNavigationX = null;
+                _verticalNavigationColumn = null;
+                return KeyEventResult.Handled;
+            }
+
+            if (isEditingShortcut && string.Equals(key, "V", StringComparison.Ordinal))
+            {
+                var pasteText = TextClipboard.GetText() ?? string.Empty;
+                if (!string.IsNullOrEmpty(pasteText))
+                {
+                    textChanged = controller.Composing.HasValue
+                        ? controller.CommitComposing(pasteText)
+                        : controller.Insert(pasteText);
+                    if (textChanged)
+                    {
+                        Widget.OnChanged?.Invoke(controller.Text);
+                    }
+                }
+
                 _verticalNavigationX = null;
                 _verticalNavigationColumn = null;
                 return KeyEventResult.Handled;
@@ -488,35 +816,57 @@ public sealed class EditableText : StatefulWidget
             if (string.Equals(key, "Back", StringComparison.Ordinal)
                 || string.Equals(key, "Backspace", StringComparison.Ordinal))
             {
-                textChanged = controller.DeleteBackward();
+                textChanged = isWordShortcut
+                    ? controller.DeleteBackwardByWord()
+                    : controller.DeleteBackward();
             }
             else if (string.Equals(key, "Delete", StringComparison.Ordinal))
             {
-                textChanged = controller.DeleteForward();
+                textChanged = isWordShortcut
+                    ? controller.DeleteForwardByWord()
+                    : controller.DeleteForward();
             }
             else if (string.Equals(key, "ArrowLeft", StringComparison.Ordinal)
                      || string.Equals(key, "Left", StringComparison.Ordinal))
             {
-                _ = controller.MoveCaretLeft(extendSelection: @event.IsShiftPressed);
+                _ = isWordShortcut
+                    ? controller.MoveCaretToPreviousWord(extendSelection: @event.IsShiftPressed)
+                    : controller.MoveCaretLeft(extendSelection: @event.IsShiftPressed);
             }
             else if (string.Equals(key, "ArrowRight", StringComparison.Ordinal)
                      || string.Equals(key, "Right", StringComparison.Ordinal))
             {
-                _ = controller.MoveCaretRight(extendSelection: @event.IsShiftPressed);
+                _ = isWordShortcut
+                    ? controller.MoveCaretToNextWord(extendSelection: @event.IsShiftPressed)
+                    : controller.MoveCaretRight(extendSelection: @event.IsShiftPressed);
             }
             else if (Widget.Multiline
                      && (string.Equals(key, "ArrowUp", StringComparison.Ordinal)
                          || string.Equals(key, "Up", StringComparison.Ordinal)))
             {
-                _ = MoveCaretVertical(moveDown: false, extendSelection: @event.IsShiftPressed);
-                keepVerticalNavigationX = true;
+                if (isParagraphShortcut)
+                {
+                    _ = controller.MoveCaretToParagraphStart(extendSelection: @event.IsShiftPressed);
+                }
+                else
+                {
+                    _ = MoveCaretVertical(moveDown: false, extendSelection: @event.IsShiftPressed);
+                    keepVerticalNavigationX = true;
+                }
             }
             else if (Widget.Multiline
                      && (string.Equals(key, "ArrowDown", StringComparison.Ordinal)
                          || string.Equals(key, "Down", StringComparison.Ordinal)))
             {
-                _ = MoveCaretVertical(moveDown: true, extendSelection: @event.IsShiftPressed);
-                keepVerticalNavigationX = true;
+                if (isParagraphShortcut)
+                {
+                    _ = controller.MoveCaretToParagraphEnd(extendSelection: @event.IsShiftPressed);
+                }
+                else
+                {
+                    _ = MoveCaretVertical(moveDown: true, extendSelection: @event.IsShiftPressed);
+                    keepVerticalNavigationX = true;
+                }
             }
             else if (string.Equals(key, "Home", StringComparison.Ordinal))
             {
