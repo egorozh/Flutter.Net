@@ -1,3 +1,4 @@
+using Avalonia;
 using Flutter.Foundation;
 using Flutter.Rendering;
 using Flutter.UI;
@@ -49,9 +50,13 @@ public class FocusNode : ChangeNotifier
 
     public FocusOnKeyEventCallback? OnKeyEvent { get; set; }
 
+    public Rect? TraversalRect { get; set; }
+
     internal FocusManager? Manager { get; private set; }
 
     internal FocusScopeNode? Scope { get; private set; }
+
+    internal Element? AttachmentElement { get; private set; }
 
     public bool RequestFocus()
     {
@@ -86,6 +91,19 @@ public class FocusNode : ChangeNotifier
         Scope = null;
     }
 
+    internal void AttachElement(Element element)
+    {
+        AttachmentElement = element;
+    }
+
+    internal void DetachElement(Element element)
+    {
+        if (ReferenceEquals(AttachmentElement, element))
+        {
+            AttachmentElement = null;
+        }
+    }
+
     internal void SetHasFocus(bool value)
     {
         if (_hasFocus == value)
@@ -100,6 +118,33 @@ public class FocusNode : ChangeNotifier
     internal KeyEventResult HandleKeyEvent(KeyEvent @event)
     {
         return OnKeyEvent?.Invoke(this, @event) ?? KeyEventResult.Ignored;
+    }
+
+    internal Rect? ResolveTraversalRect()
+    {
+        if (TraversalRect.HasValue)
+        {
+            return TraversalRect.Value;
+        }
+
+        if (AttachmentElement?.RenderObject is not RenderBox renderBox || !renderBox.HasSize)
+        {
+            return null;
+        }
+
+        var origin = new Point(0, 0);
+        RenderObject? node = renderBox;
+        while (node != null && node.Parent != null)
+        {
+            if (node.parentData is BoxParentData boxParentData)
+            {
+                origin += boxParentData.offset;
+            }
+
+            node = node.Parent;
+        }
+
+        return new Rect(origin, renderBox.Size);
     }
 
     public override void Dispose()
@@ -310,12 +355,16 @@ public sealed class FocusManager
         {
             if (IsDirectionalNextKey(@event.Key))
             {
-                return FocusNext();
+                return FocusInDirection(direction: @event.Key is "ArrowDown" or "Down"
+                    ? FocusTraversalDirection.Down
+                    : FocusTraversalDirection.Right);
             }
 
             if (IsDirectionalPreviousKey(@event.Key))
             {
-                return FocusPrevious();
+                return FocusInDirection(direction: @event.Key is "ArrowUp" or "Up"
+                    ? FocusTraversalDirection.Up
+                    : FocusTraversalDirection.Left);
             }
 
             return false;
@@ -402,6 +451,81 @@ public sealed class FocusManager
         return result;
     }
 
+    private bool FocusInDirection(FocusTraversalDirection direction)
+    {
+        var candidates = CollectTraversalCandidates();
+        if (candidates.Count == 0)
+        {
+            return false;
+        }
+
+        if (PrimaryFocus == null)
+        {
+            return direction switch
+            {
+                FocusTraversalDirection.Left => RequestFocus(candidates[candidates.Count - 1]),
+                FocusTraversalDirection.Up => RequestFocus(candidates[candidates.Count - 1]),
+                _ => RequestFocus(candidates[0])
+            };
+        }
+
+        var sourceRect = PrimaryFocus.ResolveTraversalRect();
+        if (!sourceRect.HasValue)
+        {
+            return direction is FocusTraversalDirection.Left or FocusTraversalDirection.Up
+                ? FocusPrevious()
+                : FocusNext();
+        }
+
+        FocusNode? bestNode = null;
+        var bestPrimaryDistance = double.PositiveInfinity;
+        var bestSecondaryDistance = double.PositiveInfinity;
+        var bestDistanceSquared = double.PositiveInfinity;
+
+        foreach (var candidate in candidates)
+        {
+            if (ReferenceEquals(candidate, PrimaryFocus))
+            {
+                continue;
+            }
+
+            var candidateRect = candidate.ResolveTraversalRect();
+            if (!candidateRect.HasValue)
+            {
+                continue;
+            }
+
+            var dx = candidateRect.Value.Center.X - sourceRect.Value.Center.X;
+            var dy = candidateRect.Value.Center.Y - sourceRect.Value.Center.Y;
+            if (!TryComputeDirectionalDistance(direction, dx, dy, out var primaryDistance, out var secondaryDistance))
+            {
+                continue;
+            }
+
+            var distanceSquared = (dx * dx) + (dy * dy);
+            if (primaryDistance < bestPrimaryDistance - 0.0001
+                || (Math.Abs(primaryDistance - bestPrimaryDistance) <= 0.0001
+                    && (secondaryDistance < bestSecondaryDistance - 0.0001
+                        || (Math.Abs(secondaryDistance - bestSecondaryDistance) <= 0.0001
+                            && distanceSquared < bestDistanceSquared))))
+            {
+                bestNode = candidate;
+                bestPrimaryDistance = primaryDistance;
+                bestSecondaryDistance = secondaryDistance;
+                bestDistanceSquared = distanceSquared;
+            }
+        }
+
+        if (bestNode != null)
+        {
+            return RequestFocus(bestNode);
+        }
+
+        return direction is FocusTraversalDirection.Left or FocusTraversalDirection.Up
+            ? FocusPrevious()
+            : FocusNext();
+    }
+
     private static bool IsDirectionalNextKey(string key)
     {
         return string.Equals(key, "ArrowRight", StringComparison.Ordinal)
@@ -417,6 +541,46 @@ public sealed class FocusManager
                || string.Equals(key, "Left", StringComparison.Ordinal)
                || string.Equals(key, "Up", StringComparison.Ordinal);
     }
+
+    private static bool TryComputeDirectionalDistance(
+        FocusTraversalDirection direction,
+        double dx,
+        double dy,
+        out double primaryDistance,
+        out double secondaryDistance)
+    {
+        switch (direction)
+        {
+            case FocusTraversalDirection.Right:
+                primaryDistance = dx;
+                secondaryDistance = Math.Abs(dy);
+                return primaryDistance > 0;
+            case FocusTraversalDirection.Left:
+                primaryDistance = -dx;
+                secondaryDistance = Math.Abs(dy);
+                return primaryDistance > 0;
+            case FocusTraversalDirection.Down:
+                primaryDistance = dy;
+                secondaryDistance = Math.Abs(dx);
+                return primaryDistance > 0;
+            case FocusTraversalDirection.Up:
+                primaryDistance = -dy;
+                secondaryDistance = Math.Abs(dx);
+                return primaryDistance > 0;
+            default:
+                primaryDistance = double.PositiveInfinity;
+                secondaryDistance = double.PositiveInfinity;
+                return false;
+        }
+    }
+}
+
+internal enum FocusTraversalDirection
+{
+    Left,
+    Right,
+    Up,
+    Down
 }
 
 internal sealed class FocusScopeMarker : InheritedWidget
@@ -698,6 +862,7 @@ public sealed class Focus : StatefulWidget
         {
             _focusNode = externalNode ?? new FocusNode();
             _ownsFocusNode = externalNode is null;
+            _focusNode.AttachElement(Element);
         }
 
         private FocusScopeNode ResolveScope()
@@ -713,6 +878,7 @@ public sealed class Focus : StatefulWidget
             }
 
             FocusManager.Instance.UnregisterNode(_focusNode);
+            _focusNode.DetachElement(Element);
 
             if (_ownsFocusNode)
             {

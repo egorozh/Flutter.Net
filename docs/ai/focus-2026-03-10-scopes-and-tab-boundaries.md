@@ -3,12 +3,12 @@
 ## Goal
 
 - Add first-class focus scope support so keyboard traversal stays local to the active focus scope.
-- Add basic directional key traversal fallback (`Left/Right/Up/Down`) over scope-local ordering.
+- Add directional key traversal (`Left/Right/Up/Down`) with geometry-aware candidate selection when bounds are available.
 - Extend M2 keyboard/focus baseline with test-covered scope-aware behavior.
 
 ## Non-Goals
 
-- No geometry-aware directional traversal policy implementation in this iteration.
+- No transform-aware directional traversal policy implementation in this iteration.
 - No editable text/IME focus handoff in this iteration.
 
 ## Context Budget Plan
@@ -39,8 +39,8 @@
   - `docs/ai/TEST_MATRIX.md`
   - `CHANGELOG.md`
 - Brief intent per file:
-  - `src/Flutter/Widgets/Focus.cs`: add `FocusScopeNode` and `FocusScope`, track node-scope membership, and scope-aware traversal (Tab + directional key fallback).
-  - `src/Flutter.Tests/FocusTests.cs`: add regression coverage for manager-level and widget-level scope traversal boundaries, plus directional key traversal behavior.
+  - `src/Flutter/Widgets/Focus.cs`: add `FocusScopeNode` and `FocusScope`, track node-scope membership, and scope-aware traversal (Tab + directional keys) with geometry-aware directional selection + sequential fallback.
+  - `src/Flutter.Tests/FocusTests.cs`: add regression coverage for manager-level and widget-level scope traversal boundaries, plus directional key traversal behavior and geometry-based candidate selection.
   - `docs/FRAMEWORK_PLAN.md`: record M2 progress and remaining focus/accessibility gaps.
   - `docs/ai/TEST_MATRIX.md`: refresh focus row with scope traversal coverage.
   - `CHANGELOG.md`: record shipped scope-focused M2 increment.

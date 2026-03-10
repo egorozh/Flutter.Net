@@ -1,3 +1,4 @@
+using Avalonia;
 using Flutter.Rendering;
 using Flutter.UI;
 using Flutter.Widgets;
@@ -161,6 +162,46 @@ public sealed class FocusTests : IDisposable
     }
 
     [Fact]
+    public void FocusManager_DirectionalKeys_UseGeometryWhenTraversalRectsAvailable()
+    {
+        var manager = new FocusManager();
+        var source = new FocusNode
+        {
+            TraversalRect = new Rect(0, 0, 20, 20)
+        };
+        var right = new FocusNode
+        {
+            TraversalRect = new Rect(120, 0, 20, 20)
+        };
+        var down = new FocusNode
+        {
+            TraversalRect = new Rect(0, 120, 20, 20)
+        };
+        var diagonal = new FocusNode
+        {
+            TraversalRect = new Rect(120, 120, 20, 20)
+        };
+
+        manager.RegisterNode(source);
+        manager.RegisterNode(right);
+        manager.RegisterNode(down);
+        manager.RegisterNode(diagonal);
+        manager.RequestFocus(source);
+
+        Assert.True(manager.HandleKeyEvent(new KeyEvent(key: "ArrowDown", isDown: true)));
+        Assert.Same(down, manager.PrimaryFocus);
+
+        Assert.True(manager.HandleKeyEvent(new KeyEvent(key: "ArrowRight", isDown: true)));
+        Assert.Same(diagonal, manager.PrimaryFocus);
+
+        Assert.True(manager.HandleKeyEvent(new KeyEvent(key: "ArrowUp", isDown: true)));
+        Assert.Same(right, manager.PrimaryFocus);
+
+        Assert.True(manager.HandleKeyEvent(new KeyEvent(key: "ArrowLeft", isDown: true)));
+        Assert.Same(source, manager.PrimaryFocus);
+    }
+
+    [Fact]
     public void FocusWidget_Autofocus_RequestsFocusOnMount()
     {
         var owner = new BuildOwner();
@@ -277,6 +318,49 @@ public sealed class FocusTests : IDisposable
         Assert.Same(secondInScope, FocusManager.Instance.PrimaryFocus);
 
         var movedAfterScopeEnd = FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "Tab", isDown: true));
+        Assert.False(movedAfterScopeEnd);
+        Assert.Same(secondInScope, FocusManager.Instance.PrimaryFocus);
+        Assert.False(trailingSibling.HasFocus);
+    }
+
+    [Fact]
+    public void FocusScopeWidget_DirectionalTraversal_DoesNotEscapeScopeBoundaries()
+    {
+        var owner = new BuildOwner();
+        var leadingSibling = new FocusNode();
+        var firstInScope = new FocusNode();
+        var secondInScope = new FocusNode();
+        var trailingSibling = new FocusNode();
+
+        var root = new TestRootElement(
+            new Row(children:
+            [
+                new Focus(focusNode: leadingSibling, child: new SizedBox(width: 12, height: 12)),
+                new FocusScope(
+                    child: new Row(children:
+                    [
+                        new Focus(focusNode: firstInScope, autofocus: true, child: new SizedBox(width: 12, height: 12)),
+                        new Focus(focusNode: secondInScope, child: new SizedBox(width: 12, height: 12))
+                    ])),
+                new Focus(focusNode: trailingSibling, child: new SizedBox(width: 12, height: 12))
+            ]));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.Same(firstInScope, FocusManager.Instance.PrimaryFocus);
+
+        var movedBeforeScopeStart = FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "ArrowLeft", isDown: true));
+        Assert.False(movedBeforeScopeStart);
+        Assert.Same(firstInScope, FocusManager.Instance.PrimaryFocus);
+        Assert.False(leadingSibling.HasFocus);
+
+        var movedInsideScope = FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "ArrowRight", isDown: true));
+        Assert.True(movedInsideScope);
+        Assert.Same(secondInScope, FocusManager.Instance.PrimaryFocus);
+
+        var movedAfterScopeEnd = FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "ArrowRight", isDown: true));
         Assert.False(movedAfterScopeEnd);
         Assert.Same(secondInScope, FocusManager.Instance.PrimaryFocus);
         Assert.False(trailingSibling.HasFocus);
