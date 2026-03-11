@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'align_demo_page.dart';
+import 'aspect_ratio_demo_page.dart';
 import 'counter_screen.dart';
 import 'counter_widgets.dart';
 import 'container_demo_page.dart';
@@ -104,6 +105,12 @@ class SampleGalleryScreen extends StatelessWidget {
       title: 'Container',
       subtitle: 'alignment + margin + constraints + transform',
       builder: () => const ContainerDemoPage(),
+    ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.aspectRatio,
+      title: 'AspectRatio + Spacer',
+      subtitle: 'tight ratio layout + flex gap',
+      builder: () => const AspectRatioDemoPage(),
     ),
   ];
 

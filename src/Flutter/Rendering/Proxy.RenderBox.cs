@@ -291,6 +291,105 @@ public sealed class RenderAlign : RenderProxyBox
     }
 }
 
+public sealed class RenderAspectRatio : RenderProxyBox
+{
+    private double _aspectRatio;
+
+    public RenderAspectRatio(double aspectRatio, RenderBox? child = null)
+    {
+        _aspectRatio = ValidateAspectRatio(aspectRatio, nameof(aspectRatio));
+        Child = child;
+    }
+
+    public double AspectRatio
+    {
+        get => _aspectRatio;
+        set
+        {
+            var normalized = ValidateAspectRatio(value, nameof(value));
+            if (Math.Abs(_aspectRatio - normalized) < 0.0001)
+            {
+                return;
+            }
+
+            _aspectRatio = normalized;
+            MarkNeedsLayout();
+        }
+    }
+
+    protected override void PerformLayout()
+    {
+        var computedSize = ComputeSizeForConstraints(Constraints);
+        Size = computedSize;
+
+        if (Child != null)
+        {
+            Child.Layout(BoxConstraints.Tight(computedSize));
+            ((BoxParentData)Child.parentData!).offset = new Point(0, 0);
+        }
+    }
+
+    private Size ComputeSizeForConstraints(BoxConstraints constraints)
+    {
+        if (constraints.IsTight)
+        {
+            return constraints.Smallest;
+        }
+
+        if (double.IsPositiveInfinity(constraints.MaxWidth) &&
+            double.IsPositiveInfinity(constraints.MaxHeight))
+        {
+            throw new InvalidOperationException(
+                "RenderAspectRatio requires at least one bounded axis.");
+        }
+
+        var width = constraints.MaxWidth;
+        var height = width / _aspectRatio;
+
+        if (double.IsPositiveInfinity(width))
+        {
+            height = constraints.MaxHeight;
+            width = height * _aspectRatio;
+        }
+
+        if (width > constraints.MaxWidth)
+        {
+            width = constraints.MaxWidth;
+            height = width / _aspectRatio;
+        }
+
+        if (height > constraints.MaxHeight)
+        {
+            height = constraints.MaxHeight;
+            width = height * _aspectRatio;
+        }
+
+        if (width < constraints.MinWidth)
+        {
+            width = constraints.MinWidth;
+            height = width / _aspectRatio;
+        }
+
+        if (height < constraints.MinHeight)
+        {
+            height = constraints.MinHeight;
+            width = height * _aspectRatio;
+        }
+
+        return constraints.Constrain(new Size(width, height));
+    }
+
+    private static double ValidateAspectRatio(double value, string parameterName)
+    {
+        if (!double.IsFinite(value) || value <= 0)
+        {
+            throw new ArgumentOutOfRangeException(parameterName, "Aspect ratio must be finite and positive.");
+        }
+
+        return value;
+    }
+}
+
 public sealed class RenderColoredBox : RenderProxyBox
 {
     private Color _color;

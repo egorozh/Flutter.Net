@@ -173,6 +173,36 @@ public sealed class ClipRect : SingleChildRenderObjectWidget
     }
 }
 
+public sealed class AspectRatio : SingleChildRenderObjectWidget
+{
+    public AspectRatio(double aspectRatio, Widget? child = null, Key? key = null) : base(child, key)
+    {
+        Ratio = ValidateRatio(aspectRatio, nameof(aspectRatio));
+    }
+
+    public double Ratio { get; }
+
+    internal override RenderObject CreateRenderObject(BuildContext context)
+    {
+        return new RenderAspectRatio(Ratio);
+    }
+
+    internal override void UpdateRenderObject(BuildContext context, RenderObject renderObject)
+    {
+        ((RenderAspectRatio)renderObject).AspectRatio = Ratio;
+    }
+
+    private static double ValidateRatio(double value, string parameterName)
+    {
+        if (!double.IsFinite(value) || value <= 0)
+        {
+            throw new ArgumentOutOfRangeException(parameterName, "Aspect ratio must be finite and positive.");
+        }
+
+        return value;
+    }
+}
+
 public sealed class Container : StatelessWidget
 {
     public Container(
@@ -419,6 +449,28 @@ public sealed class Expanded : Flexible
         fit: FlexFit.Tight,
         key: key)
     {
+    }
+}
+
+public sealed class Spacer : StatelessWidget
+{
+    public Spacer(int flex = 1, Key? key = null) : base(key)
+    {
+        if (flex <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(flex), "Flex must be greater than zero.");
+        }
+
+        Flex = flex;
+    }
+
+    public int Flex { get; }
+
+    public override Widget Build(BuildContext context)
+    {
+        return new Expanded(
+            flex: Flex,
+            child: new SizedBox(width: 0, height: 0));
     }
 }
 
