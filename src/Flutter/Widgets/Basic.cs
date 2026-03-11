@@ -239,6 +239,29 @@ public sealed class SizedOverflowBox : SingleChildRenderObjectWidget
     }
 }
 
+public sealed class Offstage : SingleChildRenderObjectWidget
+{
+    public Offstage(
+        Widget? child = null,
+        bool offstage = true,
+        Key? key = null) : base(child, key)
+    {
+        IsOffstage = offstage;
+    }
+
+    public bool IsOffstage { get; }
+
+    internal override RenderObject CreateRenderObject(BuildContext context)
+    {
+        return new RenderOffstage(offstage: IsOffstage);
+    }
+
+    internal override void UpdateRenderObject(BuildContext context, RenderObject renderObject)
+    {
+        ((RenderOffstage)renderObject).Offstage = IsOffstage;
+    }
+}
+
 public sealed class Padding : SingleChildRenderObjectWidget
 {
     public Padding(Thickness insets, Widget child, Key? key = null) : base(child, key)

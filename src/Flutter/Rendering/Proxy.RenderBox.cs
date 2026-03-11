@@ -555,6 +555,74 @@ public sealed class RenderSizedOverflowBox : RenderProxyBox
     }
 }
 
+public sealed class RenderOffstage : RenderProxyBox
+{
+    private bool _offstage;
+
+    public RenderOffstage(bool offstage = true, RenderBox? child = null)
+    {
+        _offstage = offstage;
+        Child = child;
+    }
+
+    public bool Offstage
+    {
+        get => _offstage;
+        set
+        {
+            if (_offstage == value)
+            {
+                return;
+            }
+
+            _offstage = value;
+            MarkNeedsLayout();
+        }
+    }
+
+    protected override void PerformLayout()
+    {
+        if (_offstage)
+        {
+            if (Child != null)
+            {
+                Child.Layout(Constraints, parentUsesSize: true);
+                ((BoxParentData)Child.parentData!).offset = new Point(0, 0);
+            }
+
+            Size = Constraints.Smallest;
+            return;
+        }
+
+        base.PerformLayout();
+    }
+
+    public override bool HitTest(BoxHitTestResult result, Point position)
+    {
+        return !_offstage && base.HitTest(result, position);
+    }
+
+    public override void Paint(PaintingContext ctx, Point offset)
+    {
+        if (_offstage)
+        {
+            return;
+        }
+
+        base.Paint(ctx, offset);
+    }
+
+    internal override void VisitChildrenForSemantics(Action<RenderObject, Point, Matrix> visitor)
+    {
+        if (_offstage)
+        {
+            return;
+        }
+
+        base.VisitChildrenForSemantics(visitor);
+    }
+}
+
 public sealed class RenderPadding : RenderProxyBox
 {
     private Thickness _padding;

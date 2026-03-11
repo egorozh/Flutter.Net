@@ -15,6 +15,7 @@ import 'list_view_fixed_extent_demo_page.dart';
 import 'list_view_reverse_demo_page.dart';
 import 'list_view_separated_demo_page.dart';
 import 'navigator_demo_page.dart';
+import 'offstage_demo_page.dart';
 import 'overflow_box_demo_page.dart';
 import 'proxy_widgets_demo_page.dart';
 import 'sample_routes.dart';
@@ -140,6 +141,12 @@ class SampleGalleryScreen extends StatelessWidget {
       subtitle: 'constraint override + fixed-size overflow',
       builder: () => const OverflowBoxDemoPage(),
     ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.offstage,
+      title: 'Offstage',
+      subtitle: 'layout-without-paint and zero-space behavior',
+      builder: () => const OffstageDemoPage(),
+    ),
   ];
 
   static final Map<String, SampleRouteDefinition> _demoPageByRoute =
@@ -150,10 +157,12 @@ class SampleGalleryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Navigator(
-      onGenerateRoute: _buildRoute,
-      observers: <NavigatorObserver>[SampleNavigationObservers.pageRoutes],
-      initialRoute: SampleRoutes.menu,
+    return Scaffold(
+      body: Navigator(
+        onGenerateRoute: _buildRoute,
+        observers: <NavigatorObserver>[SampleNavigationObservers.pageRoutes],
+        initialRoute: SampleRoutes.menu,
+      ),
     );
   }
 
