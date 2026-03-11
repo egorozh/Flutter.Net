@@ -255,6 +255,37 @@ public sealed class FractionallySizedBox : SingleChildRenderObjectWidget
     }
 }
 
+public sealed class FittedBox : SingleChildRenderObjectWidget
+{
+    public FittedBox(
+        Widget? child = null,
+        BoxFit fit = BoxFit.Contain,
+        Alignment alignment = default,
+        Key? key = null) : base(child, key)
+    {
+        Fit = fit;
+        Alignment = alignment;
+    }
+
+    public BoxFit Fit { get; }
+
+    public Alignment Alignment { get; }
+
+    internal override RenderObject CreateRenderObject(BuildContext context)
+    {
+        return new RenderFittedBox(
+            fit: Fit,
+            alignment: Alignment);
+    }
+
+    internal override void UpdateRenderObject(BuildContext context, RenderObject renderObject)
+    {
+        var fittedBox = (RenderFittedBox)renderObject;
+        fittedBox.Fit = Fit;
+        fittedBox.Alignment = Alignment;
+    }
+}
+
 public sealed class Container : StatelessWidget
 {
     public Container(

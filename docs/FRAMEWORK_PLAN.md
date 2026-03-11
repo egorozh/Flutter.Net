@@ -117,6 +117,8 @@ Progress update (2026-03-10):
 - Added sample parity route/page in both C# and Dart sample galleries for interactive `AspectRatio` and `Spacer` behavior checks.
 - Hardened `Spacer` demo observability and coverage: updated parity demo to compare two spacer slots with asymmetric flex and added regression coverage for proportional `RenderFlex` distribution across two spacer allocations.
 - Added fractional sizing baseline in framework widget layer: `FractionallySizedBox` over new `RenderFractionallySizedBox` with bounded-axis factor constraints and alignment-aware child placement, plus parity sample route/page in both C# and Dart galleries.
+- Added fitted scaling baseline in framework widget layer: `FittedBox` over new `RenderFittedBox` with `BoxFit` sizing semantics, transform-aware paint/hit-test mapping, and alignment-controlled placement.
+- Added sample parity route/page in both C# and Dart sample galleries for interactive `FittedBox` (`contain/cover/fill/none/scaleDown`) and alignment checks.
 
 Exit criteria:
 

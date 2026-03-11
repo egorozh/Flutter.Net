@@ -35,6 +35,7 @@ internal static class SampleRoutes
     public const string Container = "/container";
     public const string AspectRatio = "/aspect-ratio";
     public const string FractionallySizedBox = "/fractionally-sized-box";
+    public const string FittedBox = "/fitted-box";
 }
 
 internal readonly record struct SampleRouteDefinition(
@@ -63,6 +64,7 @@ internal sealed class SampleGalleryScreen : StatelessWidget
         new(SampleRoutes.Container, "Container", "alignment + margin + constraints + transform", () => new ContainerDemoPage()),
         new(SampleRoutes.AspectRatio, "AspectRatio + Spacer", "tight ratio layout + flex gap", () => new AspectRatioDemoPage()),
         new(SampleRoutes.FractionallySizedBox, "FractionallySizedBox", "fractional constraints + alignment", () => new FractionallySizedBoxDemoPage()),
+        new(SampleRoutes.FittedBox, "FittedBox", "box-fit scaling + alignment", () => new FittedBoxDemoPage()),
     ];
 
     private static readonly IReadOnlyDictionary<string, SampleRouteDefinition> DemoPageByRoute =

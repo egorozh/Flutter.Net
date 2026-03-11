@@ -514,6 +514,167 @@ public sealed class RenderFractionallySizedBox : RenderProxyBox
     }
 }
 
+public sealed class RenderFittedBox : RenderProxyBox
+{
+    private BoxFit _fit;
+    private Alignment _alignment;
+    private Matrix _transform = Matrix.Identity;
+    private bool _paintDataDirty = true;
+
+    public RenderFittedBox(
+        BoxFit fit = BoxFit.Contain,
+        Alignment alignment = default,
+        RenderBox? child = null)
+    {
+        _fit = fit;
+        _alignment = alignment;
+        Child = child;
+    }
+
+    public BoxFit Fit
+    {
+        get => _fit;
+        set
+        {
+            if (_fit == value)
+            {
+                return;
+            }
+
+            _fit = value;
+            _paintDataDirty = true;
+            MarkNeedsLayout();
+            MarkNeedsSemanticsUpdate();
+        }
+    }
+
+    public Alignment Alignment
+    {
+        get => _alignment;
+        set
+        {
+            if (_alignment == value)
+            {
+                return;
+            }
+
+            _alignment = value;
+            _paintDataDirty = true;
+            MarkNeedsPaint();
+            MarkNeedsSemanticsUpdate();
+        }
+    }
+
+    protected override void PerformLayout()
+    {
+        if (Child != null)
+        {
+            Child.Layout(
+                new BoxConstraints(
+                    MaxWidth: double.PositiveInfinity,
+                    MaxHeight: double.PositiveInfinity),
+                parentUsesSize: true);
+
+            Size = _fit switch
+            {
+                BoxFit.ScaleDown => Constraints.Constrain(
+                    Constraints.Loosen().ConstrainSizeAndAttemptToPreserveAspectRatio(Child.Size)),
+                _ => Constraints.ConstrainSizeAndAttemptToPreserveAspectRatio(Child.Size)
+            };
+
+            ((BoxParentData)Child.parentData!).offset = new Point(0, 0);
+        }
+        else
+        {
+            Size = Constraints.Smallest;
+        }
+
+        _paintDataDirty = true;
+    }
+
+    public override void Paint(PaintingContext ctx, Point offset)
+    {
+        if (Child == null || Size.Width <= 0 || Size.Height <= 0 || Child.Size.Width <= 0 || Child.Size.Height <= 0)
+        {
+            return;
+        }
+
+        UpdatePaintData();
+        ctx.PushTransform(Matrix.CreateTranslation(offset.X, offset.Y), translatedContext =>
+        {
+            translatedContext.PushTransform(_transform, transformedContext =>
+            {
+                transformedContext.PaintChild(Child, new Point(0, 0));
+            });
+        });
+    }
+
+    protected override bool HitTestChildren(BoxHitTestResult result, Point position)
+    {
+        if (Child == null || Size.Width <= 0 || Size.Height <= 0 || Child.Size.Width <= 0 || Child.Size.Height <= 0)
+        {
+            return false;
+        }
+
+        UpdatePaintData();
+        if (!_transform.TryInvert(out var inverse))
+        {
+            return false;
+        }
+
+        var transformedPosition = inverse.Transform(position);
+        return Child.HitTest(result, transformedPosition);
+    }
+
+    internal override void VisitChildrenForSemantics(Action<RenderObject, Point, Matrix> visitor)
+    {
+        if (Child == null)
+        {
+            return;
+        }
+
+        UpdatePaintData();
+        visitor(Child, new Point(0, 0), _transform);
+    }
+
+    private void UpdatePaintData()
+    {
+        if (!_paintDataDirty)
+        {
+            return;
+        }
+
+        _paintDataDirty = false;
+        if (Child == null)
+        {
+            _transform = Matrix.Identity;
+            return;
+        }
+
+        var childSize = Child.Size;
+        var fittedSizes = BoxFitUtils.ApplyBoxFit(_fit, childSize, Size);
+        var sourceSize = fittedSizes.Source;
+        var destinationSize = fittedSizes.Destination;
+
+        if (sourceSize.Width <= 0.0 || sourceSize.Height <= 0.0 ||
+            destinationSize.Width <= 0.0 || destinationSize.Height <= 0.0)
+        {
+            _transform = Matrix.Identity;
+            return;
+        }
+
+        var sourceOffset = _alignment.AlongOffset(childSize, sourceSize);
+        var destinationOffset = _alignment.AlongOffset(Size, destinationSize);
+        var scaleX = destinationSize.Width / sourceSize.Width;
+        var scaleY = destinationSize.Height / sourceSize.Height;
+
+        _transform =
+            Matrix.CreateTranslation(destinationOffset.X, destinationOffset.Y)
+            * new Matrix(scaleX, 0, 0, scaleY, 0, 0)
+            * Matrix.CreateTranslation(-sourceOffset.X, -sourceOffset.Y);
+    }
+}
+
 public sealed class RenderColoredBox : RenderProxyBox
 {
     private Color _color;
