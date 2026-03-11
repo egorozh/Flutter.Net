@@ -14,7 +14,7 @@ Status legend:
 
 | Feature | C# sample | Dart sample | Status | Notes |
 | --- | --- | --- | --- | --- |
-| App bootstrap | `src/Sample/Flutter.Net/CounterApp.cs` | `dart_sample/lib/counter_app.dart` | done | Counter model + scope app root present on both sides. |
+| App bootstrap | `src/Sample/Flutter.Net/CounterApp.cs` | `dart_sample/lib/counter_app.dart` | done | Counter model + scope app root present on both sides; C# root now injects Material-like `DefaultTextStyle` baseline (`14/1.43/0.25`, macOS `.AppleSystemUIFont`) to mirror Dart `MaterialApp` text inheritance more closely. |
 | Route constants + route data | `src/Sample/Flutter.Net/SampleGalleryScreen.cs` | `dart_sample/lib/sample_routes.dart` | done | Same route set including navigator details route. |
 | Sample gallery menu | `src/Sample/Flutter.Net/SampleGalleryScreen.cs` | `dart_sample/lib/sample_gallery_screen.dart` | done | Same demo page set and menu flow. |
 | Counter page | `src/Sample/Flutter.Net/CounterScreen.cs` | `dart_sample/lib/counter_screen.dart` | verify-runtime | Structural match; shared counter button labels now include widget-level centered text alignment parity. |

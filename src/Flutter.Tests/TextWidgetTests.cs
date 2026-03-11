@@ -96,6 +96,66 @@ public sealed class TextWidgetTests
             $"Expected unbounded text width above 1000, got {paragraph.Size.Width:0.##}.");
     }
 
+    [Fact]
+    public void TextWidget_InheritsAndOverrides_DefaultTextStyle()
+    {
+        var owner = new BuildOwner();
+        var style1 = new TextStyle(
+            FontFamily: new FontFamily("Arial"),
+            FontSize: 15,
+            Color: Colors.DarkSlateBlue,
+            FontWeight: FontWeight.SemiBold,
+            FontStyle: FontStyle.Normal,
+            Height: 1.4,
+            LetterSpacing: 0.4);
+
+        var root = new TestRootElement(
+            new DefaultTextStyle(
+                style: style1,
+                child: new Text("alpha")));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var paragraph = RequireRenderObject<RenderParagraph>(root.ChildElement);
+        Assert.Equal(style1.FontFamily, paragraph.FontFamily);
+        Assert.Equal(15, paragraph.FontSize);
+        Assert.Equal(FontWeight.SemiBold, paragraph.FontWeight);
+        Assert.Equal(FontStyle.Normal, paragraph.FontStyle);
+        Assert.Equal(1.4, paragraph.Height);
+        Assert.Equal(0.4, paragraph.LetterSpacing);
+        Assert.Equal(style1.Color, Assert.IsType<SolidColorBrush>(paragraph.Foreground).Color);
+
+        var style2 = new TextStyle(
+            FontFamily: new FontFamily("Times New Roman"),
+            FontSize: 18,
+            Color: Colors.DarkGreen,
+            FontWeight: FontWeight.Bold,
+            FontStyle: FontStyle.Italic,
+            Height: 1.6,
+            LetterSpacing: 1.2);
+
+        root.Update(
+            new DefaultTextStyle(
+                style: style2,
+                child: new Text(
+                    "alpha",
+                    color: Colors.Blue,
+                    letterSpacing: 0)));
+        owner.FlushBuild();
+
+        var updated = RequireRenderObject<RenderParagraph>(root.ChildElement);
+        Assert.Same(paragraph, updated);
+        Assert.Equal(style2.FontFamily, updated.FontFamily);
+        Assert.Equal(18, updated.FontSize);
+        Assert.Equal(FontWeight.Bold, updated.FontWeight);
+        Assert.Equal(FontStyle.Italic, updated.FontStyle);
+        Assert.Equal(1.6, updated.Height);
+        Assert.Equal(0, updated.LetterSpacing);
+        Assert.Equal(Colors.Blue, Assert.IsType<SolidColorBrush>(updated.Foreground).Color);
+    }
+
     private static T RequireRenderObject<T>(Element? element) where T : RenderObject
     {
         Assert.NotNull(element);

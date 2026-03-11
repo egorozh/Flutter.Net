@@ -15,8 +15,9 @@ public sealed class Text : LeafRenderObjectWidget
         Color? color = null,
         FontWeight? fontWeight = null,
         FontStyle? fontStyle = null,
+        FontFamily? fontFamily = null,
         double? height = null,
-        double letterSpacing = 0,
+        double? letterSpacing = null,
         TextAlign textAlign = TextAlign.Start,
         bool softWrap = true,
         int? maxLines = null,
@@ -29,6 +30,7 @@ public sealed class Text : LeafRenderObjectWidget
         Color = color;
         FontWeight = fontWeight;
         FontStyle = fontStyle;
+        FontFamily = fontFamily;
         Height = height;
         LetterSpacing = letterSpacing;
         TextAlign = textAlign;
@@ -48,9 +50,11 @@ public sealed class Text : LeafRenderObjectWidget
 
     public FontStyle? FontStyle { get; }
 
+    public FontFamily? FontFamily { get; }
+
     public double? Height { get; }
 
-    public double LetterSpacing { get; }
+    public double? LetterSpacing { get; }
 
     public TextAlign TextAlign { get; }
 
@@ -64,36 +68,40 @@ public sealed class Text : LeafRenderObjectWidget
 
     internal override RenderObject CreateRenderObject(BuildContext context)
     {
-        return new RenderParagraph(Data)
+        var paragraph = new RenderParagraph(Data)
         {
-            FontSize = FontSize ?? 14,
-            Foreground = new SolidColorBrush(Color ?? Colors.Black),
-            FontWeight = FontWeight ?? Avalonia.Media.FontWeight.Normal,
-            FontStyle = FontStyle ?? Avalonia.Media.FontStyle.Normal,
-            Height = Height,
-            LetterSpacing = LetterSpacing,
             TextAlign = TextAlign,
             SoftWrap = SoftWrap,
             MaxLines = MaxLines,
             Overflow = Overflow,
             TextDirection = TextDirection
         };
+
+        ApplyResolvedTextStyle(context, paragraph);
+        return paragraph;
     }
 
     internal override void UpdateRenderObject(BuildContext context, RenderObject renderObject)
     {
         var paragraph = (RenderParagraph)renderObject;
         paragraph.Text = Data;
-        paragraph.FontSize = FontSize ?? 14;
-        paragraph.Foreground = new SolidColorBrush(Color ?? Colors.Black);
-        paragraph.FontWeight = FontWeight ?? Avalonia.Media.FontWeight.Normal;
-        paragraph.FontStyle = FontStyle ?? Avalonia.Media.FontStyle.Normal;
-        paragraph.Height = Height;
-        paragraph.LetterSpacing = LetterSpacing;
+        ApplyResolvedTextStyle(context, paragraph);
         paragraph.TextAlign = TextAlign;
         paragraph.SoftWrap = SoftWrap;
         paragraph.MaxLines = MaxLines;
         paragraph.Overflow = Overflow;
         paragraph.TextDirection = TextDirection;
+    }
+
+    private void ApplyResolvedTextStyle(BuildContext context, RenderParagraph paragraph)
+    {
+        var defaultTextStyle = DefaultTextStyle.Of(context);
+        paragraph.FontFamily = FontFamily ?? defaultTextStyle.FontFamily ?? Avalonia.Media.FontFamily.Default;
+        paragraph.FontSize = FontSize ?? defaultTextStyle.FontSize ?? 14;
+        paragraph.Foreground = new SolidColorBrush(Color ?? defaultTextStyle.Color ?? Colors.Black);
+        paragraph.FontWeight = FontWeight ?? defaultTextStyle.FontWeight ?? Avalonia.Media.FontWeight.Normal;
+        paragraph.FontStyle = FontStyle ?? defaultTextStyle.FontStyle ?? Avalonia.Media.FontStyle.Normal;
+        paragraph.Height = Height ?? defaultTextStyle.Height;
+        paragraph.LetterSpacing = LetterSpacing ?? defaultTextStyle.LetterSpacing ?? 0;
     }
 }
