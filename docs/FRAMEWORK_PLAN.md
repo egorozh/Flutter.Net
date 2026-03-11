@@ -121,6 +121,8 @@ Progress update (2026-03-10):
 - Added sample parity route/page in both C# and Dart sample galleries for interactive `FittedBox` (`contain/cover/fill/none/scaleDown`) and alignment checks.
 - Added unconstrained/limited constraints baseline in framework widget layer: `UnconstrainedBox` over `RenderUnconstrainedBox` (axis-specific unconstraining + alignment) and `LimitedBox` over `RenderLimitedBox` (max clamp applied only on unbounded axes).
 - Added sample parity route/page in both C# and Dart sample galleries for interactive `UnconstrainedBox + LimitedBox` behavior checks (`constrainedAxis` and `maxWidth/maxHeight`).
+- Added overflow constraints baseline in framework widget layer: `OverflowBox` over `RenderConstrainedOverflowBox` (optional min/max overrides + `OverflowBoxFit` sizing mode) and `SizedOverflowBox` over `RenderSizedOverflowBox` (fixed own size with parent constraints passed through to child).
+- Added sample parity route/page in both C# and Dart sample galleries for interactive `OverflowBox + SizedOverflowBox` behavior checks (`fit`, `alignment`, override max constraints, requested own size).
 
 Exit criteria:
 

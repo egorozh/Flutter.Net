@@ -37,6 +37,7 @@ internal static class SampleRoutes
     public const string FractionallySizedBox = "/fractionally-sized-box";
     public const string FittedBox = "/fitted-box";
     public const string UnconstrainedLimitedBox = "/unconstrained-limited-box";
+    public const string OverflowBox = "/overflow-box";
 }
 
 internal readonly record struct SampleRouteDefinition(
@@ -67,6 +68,7 @@ internal sealed class SampleGalleryScreen : StatelessWidget
         new(SampleRoutes.FractionallySizedBox, "FractionallySizedBox", "fractional constraints + alignment", () => new FractionallySizedBoxDemoPage()),
         new(SampleRoutes.FittedBox, "FittedBox", "box-fit scaling + alignment", () => new FittedBoxDemoPage()),
         new(SampleRoutes.UnconstrainedLimitedBox, "UnconstrainedBox + LimitedBox", "axis unconstraint + unbounded max clamps", () => new UnconstrainedLimitedBoxDemoPage()),
+        new(SampleRoutes.OverflowBox, "OverflowBox + SizedOverflowBox", "constraint override + fixed-size overflow", () => new OverflowBoxDemoPage()),
     ];
 
     private static readonly IReadOnlyDictionary<string, SampleRouteDefinition> DemoPageByRoute =

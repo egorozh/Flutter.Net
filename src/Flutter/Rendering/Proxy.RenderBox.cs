@@ -302,6 +302,259 @@ public sealed class RenderLimitedBox : RenderProxyBox
     }
 }
 
+public enum OverflowBoxFit
+{
+    Max,
+    DeferToChild
+}
+
+public sealed class RenderConstrainedOverflowBox : RenderProxyBox
+{
+    private Alignment _alignment;
+    private double? _minWidth;
+    private double? _maxWidth;
+    private double? _minHeight;
+    private double? _maxHeight;
+    private OverflowBoxFit _fit;
+
+    public RenderConstrainedOverflowBox(
+        Alignment alignment = default,
+        double? minWidth = null,
+        double? maxWidth = null,
+        double? minHeight = null,
+        double? maxHeight = null,
+        OverflowBoxFit fit = OverflowBoxFit.Max,
+        RenderBox? child = null)
+    {
+        _alignment = alignment;
+        _minWidth = ValidateConstraint(minWidth, nameof(minWidth));
+        _maxWidth = ValidateConstraint(maxWidth, nameof(maxWidth));
+        _minHeight = ValidateConstraint(minHeight, nameof(minHeight));
+        _maxHeight = ValidateConstraint(maxHeight, nameof(maxHeight));
+        ValidateRanges(_minWidth, _maxWidth, nameof(minWidth), nameof(maxWidth));
+        ValidateRanges(_minHeight, _maxHeight, nameof(minHeight), nameof(maxHeight));
+        _fit = fit;
+        Child = child;
+    }
+
+    public Alignment Alignment
+    {
+        get => _alignment;
+        set
+        {
+            if (_alignment == value)
+            {
+                return;
+            }
+
+            _alignment = value;
+            MarkNeedsLayout();
+        }
+    }
+
+    public double? MinWidth
+    {
+        get => _minWidth;
+        set
+        {
+            var normalized = ValidateConstraint(value, nameof(value));
+            ValidateRanges(normalized, _maxWidth, nameof(value), nameof(MaxWidth));
+            if (_minWidth == normalized)
+            {
+                return;
+            }
+
+            _minWidth = normalized;
+            MarkNeedsLayout();
+        }
+    }
+
+    public double? MaxWidth
+    {
+        get => _maxWidth;
+        set
+        {
+            var normalized = ValidateConstraint(value, nameof(value));
+            ValidateRanges(_minWidth, normalized, nameof(MinWidth), nameof(value));
+            if (_maxWidth == normalized)
+            {
+                return;
+            }
+
+            _maxWidth = normalized;
+            MarkNeedsLayout();
+        }
+    }
+
+    public double? MinHeight
+    {
+        get => _minHeight;
+        set
+        {
+            var normalized = ValidateConstraint(value, nameof(value));
+            ValidateRanges(normalized, _maxHeight, nameof(value), nameof(MaxHeight));
+            if (_minHeight == normalized)
+            {
+                return;
+            }
+
+            _minHeight = normalized;
+            MarkNeedsLayout();
+        }
+    }
+
+    public double? MaxHeight
+    {
+        get => _maxHeight;
+        set
+        {
+            var normalized = ValidateConstraint(value, nameof(value));
+            ValidateRanges(_minHeight, normalized, nameof(MinHeight), nameof(value));
+            if (_maxHeight == normalized)
+            {
+                return;
+            }
+
+            _maxHeight = normalized;
+            MarkNeedsLayout();
+        }
+    }
+
+    public OverflowBoxFit Fit
+    {
+        get => _fit;
+        set
+        {
+            if (_fit == value)
+            {
+                return;
+            }
+
+            _fit = value;
+            MarkNeedsLayout();
+        }
+    }
+
+    protected override void PerformLayout()
+    {
+        if (Child != null)
+        {
+            Child.Layout(GetInnerConstraints(Constraints), parentUsesSize: true);
+            Size = _fit switch
+            {
+                OverflowBoxFit.Max => Constraints.Biggest,
+                OverflowBoxFit.DeferToChild => Constraints.Constrain(Child.Size),
+                _ => throw new ArgumentOutOfRangeException()
+            };
+            ((BoxParentData)Child.parentData!).offset = _alignment.AlongOffset(Size, Child.Size);
+            return;
+        }
+
+        Size = _fit switch
+        {
+            OverflowBoxFit.Max => Constraints.Biggest,
+            OverflowBoxFit.DeferToChild => Constraints.Smallest,
+            _ => throw new ArgumentOutOfRangeException()
+        };
+    }
+
+    private BoxConstraints GetInnerConstraints(BoxConstraints constraints)
+    {
+        return new BoxConstraints(
+            MinWidth: _minWidth ?? constraints.MinWidth,
+            MaxWidth: _maxWidth ?? constraints.MaxWidth,
+            MinHeight: _minHeight ?? constraints.MinHeight,
+            MaxHeight: _maxHeight ?? constraints.MaxHeight);
+    }
+
+    private static double? ValidateConstraint(double? value, string parameterName)
+    {
+        if (!value.HasValue)
+        {
+            return null;
+        }
+
+        if (double.IsNaN(value.Value) || value.Value < 0)
+        {
+            throw new ArgumentOutOfRangeException(parameterName, "Constraint value must be non-negative.");
+        }
+
+        return value.Value;
+    }
+
+    private static void ValidateRanges(
+        double? minValue,
+        double? maxValue,
+        string minName,
+        string maxName)
+    {
+        if (minValue.HasValue && maxValue.HasValue && minValue.Value > maxValue.Value)
+        {
+            throw new ArgumentOutOfRangeException(
+                minName,
+                $"{minName} cannot be greater than {maxName}.");
+        }
+    }
+}
+
+public sealed class RenderSizedOverflowBox : RenderProxyBox
+{
+    private Alignment _alignment;
+    private Size _requestedSize;
+
+    public RenderSizedOverflowBox(
+        Size requestedSize,
+        Alignment alignment = default,
+        RenderBox? child = null)
+    {
+        _requestedSize = requestedSize;
+        _alignment = alignment;
+        Child = child;
+    }
+
+    public Alignment Alignment
+    {
+        get => _alignment;
+        set
+        {
+            if (_alignment == value)
+            {
+                return;
+            }
+
+            _alignment = value;
+            MarkNeedsLayout();
+        }
+    }
+
+    public Size RequestedSize
+    {
+        get => _requestedSize;
+        set
+        {
+            if (_requestedSize == value)
+            {
+                return;
+            }
+
+            _requestedSize = value;
+            MarkNeedsLayout();
+        }
+    }
+
+    protected override void PerformLayout()
+    {
+        Size = Constraints.Constrain(_requestedSize);
+        if (Child == null)
+        {
+            return;
+        }
+
+        Child.Layout(Constraints, parentUsesSize: true);
+        ((BoxParentData)Child.parentData!).offset = _alignment.AlongOffset(Size, Child.Size);
+    }
+}
+
 public sealed class RenderPadding : RenderProxyBox
 {
     private Thickness _padding;

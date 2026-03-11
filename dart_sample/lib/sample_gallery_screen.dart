@@ -15,6 +15,7 @@ import 'list_view_fixed_extent_demo_page.dart';
 import 'list_view_reverse_demo_page.dart';
 import 'list_view_separated_demo_page.dart';
 import 'navigator_demo_page.dart';
+import 'overflow_box_demo_page.dart';
 import 'proxy_widgets_demo_page.dart';
 import 'sample_routes.dart';
 import 'scrollbar_demo_page.dart';
@@ -132,6 +133,12 @@ class SampleGalleryScreen extends StatelessWidget {
       title: 'UnconstrainedBox + LimitedBox',
       subtitle: 'axis unconstraint + unbounded max clamps',
       builder: () => const UnconstrainedLimitedBoxDemoPage(),
+    ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.overflowBox,
+      title: 'OverflowBox + SizedOverflowBox',
+      subtitle: 'constraint override + fixed-size overflow',
+      builder: () => const OverflowBoxDemoPage(),
     ),
   ];
 

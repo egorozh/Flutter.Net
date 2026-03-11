@@ -122,6 +122,123 @@ public sealed class LimitedBox : SingleChildRenderObjectWidget
     }
 }
 
+public sealed class OverflowBox : SingleChildRenderObjectWidget
+{
+    public OverflowBox(
+        Widget? child = null,
+        Alignment alignment = default,
+        double? minWidth = null,
+        double? maxWidth = null,
+        double? minHeight = null,
+        double? maxHeight = null,
+        OverflowBoxFit fit = OverflowBoxFit.Max,
+        Key? key = null) : base(child, key)
+    {
+        MinWidth = ValidateConstraint(minWidth, nameof(minWidth));
+        MaxWidth = ValidateConstraint(maxWidth, nameof(maxWidth));
+        MinHeight = ValidateConstraint(minHeight, nameof(minHeight));
+        MaxHeight = ValidateConstraint(maxHeight, nameof(maxHeight));
+        ValidateRanges(MinWidth, MaxWidth, nameof(minWidth), nameof(maxWidth));
+        ValidateRanges(MinHeight, MaxHeight, nameof(minHeight), nameof(maxHeight));
+        Alignment = alignment;
+        Fit = fit;
+    }
+
+    public Alignment Alignment { get; }
+
+    public double? MinWidth { get; }
+
+    public double? MaxWidth { get; }
+
+    public double? MinHeight { get; }
+
+    public double? MaxHeight { get; }
+
+    public OverflowBoxFit Fit { get; }
+
+    internal override RenderObject CreateRenderObject(BuildContext context)
+    {
+        return new RenderConstrainedOverflowBox(
+            alignment: Alignment,
+            minWidth: MinWidth,
+            maxWidth: MaxWidth,
+            minHeight: MinHeight,
+            maxHeight: MaxHeight,
+            fit: Fit);
+    }
+
+    internal override void UpdateRenderObject(BuildContext context, RenderObject renderObject)
+    {
+        var overflowBox = (RenderConstrainedOverflowBox)renderObject;
+        overflowBox.Alignment = Alignment;
+        overflowBox.MinWidth = MinWidth;
+        overflowBox.MaxWidth = MaxWidth;
+        overflowBox.MinHeight = MinHeight;
+        overflowBox.MaxHeight = MaxHeight;
+        overflowBox.Fit = Fit;
+    }
+
+    private static double? ValidateConstraint(double? value, string parameterName)
+    {
+        if (!value.HasValue)
+        {
+            return null;
+        }
+
+        if (double.IsNaN(value.Value) || value.Value < 0)
+        {
+            throw new ArgumentOutOfRangeException(parameterName, "Constraint value must be non-negative.");
+        }
+
+        return value.Value;
+    }
+
+    private static void ValidateRanges(
+        double? minValue,
+        double? maxValue,
+        string minName,
+        string maxName)
+    {
+        if (minValue.HasValue && maxValue.HasValue && minValue.Value > maxValue.Value)
+        {
+            throw new ArgumentOutOfRangeException(
+                minName,
+                $"{minName} cannot be greater than {maxName}.");
+        }
+    }
+}
+
+public sealed class SizedOverflowBox : SingleChildRenderObjectWidget
+{
+    public SizedOverflowBox(
+        Size size,
+        Widget? child = null,
+        Alignment alignment = default,
+        Key? key = null) : base(child, key)
+    {
+        Size = size;
+        Alignment = alignment;
+    }
+
+    public Size Size { get; }
+
+    public Alignment Alignment { get; }
+
+    internal override RenderObject CreateRenderObject(BuildContext context)
+    {
+        return new RenderSizedOverflowBox(
+            requestedSize: Size,
+            alignment: Alignment);
+    }
+
+    internal override void UpdateRenderObject(BuildContext context, RenderObject renderObject)
+    {
+        var sizedOverflowBox = (RenderSizedOverflowBox)renderObject;
+        sizedOverflowBox.RequestedSize = Size;
+        sizedOverflowBox.Alignment = Alignment;
+    }
+}
+
 public sealed class Padding : SingleChildRenderObjectWidget
 {
     public Padding(Thickness insets, Widget child, Key? key = null) : base(child, key)

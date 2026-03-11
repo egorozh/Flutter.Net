@@ -30,6 +30,7 @@ class SampleRoutes {
   static const String fractionallySizedBox = '/fractionally-sized-box';
   static const String fittedBox = '/fitted-box';
   static const String unconstrainedLimitedBox = '/unconstrained-limited-box';
+  static const String overflowBox = '/overflow-box';
 }
 
 class SampleRouteDefinition {
