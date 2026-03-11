@@ -281,20 +281,16 @@ public sealed class RenderParagraph : RenderBox
 
         try
         {
-            _layout = new TextLayout(
-                text: _text,
-                typeface: typeface,
-                fontSize: _fontSize,
-                foreground: _foreground,
-                textAlignment: ResolveTextAlignment(_textAlign, _textDirection),
-                textWrapping: _softWrap ? TextWrapping.Wrap : TextWrapping.NoWrap,
-                textTrimming: ResolveTextTrimming(_overflow),
-                flowDirection: _textDirection == TextDirection.Rtl ? FlowDirection.RightToLeft : FlowDirection.LeftToRight,
-                maxWidth: maxWidth,
-                maxHeight: maxHeight,
-                lineHeight: lineHeight,
-                letterSpacing: _letterSpacing,
-                maxLines: _maxLines ?? 0);
+            _layout = CreateTextLayout(typeface, maxWidth, maxHeight, lineHeight);
+
+            if (ShouldTightenAlignedWidth(_layout, maxWidth))
+            {
+                var tightenedWidth = Math.Max(0, Math.Min(maxWidth, _layout.WidthIncludingTrailingWhitespace));
+                if (tightenedWidth > 0)
+                {
+                    _layout = CreateTextLayout(typeface, tightenedWidth, maxHeight, lineHeight);
+                }
+            }
 
             Size = Constraints.Constrain(new Size(_layout.Width, _layout.Height));
         }
@@ -308,6 +304,50 @@ public sealed class RenderParagraph : RenderBox
                 _height,
                 _letterSpacing));
         }
+    }
+
+    private TextLayout CreateTextLayout(Typeface typeface, double maxWidth, double maxHeight, double lineHeight)
+    {
+        return new TextLayout(
+            text: _text,
+            typeface: typeface,
+            fontSize: _fontSize,
+            foreground: _foreground,
+            textAlignment: ResolveTextAlignment(_textAlign, _textDirection),
+            textWrapping: _softWrap ? TextWrapping.Wrap : TextWrapping.NoWrap,
+            textTrimming: ResolveTextTrimming(_overflow),
+            flowDirection: _textDirection == TextDirection.Rtl ? FlowDirection.RightToLeft : FlowDirection.LeftToRight,
+            maxWidth: maxWidth,
+            maxHeight: maxHeight,
+            lineHeight: lineHeight,
+            letterSpacing: _letterSpacing,
+            maxLines: _maxLines ?? 0);
+    }
+
+    private bool ShouldTightenAlignedWidth(TextLayout layout, double maxWidth)
+    {
+        if (!double.IsFinite(maxWidth) || maxWidth <= 0)
+        {
+            return false;
+        }
+
+        if (Constraints.MinWidth >= maxWidth - 0.01)
+        {
+            return false;
+        }
+
+        if (_textAlign is not (TextAlign.Center or TextAlign.Right or TextAlign.End))
+        {
+            return false;
+        }
+
+        if (string.IsNullOrEmpty(_text))
+        {
+            return false;
+        }
+
+        var firstGlyph = layout.HitTestTextPosition(0);
+        return firstGlyph.X > 0.01;
     }
 
     public override void Paint(PaintingContext ctx, Point offset)
