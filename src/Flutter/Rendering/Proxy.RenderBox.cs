@@ -390,6 +390,130 @@ public sealed class RenderAspectRatio : RenderProxyBox
     }
 }
 
+public sealed class RenderFractionallySizedBox : RenderProxyBox
+{
+    private Alignment _alignment;
+    private double? _widthFactor;
+    private double? _heightFactor;
+
+    public RenderFractionallySizedBox(
+        Alignment alignment = default,
+        double? widthFactor = null,
+        double? heightFactor = null,
+        RenderBox? child = null)
+    {
+        _alignment = alignment;
+        _widthFactor = ValidateFactor(widthFactor, nameof(widthFactor));
+        _heightFactor = ValidateFactor(heightFactor, nameof(heightFactor));
+        Child = child;
+    }
+
+    public Alignment Alignment
+    {
+        get => _alignment;
+        set
+        {
+            if (_alignment == value)
+            {
+                return;
+            }
+
+            _alignment = value;
+            MarkNeedsLayout();
+        }
+    }
+
+    public double? WidthFactor
+    {
+        get => _widthFactor;
+        set
+        {
+            var normalized = ValidateFactor(value, nameof(value));
+            if (_widthFactor == normalized)
+            {
+                return;
+            }
+
+            _widthFactor = normalized;
+            MarkNeedsLayout();
+        }
+    }
+
+    public double? HeightFactor
+    {
+        get => _heightFactor;
+        set
+        {
+            var normalized = ValidateFactor(value, nameof(value));
+            if (_heightFactor == normalized)
+            {
+                return;
+            }
+
+            _heightFactor = normalized;
+            MarkNeedsLayout();
+        }
+    }
+
+    protected override void PerformLayout()
+    {
+        if (Child != null)
+        {
+            var innerConstraints = GetInnerConstraints(Constraints);
+            Child.Layout(innerConstraints, parentUsesSize: true);
+            Size = Constraints.Constrain(Child.Size);
+            ((BoxParentData)Child.parentData!).offset = _alignment.AlongOffset(Size, Child.Size);
+            return;
+        }
+
+        Size = Constraints.Constrain(GetInnerConstraints(Constraints).Constrain(new Size()));
+    }
+
+    private BoxConstraints GetInnerConstraints(BoxConstraints constraints)
+    {
+        var minWidth = constraints.MinWidth;
+        var maxWidth = constraints.MaxWidth;
+
+        if (_widthFactor.HasValue && double.IsFinite(maxWidth))
+        {
+            var width = maxWidth * _widthFactor.Value;
+            minWidth = width;
+            maxWidth = width;
+        }
+
+        var minHeight = constraints.MinHeight;
+        var maxHeight = constraints.MaxHeight;
+
+        if (_heightFactor.HasValue && double.IsFinite(maxHeight))
+        {
+            var height = maxHeight * _heightFactor.Value;
+            minHeight = height;
+            maxHeight = height;
+        }
+
+        return new BoxConstraints(
+            MinWidth: minWidth,
+            MaxWidth: maxWidth,
+            MinHeight: minHeight,
+            MaxHeight: maxHeight);
+    }
+
+    private static double? ValidateFactor(double? value, string parameterName)
+    {
+        if (!value.HasValue)
+        {
+            return null;
+        }
+
+        if (!double.IsFinite(value.Value) || value.Value < 0)
+        {
+            throw new ArgumentOutOfRangeException(parameterName, "Factor must be finite and non-negative.");
+        }
+
+        return value.Value;
+    }
+}
+
 public sealed class RenderColoredBox : RenderProxyBox
 {
     private Color _color;

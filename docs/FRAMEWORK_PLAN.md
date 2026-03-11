@@ -115,6 +115,8 @@ Progress update (2026-03-10):
 - Extended `Container` composition baseline with `alignment`, `margin`, `constraints`, and `transform` support (including Flutter-like width/height tightening against explicit constraints), plus parity sample route/page updates in both C# and Dart galleries.
 - Added ratio/flex layout primitive baseline in framework widget layer: `AspectRatio` over new `RenderAspectRatio` plus `Spacer` (expanded tight-flex gap helper), with regression coverage for ratio sizing, widget update wiring, and flex parent-data propagation.
 - Added sample parity route/page in both C# and Dart sample galleries for interactive `AspectRatio` and `Spacer` behavior checks.
+- Hardened `Spacer` demo observability and coverage: updated parity demo to compare two spacer slots with asymmetric flex and added regression coverage for proportional `RenderFlex` distribution across two spacer allocations.
+- Added fractional sizing baseline in framework widget layer: `FractionallySizedBox` over new `RenderFractionallySizedBox` with bounded-axis factor constraints and alignment-aware child placement, plus parity sample route/page in both C# and Dart galleries.
 
 Exit criteria:
 

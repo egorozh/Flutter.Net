@@ -203,6 +203,58 @@ public sealed class AspectRatio : SingleChildRenderObjectWidget
     }
 }
 
+public sealed class FractionallySizedBox : SingleChildRenderObjectWidget
+{
+    public FractionallySizedBox(
+        Widget? child = null,
+        Alignment alignment = default,
+        double? widthFactor = null,
+        double? heightFactor = null,
+        Key? key = null) : base(child, key)
+    {
+        Alignment = alignment;
+        WidthFactor = ValidateFactor(widthFactor, nameof(widthFactor));
+        HeightFactor = ValidateFactor(heightFactor, nameof(heightFactor));
+    }
+
+    public Alignment Alignment { get; }
+
+    public double? WidthFactor { get; }
+
+    public double? HeightFactor { get; }
+
+    internal override RenderObject CreateRenderObject(BuildContext context)
+    {
+        return new RenderFractionallySizedBox(
+            alignment: Alignment,
+            widthFactor: WidthFactor,
+            heightFactor: HeightFactor);
+    }
+
+    internal override void UpdateRenderObject(BuildContext context, RenderObject renderObject)
+    {
+        var fractionallySizedBox = (RenderFractionallySizedBox)renderObject;
+        fractionallySizedBox.Alignment = Alignment;
+        fractionallySizedBox.WidthFactor = WidthFactor;
+        fractionallySizedBox.HeightFactor = HeightFactor;
+    }
+
+    private static double? ValidateFactor(double? value, string parameterName)
+    {
+        if (!value.HasValue)
+        {
+            return null;
+        }
+
+        if (!double.IsFinite(value.Value) || value.Value < 0)
+        {
+            throw new ArgumentOutOfRangeException(parameterName, "Factor must be finite and non-negative.");
+        }
+
+        return value.Value;
+    }
+}
+
 public sealed class Container : StatelessWidget
 {
     public Container(

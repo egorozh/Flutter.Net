@@ -8,6 +8,7 @@ import 'container_demo_page.dart';
 import 'custom_slivers_demo_page.dart';
 import 'decorated_box_demo_page.dart';
 import 'editable_text_demo_page.dart';
+import 'fractionally_sized_box_demo_page.dart';
 import 'grid_view_demo_page.dart';
 import 'list_view_fixed_extent_demo_page.dart';
 import 'list_view_reverse_demo_page.dart';
@@ -111,6 +112,12 @@ class SampleGalleryScreen extends StatelessWidget {
       title: 'AspectRatio + Spacer',
       subtitle: 'tight ratio layout + flex gap',
       builder: () => const AspectRatioDemoPage(),
+    ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.fractionallySizedBox,
+      title: 'FractionallySizedBox',
+      subtitle: 'fractional constraints + alignment',
+      builder: () => const FractionallySizedBoxDemoPage(),
     ),
   ];
 

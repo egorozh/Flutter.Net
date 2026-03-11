@@ -99,6 +99,38 @@ public sealed class AspectRatioTests
         Assert.Throws<ArgumentOutOfRangeException>(() => new Spacer(flex: 0));
     }
 
+    [Fact]
+    public void RenderFlex_DistributesTwoSpacers_ByFlexRatio()
+    {
+        var left = new FixedSizeRenderBox(new Size(20, 10));
+        var primarySpacer = new FixedSizeRenderBox(new Size(0, 10));
+        var middle = new FixedSizeRenderBox(new Size(28, 10));
+        var secondarySpacer = new FixedSizeRenderBox(new Size(0, 10));
+        var right = new FixedSizeRenderBox(new Size(32, 10));
+
+        var row = new RenderFlex(
+            children: [left, primarySpacer, middle, secondarySpacer, right],
+            direction: Axis.Horizontal);
+        var primaryParentData = (FlexParentData)primarySpacer.parentData!;
+        primaryParentData.flex = 3;
+        primaryParentData.fit = FlexFit.Tight;
+        var secondaryParentData = (FlexParentData)secondarySpacer.parentData!;
+        secondaryParentData.flex = 1;
+        secondaryParentData.fit = FlexFit.Tight;
+
+        var root = new RenderView
+        {
+            Child = row
+        };
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+
+        pipeline.FlushLayout(new Size(200, 40));
+
+        Assert.Equal(90, primarySpacer.Size.Width);
+        Assert.Equal(30, secondarySpacer.Size.Width);
+    }
+
     private static T RequireRenderObject<T>(Element? element) where T : RenderObject
     {
         Assert.NotNull(element);
