@@ -50,6 +50,78 @@ public sealed class ConstrainedBox : SingleChildRenderObjectWidget
     }
 }
 
+public sealed class UnconstrainedBox : SingleChildRenderObjectWidget
+{
+    public UnconstrainedBox(
+        Widget? child = null,
+        Alignment alignment = default,
+        Axis? constrainedAxis = null,
+        Key? key = null) : base(child, key)
+    {
+        Alignment = alignment;
+        ConstrainedAxis = constrainedAxis;
+    }
+
+    public Alignment Alignment { get; }
+
+    public Axis? ConstrainedAxis { get; }
+
+    internal override RenderObject CreateRenderObject(BuildContext context)
+    {
+        return new RenderUnconstrainedBox(
+            alignment: Alignment,
+            constrainedAxis: ConstrainedAxis);
+    }
+
+    internal override void UpdateRenderObject(BuildContext context, RenderObject renderObject)
+    {
+        var unconstrainedBox = (RenderUnconstrainedBox)renderObject;
+        unconstrainedBox.Alignment = Alignment;
+        unconstrainedBox.ConstrainedAxis = ConstrainedAxis;
+    }
+}
+
+public sealed class LimitedBox : SingleChildRenderObjectWidget
+{
+    public LimitedBox(
+        Widget? child = null,
+        double maxWidth = double.PositiveInfinity,
+        double maxHeight = double.PositiveInfinity,
+        Key? key = null) : base(child, key)
+    {
+        MaxWidth = ValidateMax(maxWidth, nameof(maxWidth));
+        MaxHeight = ValidateMax(maxHeight, nameof(maxHeight));
+    }
+
+    public double MaxWidth { get; }
+
+    public double MaxHeight { get; }
+
+    internal override RenderObject CreateRenderObject(BuildContext context)
+    {
+        return new RenderLimitedBox(
+            maxWidth: MaxWidth,
+            maxHeight: MaxHeight);
+    }
+
+    internal override void UpdateRenderObject(BuildContext context, RenderObject renderObject)
+    {
+        var limitedBox = (RenderLimitedBox)renderObject;
+        limitedBox.MaxWidth = MaxWidth;
+        limitedBox.MaxHeight = MaxHeight;
+    }
+
+    private static double ValidateMax(double value, string parameterName)
+    {
+        if (double.IsNaN(value) || value < 0)
+        {
+            throw new ArgumentOutOfRangeException(parameterName, "Max value must be non-negative.");
+        }
+
+        return value;
+    }
+}
+
 public sealed class Padding : SingleChildRenderObjectWidget
 {
     public Padding(Thickness insets, Widget child, Key? key = null) : base(child, key)

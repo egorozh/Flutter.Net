@@ -19,6 +19,7 @@ import 'proxy_widgets_demo_page.dart';
 import 'sample_routes.dart';
 import 'scrollbar_demo_page.dart';
 import 'stack_demo_page.dart';
+import 'unconstrained_limited_box_demo_page.dart';
 
 class SampleGalleryScreen extends StatelessWidget {
   const SampleGalleryScreen({super.key});
@@ -125,6 +126,12 @@ class SampleGalleryScreen extends StatelessWidget {
       title: 'FittedBox',
       subtitle: 'box-fit scaling + alignment',
       builder: () => const FittedBoxDemoPage(),
+    ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.unconstrainedLimitedBox,
+      title: 'UnconstrainedBox + LimitedBox',
+      subtitle: 'axis unconstraint + unbounded max clamps',
+      builder: () => const UnconstrainedLimitedBoxDemoPage(),
     ),
   ];
 

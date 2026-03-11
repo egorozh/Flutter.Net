@@ -29,6 +29,7 @@ class SampleRoutes {
   static const String aspectRatio = '/aspect-ratio';
   static const String fractionallySizedBox = '/fractionally-sized-box';
   static const String fittedBox = '/fitted-box';
+  static const String unconstrainedLimitedBox = '/unconstrained-limited-box';
 }
 
 class SampleRouteDefinition {

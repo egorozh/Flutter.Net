@@ -34,6 +34,7 @@ Status legend:
 | AspectRatio + Spacer demo | `src/Sample/Flutter.Net/AspectRatioDemoPage.cs` | `dart_sample/lib/aspect_ratio_demo_page.dart` | verify-runtime | Demonstrates widget-level `AspectRatio` tight sizing and `Spacer` flex-gap behavior. |
 | FractionallySizedBox demo | `src/Sample/Flutter.Net/FractionallySizedBoxDemoPage.cs` | `dart_sample/lib/fractionally_sized_box_demo_page.dart` | verify-runtime | Demonstrates widget-level fractional width/height constraints with alignment controls and pass-through axis mode. |
 | FittedBox demo | `src/Sample/Flutter.Net/FittedBoxDemoPage.cs` | `dart_sample/lib/fitted_box_demo_page.dart` | verify-runtime | Demonstrates widget-level `BoxFit` scaling (`contain/cover/fill/none/scaleDown`) and alignment-controlled placement. |
+| UnconstrainedBox + LimitedBox demo | `src/Sample/Flutter.Net/UnconstrainedLimitedBoxDemoPage.cs` | `dart_sample/lib/unconstrained_limited_box_demo_page.dart` | verify-runtime | Demonstrates axis-specific unconstraining and `LimitedBox` max-clamp behavior on unbounded axes. |
 | Shared counter widgets | `src/Sample/Flutter.Net/CounterWidgets.cs` | `dart_sample/lib/counter_widgets.dart` | verify-runtime | Includes keyed/movable/keep-alive helper widgets. |
 | Counter state container | `src/Sample/Flutter.Net/CounterAppModel.cs`, `src/Sample/Flutter.Net/CounterScope.cs` | `dart_sample/lib/counter_app_model.dart`, `dart_sample/lib/counter_scope.dart` | done | |
 

@@ -145,6 +145,163 @@ public sealed class RenderConstrainedBox : RenderProxyBox
     }
 }
 
+public sealed class RenderUnconstrainedBox : RenderProxyBox
+{
+    private Alignment _alignment;
+    private Axis? _constrainedAxis;
+
+    public RenderUnconstrainedBox(
+        Alignment alignment = default,
+        Axis? constrainedAxis = null,
+        RenderBox? child = null)
+    {
+        _alignment = alignment;
+        _constrainedAxis = constrainedAxis;
+        Child = child;
+    }
+
+    public Alignment Alignment
+    {
+        get => _alignment;
+        set
+        {
+            if (_alignment == value)
+            {
+                return;
+            }
+
+            _alignment = value;
+            MarkNeedsLayout();
+        }
+    }
+
+    public Axis? ConstrainedAxis
+    {
+        get => _constrainedAxis;
+        set
+        {
+            if (_constrainedAxis == value)
+            {
+                return;
+            }
+
+            _constrainedAxis = value;
+            MarkNeedsLayout();
+        }
+    }
+
+    protected override void PerformLayout()
+    {
+        if (Child == null)
+        {
+            Size = Constraints.Constrain(new Size());
+            return;
+        }
+
+        var childConstraints = _constrainedAxis switch
+        {
+            Axis.Horizontal => new BoxConstraints(
+                MinWidth: Constraints.MinWidth,
+                MaxWidth: Constraints.MaxWidth,
+                MinHeight: 0,
+                MaxHeight: double.PositiveInfinity),
+            Axis.Vertical => new BoxConstraints(
+                MinWidth: 0,
+                MaxWidth: double.PositiveInfinity,
+                MinHeight: Constraints.MinHeight,
+                MaxHeight: Constraints.MaxHeight),
+            null => new BoxConstraints(
+                MinWidth: 0,
+                MaxWidth: double.PositiveInfinity,
+                MinHeight: 0,
+                MaxHeight: double.PositiveInfinity),
+            _ => throw new ArgumentOutOfRangeException()
+        };
+
+        Child.Layout(childConstraints, parentUsesSize: true);
+        Size = Constraints.Constrain(Child.Size);
+        ((BoxParentData)Child.parentData!).offset = _alignment.AlongOffset(Size, Child.Size);
+    }
+}
+
+public sealed class RenderLimitedBox : RenderProxyBox
+{
+    private double _maxWidth;
+    private double _maxHeight;
+
+    public RenderLimitedBox(
+        double maxWidth = double.PositiveInfinity,
+        double maxHeight = double.PositiveInfinity,
+        RenderBox? child = null)
+    {
+        _maxWidth = ValidateMaxValue(maxWidth, nameof(maxWidth));
+        _maxHeight = ValidateMaxValue(maxHeight, nameof(maxHeight));
+        Child = child;
+    }
+
+    public double MaxWidth
+    {
+        get => _maxWidth;
+        set
+        {
+            var normalized = ValidateMaxValue(value, nameof(value));
+            if (Math.Abs(_maxWidth - normalized) < 0.0001)
+            {
+                return;
+            }
+
+            _maxWidth = normalized;
+            MarkNeedsLayout();
+        }
+    }
+
+    public double MaxHeight
+    {
+        get => _maxHeight;
+        set
+        {
+            var normalized = ValidateMaxValue(value, nameof(value));
+            if (Math.Abs(_maxHeight - normalized) < 0.0001)
+            {
+                return;
+            }
+
+            _maxHeight = normalized;
+            MarkNeedsLayout();
+        }
+    }
+
+    protected override void PerformLayout()
+    {
+        var limitedConstraints = new BoxConstraints(
+            MinWidth: Constraints.MinWidth,
+            MaxWidth: Constraints.HasBoundedWidth ? Constraints.MaxWidth : Constraints.ConstrainWidth(MaxWidth),
+            MinHeight: Constraints.MinHeight,
+            MaxHeight: Constraints.HasBoundedHeight ? Constraints.MaxHeight : Constraints.ConstrainHeight(MaxHeight));
+
+        if (Child != null)
+        {
+            Child.Layout(limitedConstraints, parentUsesSize: true);
+            Size = Constraints.Constrain(Child.Size);
+            ((BoxParentData)Child.parentData!).offset = new Point(0, 0);
+        }
+        else
+        {
+            Size = limitedConstraints.Constrain(new Size());
+        }
+    }
+
+    private static double ValidateMaxValue(double value, string parameterName)
+    {
+        if (double.IsNaN(value) || value < 0)
+        {
+            throw new ArgumentOutOfRangeException(parameterName, "Max value must be non-negative.");
+        }
+
+        return value;
+    }
+}
+
 public sealed class RenderPadding : RenderProxyBox
 {
     private Thickness _padding;
