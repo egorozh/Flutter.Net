@@ -10,7 +10,7 @@ Use this block as the fastest machine-readable status summary.
 framework_plan_version: 1
 last_updated: 2026-03-11
 north_star: "Flutter-like widget/rendering framework in C# with Avalonia as host infrastructure."
-current_phase: "Port-first widget set expansion (M3) in progress."
+current_phase: "Post-M3 control parity hardening (text rendering behavior alignment) in progress."
 status:
   widget_element_state_lifecycle: done
   render_pipeline_layout_paint_compositing_semantics: done
@@ -31,7 +31,7 @@ next_milestones:
     status: done
   - id: M3
     title: "Port-first widget set expansion"
-    status: in_progress
+    status: done
   - id: M4
     title: "Cross-host sample parity and stability"
     status: planned
@@ -102,9 +102,14 @@ Exit criteria:
 
 ### M3. Port-First Widget Set Expansion
 
-Status: `in_progress`
+Status: `done`
 
-Progress update (2026-03-10):
+Completion note:
+
+- Closed on 2026-03-11 after delivering the planned port-first widget baseline set (proxy, alignment, stack/positioned, decoration/container composition, ratio/fractional/fitted sizing, unconstrained/overflow/offstage) with mirrored C#/Dart sample routes and focused regression coverage.
+- Included post-baseline text-rendering parity hardening needed for control-port fidelity: `Text` now wires `textAlign`/`softWrap`/`maxLines`/`overflow`/`textDirection`, and `RenderParagraph` no longer applies a synthetic `maxWidth=1000` cap for unbounded layout.
+
+Completion snapshot:
 
 - Added first proxy-widget port baseline in framework widget layer: `Opacity`, `Transform`, and `ClipRect` wrappers over existing render primitives (`RenderOpacity`, `RenderTransform`, `RenderClipRect`) with focused rebuild/update regression coverage.
 - Added sample parity route/page in both C# and Dart sample galleries for interactive proxy-widget composition checks (`Opacity`, `Transform`, `ClipRect`).

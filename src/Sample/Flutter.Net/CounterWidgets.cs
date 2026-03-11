@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Media;
 using Flutter.Foundation;
 using Flutter.Rendering;
+using Flutter.UI;
 using Flutter.Widgets;
 
 // Dart parity source (reference): dart_sample/lib/counter_widgets.dart (exact sample parity)
@@ -48,7 +49,7 @@ internal sealed class CounterTapButton : StatelessWidget
             child: new Container(
                 color: OnTap == null ? DisabledColor(Background) : Background,
                 padding: Padding,
-                child: new Text(Label, fontSize: FontSize, color: Foreground)));
+                child: new Text(Label, fontSize: FontSize, color: Foreground, textAlign: TextAlign.Center)));
     }
 
     private static Color DisabledColor(Color color)

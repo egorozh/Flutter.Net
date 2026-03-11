@@ -2,6 +2,7 @@ using System;
 using Avalonia;
 using Avalonia.Media;
 using Flutter.Rendering;
+using Flutter.UI;
 using Flutter.Widgets;
 
 // Dart parity source (reference): dart_sample/lib/unconstrained_limited_box_demo_page.dart (exact sample parity)
@@ -112,7 +113,8 @@ internal sealed class UnconstrainedLimitedBoxDemoPageState : State
                 child: new Text(
                     $"child 190x86\nlimited to {_maxWidth:0}x{_maxHeight:0}",
                     fontSize: 11,
-                    color: Colors.Black)));
+                    color: Colors.Black,
+                    textAlign: TextAlign.Center)));
     }
 
     private Widget BuildButton(string label, Action onTap, double width, string colorHex)

@@ -6,8 +6,19 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## [Unreleased]
 
+### Planned
+
+- Continue Flutter parity hardening for controls/layout/painting with focus on visual fidelity against Dart sample behavior.
+- Expand host/runtime validation for desktop, browser, and mobile.
+- Improve architecture docs and migration guidance for Dart-to-C# rewrites.
+
+## [2026-03-11] - M3 completion snapshot
+
 ### Added
 
+- Closed milestone M3 (`Port-first widget set expansion`) and moved framework planning focus to post-M3 control parity hardening.
+- Text-rendering parity hardening: added widget-level `Text` layout options (`textAlign`, `softWrap`, `maxLines`, `overflow`, `textDirection`) and corresponding `RenderParagraph` support with unbounded-width layout parity (removed synthetic `maxWidth=1000` clamp), plus regression coverage (`src/Flutter/UI/Text.cs`, `src/Flutter/Widgets/Text.cs`, `src/Flutter/RenderParagraph.cs`, `src/Flutter.Tests/TextWidgetTests.cs`).
+- Sample parity progression: aligned centered text rendering behavior in C# sample where Dart sample already used `TextAlign.center` (`src/Sample/Flutter.Net/CounterWidgets.cs`, `src/Sample/Flutter.Net/UnconstrainedLimitedBoxDemoPage.cs`, `docs/ai/PARITY_MATRIX.md`).
 - M3 `Offstage` baseline: added framework widget/render support (`Offstage`, `RenderOffstage`) with offstage layout semantics (child is laid out while parent takes smallest size, painting/hit-testing/semantics participation suppressed when offstage), plus regression coverage for render behavior and widget update wiring (`src/Flutter/Rendering/Proxy.RenderBox.cs`, `src/Flutter/Widgets/Basic.cs`, `src/Flutter.Tests/OffstageTests.cs`).
 - M3 sample parity progression: added `Offstage` demo route/page in both C# and Dart galleries for interactive offstage toggle and zero-space row-layout checks (`src/Sample/Flutter.Net/OffstageDemoPage.cs`, `src/Sample/Flutter.Net/SampleGalleryScreen.cs`, `dart_sample/lib/offstage_demo_page.dart`, `dart_sample/lib/sample_gallery_screen.dart`, `dart_sample/lib/sample_routes.dart`, `docs/ai/PARITY_MATRIX.md`).
 - M3 `OverflowBox` + `SizedOverflowBox` baseline: added framework widget/render support (`OverflowBox`, `SizedOverflowBox`, `RenderConstrainedOverflowBox`, `RenderSizedOverflowBox`, `OverflowBoxFit`) with overflow-alignment behavior and fit modes (`max`, `deferToChild`), plus regression coverage for render sizing/alignment and widget update wiring (`src/Flutter/Rendering/Proxy.RenderBox.cs`, `src/Flutter/Widgets/Basic.cs`, `src/Flutter.Tests/OverflowBoxTests.cs`).
@@ -30,12 +41,6 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - M3 decoration baseline: added `BoxDecoration`, `BorderSide`, and `BorderRadius` value objects with new `RenderDecoratedBox` + `DecoratedBox` widget (and `Container.decoration` support), regression coverage for render/layout and widget update behavior, plus parity sample route/page in both C# and Dart galleries (`src/Flutter/Rendering/Decoration.cs`, `src/Flutter/Rendering/Proxy.RenderBox.cs`, `src/Flutter/Widgets/Basic.cs`, `src/Flutter.Tests/DecoratedBoxTests.cs`, `src/Sample/Flutter.Net/DecoratedBoxDemoPage.cs`, `dart_sample/lib/decorated_box_demo_page.dart`, `src/Sample/Flutter.Net/SampleGalleryScreen.cs`, `dart_sample/lib/sample_gallery_screen.dart`, `dart_sample/lib/sample_routes.dart`, `docs/ai/PARITY_MATRIX.md`).
 - M3 `Container` composition baseline: extended `Container` with `alignment` and `margin` composition support (wrapping via `Align` and outer `Padding`) with regression coverage for render-object wiring and wrapper order, plus parity sample route/page in both C# and Dart galleries (`src/Flutter/Widgets/Basic.cs`, `src/Flutter.Tests/ContainerTests.cs`, `src/Sample/Flutter.Net/ContainerDemoPage.cs`, `src/Sample/Flutter.Net/SampleGalleryScreen.cs`, `dart_sample/lib/container_demo_page.dart`, `dart_sample/lib/sample_gallery_screen.dart`, `dart_sample/lib/sample_routes.dart`, `docs/ai/PARITY_MATRIX.md`).
 - M3 `Container` expansion: added `constraints` and `transform` support with Flutter-like width/height tightening against provided constraints, regression coverage for constrained-box wiring and wrapper order (`Transform` outside `margin`), and upgraded parity demo flow in both C# and Dart galleries (`src/Flutter/Widgets/Basic.cs`, `src/Flutter.Tests/ContainerTests.cs`, `src/Sample/Flutter.Net/ContainerDemoPage.cs`, `src/Sample/Flutter.Net/SampleGalleryScreen.cs`, `dart_sample/lib/container_demo_page.dart`, `dart_sample/lib/sample_gallery_screen.dart`, `docs/ai/PARITY_MATRIX.md`).
-
-### Planned
-
-- Continue Flutter parity for widgets, layout, rendering, gestures, semantics, and navigation.
-- Expand host/runtime validation for desktop, browser, and mobile.
-- Improve architecture docs and migration guidance for Dart-to-C# rewrites.
 
 ## [2026-03-10] - M1/M2 completion snapshot
 

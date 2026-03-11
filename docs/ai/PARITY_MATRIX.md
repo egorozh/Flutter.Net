@@ -17,7 +17,7 @@ Status legend:
 | App bootstrap | `src/Sample/Flutter.Net/CounterApp.cs` | `dart_sample/lib/counter_app.dart` | done | Counter model + scope app root present on both sides. |
 | Route constants + route data | `src/Sample/Flutter.Net/SampleGalleryScreen.cs` | `dart_sample/lib/sample_routes.dart` | done | Same route set including navigator details route. |
 | Sample gallery menu | `src/Sample/Flutter.Net/SampleGalleryScreen.cs` | `dart_sample/lib/sample_gallery_screen.dart` | done | Same demo page set and menu flow. |
-| Counter page | `src/Sample/Flutter.Net/CounterScreen.cs` | `dart_sample/lib/counter_screen.dart` | verify-runtime | Structural match; runtime behavior should be periodically rechecked. |
+| Counter page | `src/Sample/Flutter.Net/CounterScreen.cs` | `dart_sample/lib/counter_screen.dart` | verify-runtime | Structural match; shared counter button labels now include widget-level centered text alignment parity. |
 | Navigator demo | `src/Sample/Flutter.Net/NavigatorDemoPage.cs` | `dart_sample/lib/navigator_demo_page.dart` | verify-runtime | Route operations and observer flows are mirrored. |
 | ListView separated demo | `src/Sample/Flutter.Net/ListViewSeparatedDemoPage.cs` | `dart_sample/lib/list_view_separated_demo_page.dart` | verify-runtime | |
 | ListView fixed extent demo | `src/Sample/Flutter.Net/ListViewFixedExtentDemoPage.cs` | `dart_sample/lib/list_view_fixed_extent_demo_page.dart` | verify-runtime | |
@@ -34,10 +34,10 @@ Status legend:
 | AspectRatio + Spacer demo | `src/Sample/Flutter.Net/AspectRatioDemoPage.cs` | `dart_sample/lib/aspect_ratio_demo_page.dart` | verify-runtime | Demonstrates widget-level `AspectRatio` tight sizing and `Spacer` flex-gap behavior. |
 | FractionallySizedBox demo | `src/Sample/Flutter.Net/FractionallySizedBoxDemoPage.cs` | `dart_sample/lib/fractionally_sized_box_demo_page.dart` | verify-runtime | Demonstrates widget-level fractional width/height constraints with alignment controls and pass-through axis mode. |
 | FittedBox demo | `src/Sample/Flutter.Net/FittedBoxDemoPage.cs` | `dart_sample/lib/fitted_box_demo_page.dart` | verify-runtime | Demonstrates widget-level `BoxFit` scaling (`contain/cover/fill/none/scaleDown`) and alignment-controlled placement. |
-| UnconstrainedBox + LimitedBox demo | `src/Sample/Flutter.Net/UnconstrainedLimitedBoxDemoPage.cs` | `dart_sample/lib/unconstrained_limited_box_demo_page.dart` | verify-runtime | Demonstrates axis-specific unconstraining and `LimitedBox` max-clamp behavior on unbounded axes. |
+| UnconstrainedBox + LimitedBox demo | `src/Sample/Flutter.Net/UnconstrainedLimitedBoxDemoPage.cs` | `dart_sample/lib/unconstrained_limited_box_demo_page.dart` | verify-runtime | Demonstrates axis-specific unconstraining and `LimitedBox` max-clamp behavior on unbounded axes, including centered multiline probe label parity. |
 | OverflowBox + SizedOverflowBox demo | `src/Sample/Flutter.Net/OverflowBoxDemoPage.cs` | `dart_sample/lib/overflow_box_demo_page.dart` | verify-runtime | Demonstrates optional constraint overrides, `OverflowBoxFit` sizing, and fixed-size overflow behavior with alignment controls. |
 | Offstage demo | `src/Sample/Flutter.Net/OffstageDemoPage.cs` | `dart_sample/lib/offstage_demo_page.dart` | verify-runtime | Demonstrates `offstage` toggle behavior: child remains in layout pass while paint/hit-test and parent space participation are suppressed. |
-| Shared counter widgets | `src/Sample/Flutter.Net/CounterWidgets.cs` | `dart_sample/lib/counter_widgets.dart` | verify-runtime | Includes keyed/movable/keep-alive helper widgets. |
+| Shared counter widgets | `src/Sample/Flutter.Net/CounterWidgets.cs` | `dart_sample/lib/counter_widgets.dart` | verify-runtime | Includes keyed/movable/keep-alive helper widgets and `CounterTapButton` centered text alignment parity. |
 | Counter state container | `src/Sample/Flutter.Net/CounterAppModel.cs`, `src/Sample/Flutter.Net/CounterScope.cs` | `dart_sample/lib/counter_app_model.dart`, `dart_sample/lib/counter_scope.dart` | done | |
 
 ## When Updating Sample Features
