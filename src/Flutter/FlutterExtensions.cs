@@ -8,6 +8,9 @@ namespace Flutter;
 
 public static class FlutterExtensions
 {
+    private const double TargetWindowWidthPixels = 512;
+    private const double TargetWindowHeightPixels = 1820;
+
     public static void Run<T>(T application, IApplicationLifetime? applicationLifetime) where T : Widget
     {
         var host = new WidgetHost
@@ -19,17 +22,39 @@ public static class FlutterExtensions
         switch (applicationLifetime)
         {
             case IClassicDesktopStyleApplicationLifetime desktop:
-                desktop.MainWindow = new Window
+                var window = new Window
                 {
                     Title = "Flutter.NET",
-                    Width = 512,
-                    Height = 1820,
                     Content = host
                 };
+
+                // Keep target desktop window size stable in physical pixels across DPI scales.
+                ApplyPixelSizedWindowBounds(window, TargetWindowWidthPixels, TargetWindowHeightPixels);
+                window.Opened += (_, _) =>
+                    ApplyPixelSizedWindowBounds(window, TargetWindowWidthPixels, TargetWindowHeightPixels);
+
+                desktop.MainWindow = window;
                 break;
             case ISingleViewApplicationLifetime singleViewPlatform:
                 singleViewPlatform.MainView = host;
                 break;
         }
+    }
+
+    private static void ApplyPixelSizedWindowBounds(Window window, double widthPixels, double heightPixels)
+    {
+        var scale = window.RenderScaling;
+        if (double.IsNaN(scale) || double.IsInfinity(scale) || scale <= 0)
+        {
+            scale = window.DesktopScaling;
+        }
+
+        if (double.IsNaN(scale) || double.IsInfinity(scale) || scale <= 0)
+        {
+            scale = 1;
+        }
+
+        window.Width = widthPixels / scale;
+        window.Height = heightPixels / scale;
     }
 }

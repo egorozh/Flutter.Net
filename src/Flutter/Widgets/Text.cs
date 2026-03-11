@@ -13,6 +13,10 @@ public sealed class Text : LeafRenderObjectWidget
         string data,
         double? fontSize = null,
         Color? color = null,
+        FontWeight? fontWeight = null,
+        FontStyle? fontStyle = null,
+        double? height = null,
+        double letterSpacing = 0,
         TextAlign textAlign = TextAlign.Start,
         bool softWrap = true,
         int? maxLines = null,
@@ -23,6 +27,10 @@ public sealed class Text : LeafRenderObjectWidget
         Data = data;
         FontSize = fontSize;
         Color = color;
+        FontWeight = fontWeight;
+        FontStyle = fontStyle;
+        Height = height;
+        LetterSpacing = letterSpacing;
         TextAlign = textAlign;
         SoftWrap = softWrap;
         MaxLines = maxLines;
@@ -35,6 +43,14 @@ public sealed class Text : LeafRenderObjectWidget
     public double? FontSize { get; }
 
     public Color? Color { get; }
+
+    public FontWeight? FontWeight { get; }
+
+    public FontStyle? FontStyle { get; }
+
+    public double? Height { get; }
+
+    public double LetterSpacing { get; }
 
     public TextAlign TextAlign { get; }
 
@@ -52,6 +68,10 @@ public sealed class Text : LeafRenderObjectWidget
         {
             FontSize = FontSize ?? 14,
             Foreground = new SolidColorBrush(Color ?? Colors.Black),
+            FontWeight = FontWeight ?? Avalonia.Media.FontWeight.Normal,
+            FontStyle = FontStyle ?? Avalonia.Media.FontStyle.Normal,
+            Height = Height,
+            LetterSpacing = LetterSpacing,
             TextAlign = TextAlign,
             SoftWrap = SoftWrap,
             MaxLines = MaxLines,
@@ -66,6 +86,10 @@ public sealed class Text : LeafRenderObjectWidget
         paragraph.Text = Data;
         paragraph.FontSize = FontSize ?? 14;
         paragraph.Foreground = new SolidColorBrush(Color ?? Colors.Black);
+        paragraph.FontWeight = FontWeight ?? Avalonia.Media.FontWeight.Normal;
+        paragraph.FontStyle = FontStyle ?? Avalonia.Media.FontStyle.Normal;
+        paragraph.Height = Height;
+        paragraph.LetterSpacing = LetterSpacing;
         paragraph.TextAlign = TextAlign;
         paragraph.SoftWrap = SoftWrap;
         paragraph.MaxLines = MaxLines;

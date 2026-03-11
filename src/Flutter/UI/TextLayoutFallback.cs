@@ -12,12 +12,17 @@ internal static class TextLayoutFallback
                && exception.Message.Contains("Avalonia.Platform.IFontManagerImpl", StringComparison.Ordinal);
     }
 
-    internal static Size EstimateTextSize(string text, double fontSize, double maxWidth)
+    internal static Size EstimateTextSize(
+        string text,
+        double fontSize,
+        double maxWidth,
+        double? height = null,
+        double letterSpacing = 0)
     {
         var effectiveText = text ?? string.Empty;
         var effectiveFontSize = Math.Max(1.0, fontSize);
-        var charWidth = effectiveFontSize * 0.6;
-        var lineHeight = effectiveFontSize * 1.2;
+        var charWidth = Math.Max(0.1, effectiveFontSize * 0.6 + letterSpacing);
+        var lineHeight = effectiveFontSize * (height is > 0 ? height.Value : 1.2);
         var lines = effectiveText.Split('\n');
 
         if (!double.IsInfinity(maxWidth) && maxWidth <= 0)

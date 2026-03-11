@@ -19,6 +19,10 @@ public sealed class TextWidgetTests
                 "alpha",
                 fontSize: 16,
                 color: Colors.Red,
+                fontWeight: FontWeight.Bold,
+                fontStyle: FontStyle.Italic,
+                height: 1.4,
+                letterSpacing: 1.5,
                 textAlign: TextAlign.Center,
                 softWrap: false,
                 maxLines: 1,
@@ -32,6 +36,10 @@ public sealed class TextWidgetTests
         var paragraph = RequireRenderObject<RenderParagraph>(root.ChildElement);
         Assert.Equal("alpha", paragraph.Text);
         Assert.Equal(16, paragraph.FontSize);
+        Assert.Equal(FontWeight.Bold, paragraph.FontWeight);
+        Assert.Equal(FontStyle.Italic, paragraph.FontStyle);
+        Assert.Equal(1.4, paragraph.Height);
+        Assert.Equal(1.5, paragraph.LetterSpacing);
         Assert.Equal(TextAlign.Center, paragraph.TextAlign);
         Assert.False(paragraph.SoftWrap);
         Assert.Equal(1, paragraph.MaxLines);
@@ -42,6 +50,10 @@ public sealed class TextWidgetTests
             "beta",
             fontSize: 12,
             color: Colors.Blue,
+            fontWeight: FontWeight.Normal,
+            fontStyle: FontStyle.Normal,
+            height: 1.1,
+            letterSpacing: 0.25,
             textAlign: TextAlign.End,
             softWrap: true,
             maxLines: 3,
@@ -53,6 +65,10 @@ public sealed class TextWidgetTests
         Assert.Same(paragraph, updated);
         Assert.Equal("beta", updated.Text);
         Assert.Equal(12, updated.FontSize);
+        Assert.Equal(FontWeight.Normal, updated.FontWeight);
+        Assert.Equal(FontStyle.Normal, updated.FontStyle);
+        Assert.Equal(1.1, updated.Height);
+        Assert.Equal(0.25, updated.LetterSpacing);
         Assert.Equal(TextAlign.End, updated.TextAlign);
         Assert.True(updated.SoftWrap);
         Assert.Equal(3, updated.MaxLines);
