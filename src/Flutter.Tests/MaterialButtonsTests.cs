@@ -1203,6 +1203,71 @@ public sealed class MaterialButtonsTests
     }
 
     [Fact]
+    public void TextButton_KeyboardActivation_UsesPressedOverlay_AndInvokesOnPressedOnKeyDownOnly()
+    {
+        var owner = new BuildOwner();
+        var focusedOverlay = Colors.SeaGreen;
+        var pressedOverlay = Colors.OrangeRed;
+        var pressedCount = 0;
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new TextButton(
+                    onPressed: () => pressedCount += 1,
+                    style: new ButtonStyle(
+                        OverlayColor: MaterialStateProperty<Color?>.ResolveWith(states =>
+                        {
+                            if (states.HasFlag(MaterialState.Pressed))
+                            {
+                                return pressedOverlay;
+                            }
+
+                            if (states.HasFlag(MaterialState.Focused))
+                            {
+                                return focusedOverlay;
+                            }
+
+                            return null;
+                        })),
+                    child: new Text("Keyboard pressed overlay"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var focusListener = FindFocusPointerListener(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(focusListener);
+        focusListener!.HandleEvent(
+            new PointerDownEvent(
+                pointer: 41,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(10, 8),
+                buttons: PointerButtons.Primary,
+                timestampUtc: DateTime.UtcNow),
+            new BoxHitTestEntry(focusListener, new Point(10, 8)));
+
+        owner.FlushBuild();
+
+        var focusedDecorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(focusedDecorated);
+        Assert.Equal(focusedOverlay, focusedDecorated!.Decoration.Color);
+
+        var handledDown = FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "Space", isDown: true));
+        Assert.True(handledDown);
+        owner.FlushBuild();
+
+        var pressedDecorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(pressedDecorated);
+        Assert.Equal(pressedOverlay, pressedDecorated!.Decoration.Color);
+        Assert.Equal(1, pressedCount);
+
+        var handledUp = FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "Space", isDown: false));
+        Assert.True(handledUp);
+        owner.FlushBuild();
+        Assert.Equal(1, pressedCount);
+    }
+
+    [Fact]
     public void TextButton_PressedOverlayTakesPriorityOverFocusOverlay()
     {
         var owner = new BuildOwner();

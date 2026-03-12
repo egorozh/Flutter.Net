@@ -726,12 +726,14 @@ internal sealed class MaterialButtonCore : StatefulWidget
         private bool _hasFocus;
         private bool _isHovered;
         private bool _suppressFocusOverlay;
+        private bool _isKeyboardPressed;
         private bool _isSplashActive;
         private double _splashProgress;
         private Point _splashOrigin = CenterSplashOrigin;
         private Color? _splashBaseColor;
         private FocusNode? _focusNode;
         private AnimationController? _splashController;
+        private AnimationController? _keyboardPressController;
 
         private MaterialButtonCore CurrentWidget => (MaterialButtonCore)StateWidget;
 
@@ -749,6 +751,9 @@ internal sealed class MaterialButtonCore : StatefulWidget
             };
             _splashController.Changed += HandleSplashTick;
             _splashController.Completed += HandleSplashCompleted;
+
+            _keyboardPressController = new AnimationController(TimeSpan.FromMilliseconds(100));
+            _keyboardPressController.Completed += HandleKeyboardPressCompleted;
         }
 
         public override void DidUpdateWidget(StatefulWidget oldWidget)
@@ -776,6 +781,12 @@ internal sealed class MaterialButtonCore : StatefulWidget
                 _splashController?.Stop();
             }
 
+            if (!Enabled && _isKeyboardPressed)
+            {
+                _isKeyboardPressed = false;
+                _keyboardPressController?.Stop();
+            }
+
             if (!Enabled && _focusNode != null && _focusNode.HasFocus)
             {
                 _focusNode.Unfocus();
@@ -797,6 +808,13 @@ internal sealed class MaterialButtonCore : StatefulWidget
                 _splashController.Completed -= HandleSplashCompleted;
                 _splashController.Dispose();
                 _splashController = null;
+            }
+
+            if (_keyboardPressController != null)
+            {
+                _keyboardPressController.Completed -= HandleKeyboardPressCompleted;
+                _keyboardPressController.Dispose();
+                _keyboardPressController = null;
             }
         }
 
@@ -902,6 +920,7 @@ internal sealed class MaterialButtonCore : StatefulWidget
             if (@event.IsDown)
             {
                 SetFocusOverlaySuppressed(false);
+                StartKeyboardPress();
                 StartSplash(CenterSplashOrigin);
                 CurrentWidget.OnPressed?.Invoke();
             }
@@ -984,6 +1003,21 @@ internal sealed class MaterialButtonCore : StatefulWidget
             SetState(() => _suppressFocusOverlay = value);
         }
 
+        private void StartKeyboardPress()
+        {
+            if (!Enabled || _keyboardPressController is null)
+            {
+                return;
+            }
+
+            if (!_isKeyboardPressed)
+            {
+                SetState(() => _isKeyboardPressed = true);
+            }
+
+            _keyboardPressController.Forward(0);
+        }
+
         private void StartSplash(Point origin)
         {
             if (!Enabled || _splashController is null)
@@ -1016,6 +1050,11 @@ internal sealed class MaterialButtonCore : StatefulWidget
 
             var states = MaterialState.None;
             if (_isPressed)
+            {
+                states |= MaterialState.Pressed;
+            }
+
+            if (_isKeyboardPressed)
             {
                 states |= MaterialState.Pressed;
             }
@@ -1167,6 +1206,16 @@ internal sealed class MaterialButtonCore : StatefulWidget
                 _splashOrigin = CenterSplashOrigin;
                 _splashBaseColor = null;
             });
+        }
+
+        private void HandleKeyboardPressCompleted()
+        {
+            if (!_isKeyboardPressed)
+            {
+                return;
+            }
+
+            SetState(() => _isKeyboardPressed = false);
         }
 
         private static bool IsActivateKey(string key)
