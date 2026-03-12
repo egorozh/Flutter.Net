@@ -176,6 +176,7 @@ Progress update (2026-03-12):
 - Fixed pointer-focus visual parity for Material buttons: pointer clicks no longer leave persistent focus tint after release (`PointerUp`), while keyboard activation still enables focus overlay behavior.
 - Improved Material ripple visibility parity on wider buttons by delaying splash alpha fade until the tail phase of expansion, plus added regression coverage that `RenderInkSplash` matches full tight button bounds.
 - Fixed clip-layer resize invalidation for rounded/rect clips used by button ripple paths (`RenderClipRRect`/`RenderClipRect`): implicit size-based clip bounds now refresh on layout size changes, preventing stale ripple zones after viewport resize.
+- Added initial state-aware `ButtonStyle` layer for Material buttons (`MaterialState`, `MaterialStateProperty<T>`, `ButtonStyle`) and moved button visual resolution in `MaterialButtonCore` to style-driven state resolution while retaining legacy constructor-parameter compatibility.
 - Added ink/ripple baseline for Material buttons with rounded clipping parity: framework now includes animated radial splash paint support (`RenderInkSplash` + `InkSplash`), rounded clip primitives (`ClipRRect` widget/render/layer + `PaintingContext.PushClipRRect`), and `MaterialButtonCore` triggers splash animation from pointer origin (keyboard fallback: center origin) while clipping splash by button border radius.
 
 Initial scope:

@@ -71,6 +71,11 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Fixed Material button pointer-activation focus overlay stickiness: pointer clicks now suppress focus state-layer tint after `PointerUp` (so buttons do not stay visually pressed), while keyboard activation re-enables focus overlay behavior; added regression coverage for pointer-click focus interaction (`src/Flutter.Material/Buttons.cs`, `src/Flutter.Tests/MaterialButtonsTests.cs`).
 - Improved Material ink/ripple visibility on wide buttons: splash alpha now holds through most of the expansion phase (tail fade only), preventing visual "cutoff near text" perception before ripple reaches button bounds; added layout regression coverage ensuring `RenderInkSplash` expands to full tight button width (`src/Flutter.Material/Buttons.cs`, `src/Flutter.Tests/MaterialButtonsTests.cs`).
 - Fixed resize-driven stale ink clip bounds: `RenderClipRect`/`RenderClipRRect` now mark composited-layer updates when implicit clip size changes during layout, so ripple clip area tracks current button size after viewport/screen resize; added regression coverage in `LayerV2Tests` (`src/Flutter/Rendering/Proxy.RenderBox.cs`, `src/Flutter.Tests/LayerV2Tests.cs`).
+- Added initial `ButtonStyle` infrastructure for Material buttons:
+  - introduced `MaterialState`, `MaterialStateProperty<T>`, and `ButtonStyle` (`src/Flutter.Material/ButtonStyle.cs`),
+  - `TextButton`/`ElevatedButton`/`OutlinedButton` now accept `style` and resolve foreground/background/overlay/splash/side/padding/shape/min-size via state-aware style resolution in `MaterialButtonCore`,
+  - existing constructor color/shape/padding overrides remain supported as legacy compatibility overrides,
+  - added regression coverage for style-driven foreground/min-size/side behavior in `MaterialButtonsTests` (`src/Flutter.Material/Buttons.cs`, `src/Flutter.Tests/MaterialButtonsTests.cs`).
 - Added ink/ripple baseline for Material buttons:
   - new `RenderInkSplash` paint primitive with animated radial splash progress and pointer-origin support,
   - new widget-level wrapper `InkSplash`,

@@ -140,6 +140,74 @@ public sealed class MaterialButtonsTests
     }
 
     [Fact]
+    public void TextButton_ButtonStyleForegroundOverridesDefault()
+    {
+        var owner = new BuildOwner();
+
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new TextButton(
+                    onPressed: () => { },
+                    style: new ButtonStyle(
+                        ForegroundColor: MaterialStateProperty<Color?>.All(Colors.ForestGreen)),
+                    child: new Text("Styled foreground"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var paragraph = FindDescendant<RenderParagraph>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(paragraph);
+        Assert.Equal(Colors.ForestGreen, Assert.IsType<SolidColorBrush>(paragraph!.Foreground).Color);
+    }
+
+    [Fact]
+    public void ElevatedButton_ButtonStyleMinimumSizeOverridesDefault()
+    {
+        var owner = new BuildOwner();
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new ElevatedButton(
+                    onPressed: () => { },
+                    style: new ButtonStyle(
+                        MinimumSize: MaterialStateProperty<Size?>.All(new Size(180, 56))),
+                    child: new Text("Styled size"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var constrainedBox = FindDescendant<RenderConstrainedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(constrainedBox);
+        Assert.Equal(180, constrainedBox!.AdditionalConstraints.MinWidth);
+        Assert.Equal(56, constrainedBox.AdditionalConstraints.MinHeight);
+    }
+
+    [Fact]
+    public void OutlinedButton_ButtonStyleSideOverridesDefault()
+    {
+        var owner = new BuildOwner();
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new OutlinedButton(
+                    onPressed: () => { },
+                    style: new ButtonStyle(
+                        Side: MaterialStateProperty<BorderSide?>.All(new BorderSide(Colors.Goldenrod, 2))),
+                    child: new Text("Styled side"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var decorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(decorated);
+        Assert.Equal(new BorderSide(Colors.Goldenrod, 2), decorated!.Decoration.Border);
+    }
+
+    [Fact]
     public void ElevatedButton_DisabledStateUsesThemeOnSurfaceTones()
     {
         var owner = new BuildOwner();
