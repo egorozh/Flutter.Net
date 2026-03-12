@@ -1,0 +1,140 @@
+using System;
+using Avalonia;
+using Avalonia.Media;
+using Flutter.Material;
+using Flutter.Rendering;
+using Flutter.Widgets;
+
+// Dart parity source (reference): dart_sample/lib/material_buttons_demo_page.dart (exact sample parity)
+
+namespace Flutter.Net;
+
+public sealed class MaterialButtonsDemoPage : StatefulWidget
+{
+    public override State CreateState()
+    {
+        return new MaterialButtonsDemoPageState();
+    }
+}
+
+internal sealed class MaterialButtonsDemoPageState : State
+{
+    private bool _enabled = true;
+    private int _textButtonTaps;
+    private int _elevatedButtonTaps;
+    private int _outlinedButtonTaps;
+
+    public override Widget Build(BuildContext context)
+    {
+        return new Column(
+            crossAxisAlignment: CrossAxisAlignment.Stretch,
+            spacing: 10,
+            children:
+            [
+                new Text("Material buttons baseline", fontSize: 20, color: Colors.Black),
+                new Text(
+                    "TextButton / ElevatedButton / OutlinedButton with enabled/disabled and theme-aware defaults.",
+                    fontSize: 14,
+                    color: Colors.DimGray),
+                new Row(
+                    spacing: 8,
+                    children:
+                    [
+                        BuildControlButton(
+                            label: _enabled ? "Enabled" : "Disabled",
+                            onTap: ToggleEnabled,
+                            width: 108,
+                            background: Color.Parse("#FFE9F0FF")),
+                        BuildControlButton(
+                            label: "Reset",
+                            onTap: ResetCounters,
+                            width: 88,
+                            background: Color.Parse("#FFF3E8D8")),
+                    ]),
+                new Text(
+                    $"enabled={_enabled}, text={_textButtonTaps}, elevated={_elevatedButtonTaps}, outlined={_outlinedButtonTaps}",
+                    fontSize: 12,
+                    color: Colors.DarkSlateGray),
+                new SizedBox(
+                    width: 240,
+                    child: new TextButton(
+                        onPressed: _enabled ? OnTextButtonTap : null,
+                        child: new Text($"TextButton taps: {_textButtonTaps}"))),
+                new SizedBox(
+                    width: 240,
+                    child: new ElevatedButton(
+                        onPressed: _enabled ? OnElevatedButtonTap : null,
+                        child: new Text($"ElevatedButton taps: {_elevatedButtonTaps}"))),
+                new SizedBox(
+                    width: 240,
+                    child: new OutlinedButton(
+                        onPressed: _enabled ? OnOutlinedButtonTap : null,
+                        child: new Text($"OutlinedButton taps: {_outlinedButtonTaps}"))),
+                new Row(
+                    spacing: 8,
+                    children:
+                    [
+                        new Expanded(
+                            child: new ElevatedButton(
+                                onPressed: _enabled ? OnElevatedButtonTap : null,
+                                backgroundColor: Color.Parse("#FF6A994E"),
+                                foregroundColor: Colors.White,
+                                child: new Text("Custom elevated"))),
+                        new Expanded(
+                            child: new OutlinedButton(
+                                onPressed: _enabled ? OnOutlinedButtonTap : null,
+                                borderColor: Color.Parse("#FF7B2CBF"),
+                                foregroundColor: Color.Parse("#FF7B2CBF"),
+                                child: new Text("Custom outlined"))),
+                    ]),
+            ]);
+    }
+
+    private Widget BuildControlButton(
+        string label,
+        Action onTap,
+        double width,
+        Color background)
+    {
+        return new SizedBox(
+            width: width,
+            child: new CounterTapButton(
+                label: label,
+                onTap: onTap,
+                background: background,
+                foreground: Colors.Black,
+                fontSize: 12,
+                padding: new Thickness(10, 8)));
+    }
+
+    private void ToggleEnabled()
+    {
+        SetState(() => _enabled = !_enabled);
+    }
+
+    private void ResetCounters()
+    {
+        SetState(() =>
+        {
+            _textButtonTaps = 0;
+            _elevatedButtonTaps = 0;
+            _outlinedButtonTaps = 0;
+            _enabled = true;
+        });
+    }
+
+    private void OnTextButtonTap()
+    {
+        SetState(() => _textButtonTaps += 1);
+    }
+
+    private void OnElevatedButtonTap()
+    {
+        SetState(() => _elevatedButtonTaps += 1);
+    }
+
+    private void OnOutlinedButtonTap()
+    {
+        SetState(() => _outlinedButtonTaps += 1);
+    }
+}

@@ -14,6 +14,7 @@ import 'grid_view_demo_page.dart';
 import 'list_view_fixed_extent_demo_page.dart';
 import 'list_view_reverse_demo_page.dart';
 import 'list_view_separated_demo_page.dart';
+import 'material_buttons_demo_page.dart';
 import 'navigator_demo_page.dart';
 import 'offstage_demo_page.dart';
 import 'overflow_box_demo_page.dart';
@@ -81,6 +82,12 @@ class SampleGalleryScreen extends StatelessWidget {
       title: 'EditableText',
       subtitle: 'focus + IME + multiline caret',
       builder: () => const EditableTextDemoPage(),
+    ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.materialButtons,
+      title: 'Material buttons',
+      subtitle: 'TextButton + ElevatedButton + OutlinedButton',
+      builder: () => const MaterialButtonsDemoPage(),
     ),
     SampleRouteDefinition(
       routeName: SampleRoutes.proxyWidgets,

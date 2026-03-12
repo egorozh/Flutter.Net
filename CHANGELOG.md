@@ -8,7 +8,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ### Planned
 
-- Continue `M4` Material library rewrite with baseline Material button set (`TextButton`/`ElevatedButton`/`OutlinedButton`) and shell refinements after shipping theming + scaffold/app-bar baseline.
+- Continue `M4` Material library rewrite with Material control refinements (button state/styling polish) after shipping baseline theming + shell + first button set.
 - Run cross-host parity/stability validation in final `M5` phase after Material rewrite sequencing completes.
 - Improve architecture docs and migration guidance for Dart-to-C# rewrites.
 
@@ -30,6 +30,14 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Updated C# sample gallery pages to use framework `Scaffold`/`AppBar` structure (menu and demo pages now render through Material shell composition instead of manual top-row title/back layout wrappers) (`src/Sample/Flutter.Net/SampleGalleryScreen.cs`).
 - Updated Dart sample gallery pages to mirror the same shell structure with Flutter `Scaffold`/`AppBar` usage, preserving route/module parity (`dart_sample/lib/sample_gallery_screen.dart`).
 - Added focused regression coverage for Material shell behavior in framework tests (`src/Flutter.Tests/MaterialScaffoldTests.cs`): scaffold background resolution, app-bar theme color resolution, and app-bar title foreground propagation.
+
+## [2026-03-12] - M4 first Material button set baseline
+
+### Added
+
+- Added first Material button set in `Flutter.Material`: `TextButton`, `ElevatedButton`, and `OutlinedButton` with Flutter-like API shape (`child`, `onPressed`, color/padding/radius overrides), default theme resolution, and disabled-state color treatment for foreground/background/border (`src/Flutter.Material/Buttons.cs`).
+- Extended sample gallery route map with a dedicated Material buttons demo page in both C# and Dart samples (`src/Sample/Flutter.Net/MaterialButtonsDemoPage.cs`, `dart_sample/lib/material_buttons_demo_page.dart`, `src/Sample/Flutter.Net/SampleGalleryScreen.cs`, `dart_sample/lib/sample_gallery_screen.dart`, `dart_sample/lib/sample_routes.dart`).
+- Added focused regression coverage for Material button defaults and disabled styling in framework tests (`src/Flutter.Tests/MaterialButtonsTests.cs`).
 
 ## [2026-03-12] - Post-M3 typography and visual parity hardening
 
