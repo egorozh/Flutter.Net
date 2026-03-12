@@ -26,15 +26,14 @@ Current priority (2026-03-12):
 
 - Goal: establish Flutter-like Material theming/app-shell/control primitives in framework layers.
 - Read First:
+  - `src/Flutter.Material/ThemeData.cs`
+  - `src/Flutter.Material/Theme.cs`
   - `src/Flutter/Widgets/DefaultTextStyle.cs`
   - `src/Flutter/Widgets/Text.cs`
-  - `src/Flutter/Widgets/Button.cs`
-  - `src/Flutter/Widgets/Basic.cs`
   - `src/Sample/Flutter.Net/CounterApp.cs`
   - `dart_sample/lib/counter_app.dart`
 - Primary Tests:
   - `src/Flutter.Tests/TextWidgetTests.cs`
-  - `src/Flutter.Tests/ContainerTests.cs`
 
 ### Runtime and Host
 

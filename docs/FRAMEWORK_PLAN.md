@@ -154,12 +154,20 @@ Kickoff note (2026-03-12):
 
 - Prioritized immediately after M3 to unblock practical control rewrites and reduce sample-level styling drift by introducing a Flutter-like Material layer in framework widgets.
 
+Progress update (2026-03-12):
+
+- Added dedicated framework Material assembly: `src/Flutter.Material/Flutter.Material.csproj`.
+- Introduced initial theming primitives: `ThemeData`, `MaterialTextTheme`, and inherited `Theme`.
+- `Theme` now propagates baseline `TextTheme.BodyMedium` through `DefaultTextStyle`, enabling framework `Text` defaults without sample-only wrappers.
+- C# sample app root now uses `Theme(data: ThemeData.Light, child: ...)`; Dart sample root now sets explicit `MaterialApp` text-theme baseline (`bodyMedium` 14/1.43/0.25) for parity.
+- Added regression coverage for theme-to-text propagation in `src/Flutter.Tests/TextWidgetTests.cs`.
+
 Initial scope:
 
 - Introduce framework-level theming primitives (`ThemeData`, `Theme`, baseline color/text style propagation).
 - Introduce shell/layout primitives for Material app structure (`Scaffold`, `AppBar`, and supporting slots).
 - Introduce first Material control set (`TextButton`, `ElevatedButton`, `OutlinedButton`) on top of framework render/widget layers.
-- Keep architecture boundaries explicit: behavior in `src/Flutter`, host integration in sample hosts only.
+- Keep architecture boundaries explicit: behavior in framework libraries (`src/Flutter`, `src/Flutter.Material`), host integration in sample hosts only.
 
 Exit criteria:
 
@@ -196,4 +204,4 @@ Exit criteria:
 - For every meaningful feature change, update both:
   - semantic status (this document),
   - historical record (`CHANGELOG.md`).
-- Keep architecture boundaries explicit: framework behavior in `src/Flutter`, host adaptation only in sample hosts.
+- Keep architecture boundaries explicit: framework behavior in framework libraries (`src/Flutter`, `src/Flutter.Material`), host adaptation only in sample hosts.

@@ -8,9 +8,19 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ### Planned
 
-- Execute `M4` Material library rewrite (`ThemeData/Theme`, `Scaffold/AppBar`, baseline Material button set) as the primary iteration focus.
+- Continue `M4` Material library rewrite with shell/controls (`Scaffold/AppBar`, baseline Material button set) after shipping theming baseline.
 - Run cross-host parity/stability validation in final `M5` phase after Material rewrite sequencing completes.
 - Improve architecture docs and migration guidance for Dart-to-C# rewrites.
+
+## [2026-03-12] - M4 theming baseline and Material project split
+
+### Added
+
+- Introduced dedicated framework Material assembly `src/Flutter.Material/Flutter.Material.csproj` and wired it into `src/Flutter.Net.sln` plus dependent sample/test projects (`src/Sample/Flutter.Net/Flutter.Net.csproj`, `src/Flutter.Tests/Flutter.Tests.csproj`).
+- Added initial Material theming primitives in `Flutter.Material`: `ThemeData`, `MaterialTextTheme`, and inherited `Theme` with `Theme.Of(context)` lookup and baseline text-style propagation through framework `DefaultTextStyle` (`src/Flutter.Material/ThemeData.cs`, `src/Flutter.Material/Theme.cs`).
+- Updated C# sample app bootstrap to use framework Material theming (`Theme(data: ThemeData.Light, child: ...)`) instead of sample-local `DefaultTextStyle` injection (`src/Sample/Flutter.Net/CounterApp.cs`).
+- Updated Dart sample bootstrap with explicit `MaterialApp.theme` `TextTheme.bodyMedium` baseline (`14/1.43/0.25`) to keep inherited text defaults aligned with C# sample behavior (`dart_sample/lib/counter_app.dart`).
+- Added regression coverage that verifies `ThemeData.TextTheme.BodyMedium` reaches `RenderParagraph` defaults via `Text` (`src/Flutter.Tests/TextWidgetTests.cs`).
 
 ## [2026-03-12] - Post-M3 typography and visual parity hardening
 

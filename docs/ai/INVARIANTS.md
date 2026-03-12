@@ -4,7 +4,7 @@ These rules are non-negotiable unless explicitly changed via documented architec
 
 ## Architecture Boundaries
 
-- Framework behavior must stay in `src/Flutter`.
+- Framework behavior must stay in framework libraries under `src/` (`src/Flutter`, `src/Flutter.Material`).
 - Avalonia is host/platform infrastructure, not business logic for framework widgets.
 - Core direction remains `Widget -> Element -> RenderObject -> platform adapter`.
 

@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Media;
 using Flutter.Foundation;
+using Flutter.Material;
 using Flutter.Rendering;
 using Flutter.UI;
 using Flutter.Widgets;
@@ -154,6 +155,43 @@ public sealed class TextWidgetTests
         Assert.Equal(1.6, updated.Height);
         Assert.Equal(0, updated.LetterSpacing);
         Assert.Equal(Colors.Blue, Assert.IsType<SolidColorBrush>(updated.Foreground).Color);
+    }
+
+    [Fact]
+    public void TextWidget_InheritsMaterialTheme_BodyMediumStyle()
+    {
+        var owner = new BuildOwner();
+        var themedStyle = new TextStyle(
+            FontFamily: new FontFamily("Arial"),
+            FontSize: 17,
+            Color: Colors.OrangeRed,
+            FontWeight: FontWeight.SemiBold,
+            FontStyle: FontStyle.Italic,
+            Height: 1.5,
+            LetterSpacing: 0.6);
+
+        var theme = ThemeData.Light with
+        {
+            TextTheme = new MaterialTextTheme(bodyMedium: themedStyle)
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new Text("alpha")));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var paragraph = RequireRenderObject<RenderParagraph>(root.ChildElement);
+        Assert.Equal(themedStyle.FontFamily, paragraph.FontFamily);
+        Assert.Equal(17, paragraph.FontSize);
+        Assert.Equal(FontWeight.SemiBold, paragraph.FontWeight);
+        Assert.Equal(FontStyle.Italic, paragraph.FontStyle);
+        Assert.Equal(1.5, paragraph.Height);
+        Assert.Equal(0.6, paragraph.LetterSpacing);
+        Assert.Equal(themedStyle.Color, Assert.IsType<SolidColorBrush>(paragraph.Foreground).Color);
     }
 
     private static T RequireRenderObject<T>(Element? element) where T : RenderObject

@@ -2,7 +2,7 @@
 
 Scope: structural parity of sample routes/modules between C# and Dart samples.
 
-Last checked: 2026-03-11
+Last checked: 2026-03-12
 
 Status legend:
 
@@ -14,7 +14,7 @@ Status legend:
 
 | Feature | C# sample | Dart sample | Status | Notes |
 | --- | --- | --- | --- | --- |
-| App bootstrap | `src/Sample/Flutter.Net/CounterApp.cs` | `dart_sample/lib/counter_app.dart` | done | Counter model + scope app root present on both sides; C# root now injects Material-like `DefaultTextStyle` baseline (`14/1.43/0.25`, macOS `.AppleSystemUIFont`) to mirror Dart `MaterialApp` text inheritance more closely. |
+| App bootstrap | `src/Sample/Flutter.Net/CounterApp.cs` | `dart_sample/lib/counter_app.dart` | done | Counter model + scope app root present on both sides; C# root now uses framework Material `Theme(data: ThemeData.Light, ...)` (`Flutter.Material`) and Dart `MaterialApp` now sets explicit `ThemeData.textTheme.bodyMedium` baseline (`14/1.43/0.25`) so inherited text defaults stay aligned. |
 | Route constants + route data | `src/Sample/Flutter.Net/SampleGalleryScreen.cs` | `dart_sample/lib/sample_routes.dart` | done | Same route set including navigator details route. |
 | Sample gallery menu | `src/Sample/Flutter.Net/SampleGalleryScreen.cs` | `dart_sample/lib/sample_gallery_screen.dart` | done | Same demo page set and menu flow. |
 | Counter page | `src/Sample/Flutter.Net/CounterScreen.cs` | `dart_sample/lib/counter_screen.dart` | verify-runtime | Structural match; centered label parity hardened for intrinsic-width rows (notably `Keyed List`) via `RenderParagraph` loose-width center/right/end alignment normalization, and both samples now wrap page content with `SingleChildScrollView` to avoid bottom overflow-debug zones on shorter viewports. |

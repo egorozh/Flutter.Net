@@ -31,6 +31,15 @@ class _CounterAppState extends State<CounterApp> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Flutter.Net Sample',
+      theme: ThemeData(
+        textTheme: const TextTheme(
+          bodyMedium: TextStyle(
+            fontSize: 14,
+            height: 1.43,
+            letterSpacing: 0.25,
+          ),
+        ),
+      ),
       home: CounterScope(notifier: _model, child: const SampleGalleryScreen()),
     );
   }
