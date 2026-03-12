@@ -87,16 +87,39 @@ public sealed record ButtonStyle(
 
         return this with
         {
-            ForegroundColor = style.ForegroundColor ?? ForegroundColor,
-            BackgroundColor = style.BackgroundColor ?? BackgroundColor,
-            OverlayColor = style.OverlayColor ?? OverlayColor,
-            SplashColor = style.SplashColor ?? SplashColor,
-            Side = style.Side ?? Side,
-            Padding = style.Padding ?? Padding,
-            Shape = style.Shape ?? Shape,
-            MinimumSize = style.MinimumSize ?? MinimumSize,
+            ForegroundColor = MergeState(ForegroundColor, style.ForegroundColor),
+            BackgroundColor = MergeState(BackgroundColor, style.BackgroundColor),
+            OverlayColor = MergeState(OverlayColor, style.OverlayColor),
+            SplashColor = MergeState(SplashColor, style.SplashColor),
+            Side = MergeState(Side, style.Side),
+            Padding = MergeState(Padding, style.Padding),
+            Shape = MergeState(Shape, style.Shape),
+            MinimumSize = MergeState(MinimumSize, style.MinimumSize),
             TextStyle = style.TextStyle ?? TextStyle
         };
+    }
+
+    private static MaterialStateProperty<T?>? MergeState<T>(
+        MaterialStateProperty<T?>? lowerPriority,
+        MaterialStateProperty<T?>? higherPriority)
+    {
+        if (higherPriority is null)
+        {
+            return lowerPriority;
+        }
+
+        if (lowerPriority is null)
+        {
+            return higherPriority;
+        }
+
+        return MaterialStateProperty<T?>.ResolveWith(states =>
+        {
+            var resolved = higherPriority.Resolve(states);
+            return resolved is null
+                ? lowerPriority.Resolve(states)
+                : resolved;
+        });
     }
 
     internal Color? ResolveForegroundColor(MaterialState states)

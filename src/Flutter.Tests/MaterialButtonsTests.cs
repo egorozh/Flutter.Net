@@ -459,6 +459,71 @@ public sealed class MaterialButtonsTests
     }
 
     [Fact]
+    public void TextButton_SplashColor_RemainsActivationTint_AfterPointerUp()
+    {
+        var owner = new BuildOwner();
+        var overlayColor = Colors.DarkOrange;
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new TextButton(
+                    onPressed: () => { },
+                    style: TextButton.StyleFrom(overlayColor: overlayColor),
+                    child: new Text("Stable splash tint"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var hoverListener = FindHoverPointerListener(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(hoverListener);
+        hoverListener!.HandleEvent(
+            new PointerEnterEvent(
+                pointer: 26,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(12, 10),
+                buttons: PointerButtons.None,
+                timestampUtc: DateTime.UtcNow),
+            new BoxHitTestEntry(hoverListener, new Point(12, 10)));
+
+        owner.FlushBuild();
+
+        var interactiveListener = FindInteractivePointerListener(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(interactiveListener);
+        interactiveListener!.HandleEvent(
+            new PointerDownEvent(
+                pointer: 26,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(12, 10),
+                buttons: PointerButtons.Primary,
+                timestampUtc: DateTime.UtcNow),
+            new BoxHitTestEntry(interactiveListener, new Point(12, 10)));
+
+        owner.FlushBuild();
+
+        var pressedSplash = FindDescendant<RenderInkSplash>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(pressedSplash);
+        Assert.Equal(ApplyOpacity(overlayColor, 0.10), pressedSplash!.SplashColor);
+
+        interactiveListener = FindInteractivePointerListener(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(interactiveListener);
+        interactiveListener!.HandleEvent(
+            new PointerUpEvent(
+                pointer: 26,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(12, 10),
+                buttons: PointerButtons.None,
+                timestampUtc: DateTime.UtcNow),
+            new BoxHitTestEntry(interactiveListener, new Point(12, 10)));
+
+        owner.FlushBuild();
+
+        var releasedSplash = FindDescendant<RenderInkSplash>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(releasedSplash);
+        Assert.Equal(ApplyOpacity(overlayColor, 0.10), releasedSplash!.SplashColor);
+    }
+
+    [Fact]
     public void ElevatedButton_StyleFrom_UsesDisabledColorOverrides()
     {
         var owner = new BuildOwner();
@@ -485,6 +550,58 @@ public sealed class MaterialButtonsTests
         Assert.NotNull(paragraph);
         Assert.Equal(Colors.SaddleBrown, decorated!.Decoration.Color);
         Assert.Equal(Colors.SlateGray, Assert.IsType<SolidColorBrush>(paragraph!.Foreground).Color);
+    }
+
+    [Fact]
+    public void TextButton_StyleFrom_ForegroundOnly_DisabledFallsBackToThemeDisabledForeground()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            OnSurfaceColor = Colors.MidnightBlue
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new TextButton(
+                    onPressed: null,
+                    style: TextButton.StyleFrom(foregroundColor: Colors.LimeGreen),
+                    child: new Text("Disabled foreground fallback"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var paragraph = FindDescendant<RenderParagraph>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(paragraph);
+        Assert.Equal(ApplyOpacity(theme.OnSurfaceColor, 0.38), Assert.IsType<SolidColorBrush>(paragraph!.Foreground).Color);
+    }
+
+    [Fact]
+    public void ElevatedButton_StyleFrom_BackgroundOnly_DisabledFallsBackToThemeDisabledBackground()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            OnSurfaceColor = Colors.DarkSlateGray
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new ElevatedButton(
+                    onPressed: null,
+                    style: ElevatedButton.StyleFrom(backgroundColor: Colors.SeaGreen),
+                    child: new Text("Disabled background fallback"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var decorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(decorated);
+        Assert.Equal(ApplyOpacity(theme.OnSurfaceColor, 0.12), decorated!.Decoration.Color);
     }
 
     [Fact]
