@@ -331,6 +331,31 @@ public sealed class MaterialButtonsTests
         Assert.Equal(new Point(16, 12), activeSplash.SplashOrigin);
     }
 
+    [Fact]
+    public void TextButton_UsesRoundedClipForInkSplash()
+    {
+        var owner = new BuildOwner();
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new TextButton(
+                    onPressed: () => { },
+                    child: new Text("Rounded splash"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var renderRoot = RequireRenderObject<RenderObject>(root.ChildElement);
+        var clip = FindDescendant<RenderClipRRect>(renderRoot);
+        var splash = FindDescendant<RenderInkSplash>(renderRoot);
+
+        Assert.NotNull(clip);
+        Assert.Equal(BorderRadius.Circular(20), clip!.BorderRadius);
+        Assert.NotNull(splash);
+        Assert.False(splash!.ClipToBounds);
+    }
+
     private static T RequireRenderObject<T>(Element? element) where T : RenderObject
     {
         Assert.NotNull(element);

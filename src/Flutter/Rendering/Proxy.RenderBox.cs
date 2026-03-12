@@ -1424,6 +1424,95 @@ public sealed class RenderClipRect : RenderProxyBox
     }
 }
 
+public sealed class RenderClipRRect : RenderProxyBox
+{
+    private Rect _clipRect;
+    private bool _hasExplicitClipRect;
+    private BorderRadius _borderRadius;
+
+    public RenderClipRRect(RenderBox? child = null)
+    {
+        Child = child;
+    }
+
+    public Rect ClipRect
+    {
+        get => _clipRect;
+        set
+        {
+            if (_hasExplicitClipRect && _clipRect == value)
+            {
+                return;
+            }
+
+            _clipRect = value;
+            _hasExplicitClipRect = true;
+            if (Child != null)
+            {
+                MarkNeedsCompositedLayerUpdate();
+                MarkNeedsSemanticsUpdate();
+            }
+        }
+    }
+
+    public BorderRadius BorderRadius
+    {
+        get => _borderRadius;
+        set
+        {
+            if (_borderRadius == value)
+            {
+                return;
+            }
+
+            _borderRadius = value;
+            if (Child != null)
+            {
+                MarkNeedsCompositedLayerUpdate();
+                MarkNeedsSemanticsUpdate();
+            }
+        }
+    }
+
+    public override bool IsRepaintBoundary => Child != null;
+    protected override bool AlwaysNeedsCompositing => Child != null;
+
+    protected override OffsetLayer CreateCompositedLayer(OffsetLayer? oldLayer)
+    {
+        return oldLayer as ClipRRectOffsetLayer ?? new ClipRRectOffsetLayer();
+    }
+
+    protected override void UpdateCompositedLayer(OffsetLayer layer)
+    {
+        if (layer is ClipRRectOffsetLayer clipLayer)
+        {
+            clipLayer.ClipRect = _hasExplicitClipRect ? _clipRect : new Rect(new Point(0, 0), Size);
+            clipLayer.BorderRadius = _borderRadius;
+        }
+    }
+
+    protected override Rect? DescribeSemanticsClip(RenderObject? child)
+    {
+        return null;
+    }
+
+    protected override Rect? DescribeApproximatePaintClip(RenderObject? child)
+    {
+        return _hasExplicitClipRect ? _clipRect : new Rect(new Point(0, 0), Size);
+    }
+
+    public override bool HitTest(BoxHitTestResult result, Point position)
+    {
+        var clip = _hasExplicitClipRect ? _clipRect : new Rect(new Point(0, 0), Size);
+        if (!clip.Contains(position))
+        {
+            return false;
+        }
+
+        return base.HitTest(result, position);
+    }
+}
+
 public sealed class RenderPointerListener : RenderProxyBox
 {
     private HitTestBehavior _behavior;

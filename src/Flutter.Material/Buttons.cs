@@ -389,6 +389,11 @@ internal sealed class MaterialButtonCore : StatefulWidget
                 splashColor: splashColor,
                 splashOrigin: _splashOrigin,
                 splashProgress: _splashProgress,
+                clipToBounds: false,
+                child: content);
+
+            content = new ClipRRect(
+                borderRadius: widget.BorderRadius,
                 child: content);
 
             content = new DecoratedBox(

@@ -72,7 +72,10 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   - new `RenderInkSplash` paint primitive with animated radial splash progress and pointer-origin support,
   - new widget-level wrapper `InkSplash`,
   - `MaterialButtonCore` now starts animated splash on pointer/keyboard activation (`src/Flutter/Rendering/Proxy.RenderBox.cs`, `src/Flutter/Widgets/Basic.cs`, `src/Flutter/Rendering/Object.PaintingContext.cs`, `src/Flutter.Material/Buttons.cs`).
-- Documented parity divergence: current splash clipping is rectangular (`ClipRect`) rather than rounded-shape clip; follow-up requires rounded-clip render primitive before full Flutter `InkWell` parity.
+- Closed rounded-clipping follow-up for Material ripple parity:
+  - added framework rounded-clip primitives (`ClipRRectLayer`, `ClipRRectOffsetLayer`, `RenderClipRRect`, `ClipRRect`, and `PaintingContext.PushClipRRect`),
+  - `MaterialButtonCore` now wraps `InkSplash` in `ClipRRect` using button border radius, and splash internal rectangular clip is disabled,
+  - added regression coverage for rounded clip integration in `MaterialButtonsTests`, `LayerV2Tests`, and `BasicWidgetProxyTests`.
 
 ## [2026-03-12] - Post-M3 typography and visual parity hardening
 

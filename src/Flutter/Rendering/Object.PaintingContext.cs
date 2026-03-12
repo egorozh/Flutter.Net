@@ -95,6 +95,23 @@ public sealed class PaintingContext
         childContext.StopRecordingIfNeeded();
     }
 
+    public void PushClipRRect(Rect clipRect, BorderRadius borderRadius, Action<PaintingContext> painter)
+    {
+        StopRecordingIfNeeded();
+
+        var layer = new ClipRRectLayer
+        {
+            ClipRect = clipRect,
+            BorderRadius = borderRadius
+        };
+
+        _containerLayer.Append(layer);
+
+        var childContext = new PaintingContext(layer);
+        painter(childContext);
+        childContext.StopRecordingIfNeeded();
+    }
+
     public void PushTransform(Matrix transform, Action<PaintingContext> painter)
     {
         StopRecordingIfNeeded();

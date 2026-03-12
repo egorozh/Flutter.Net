@@ -85,11 +85,10 @@
   - introduced `RenderInkSplash` + `InkSplash` wrapper,
   - `MaterialButtonCore` now starts radial splash animation from pointer origin (`PointerDownEvent.LocalPosition`) and from center for keyboard activation,
   - regression coverage added in `TextButton_PointerDownStartsInkSplashRender`.
-- Divergence log:
-  - `RenderInkSplash` currently clips to rectangular bounds (`ClipRect`) and not rounded border shape.
-  - Reason: framework has no rounded-clip render primitive yet.
-  - Expected delta: splash can draw into rounded-corner cut areas on heavily rounded buttons.
-  - Follow-up condition: add rounded clip primitive (`ClipRRect`/rounded layer clip) and wire `MaterialButtonCore` border radius into splash clipping.
+- Closed rounded-clip follow-up:
+  - framework now includes rounded clip primitives (`ClipRRectLayer`, `ClipRRectOffsetLayer`, `RenderClipRRect`, `ClipRRect`, and `PaintingContext.PushClipRRect`),
+  - `MaterialButtonCore` now wraps `InkSplash` with `ClipRRect` using button `BorderRadius` and disables internal rectangular splash clipping,
+  - regression coverage added in `TextButton_UsesRoundedClipForInkSplash`, `PushClipRRect_CreatesClipRRectLayer_WithPictureChild`, and `ClipRRectWidget_CreatesRenderClipRRect_AndUpdatesBorderRadius`.
 - Added framework-level `State.StateWidget` protected accessor to support stateful widgets in external assemblies (`src/Flutter.Material`).
 - Replaced sample shell `CounterTapButton` usage with Material buttons in both C# and Dart sample galleries (menu entries + back action), and switched Material-buttons-demo control-strip actions to `TextButton`.
 - Added regression coverage for pressed-state visual transitions in `MaterialButtonsTests`.

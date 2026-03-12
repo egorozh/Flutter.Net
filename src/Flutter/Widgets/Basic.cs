@@ -428,6 +428,29 @@ public sealed class ClipRect : SingleChildRenderObjectWidget
     }
 }
 
+public sealed class ClipRRect : SingleChildRenderObjectWidget
+{
+    public ClipRRect(BorderRadius borderRadius, Widget? child = null, Key? key = null) : base(child, key)
+    {
+        BorderRadius = borderRadius;
+    }
+
+    public BorderRadius BorderRadius { get; }
+
+    internal override RenderObject CreateRenderObject(BuildContext context)
+    {
+        return new RenderClipRRect
+        {
+            BorderRadius = BorderRadius
+        };
+    }
+
+    internal override void UpdateRenderObject(BuildContext context, RenderObject renderObject)
+    {
+        ((RenderClipRRect)renderObject).BorderRadius = BorderRadius;
+    }
+}
+
 public sealed class AspectRatio : SingleChildRenderObjectWidget
 {
     public AspectRatio(double aspectRatio, Widget? child = null, Key? key = null) : base(child, key)
