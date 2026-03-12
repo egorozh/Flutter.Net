@@ -356,6 +356,95 @@ public sealed class MaterialButtonsTests
         Assert.False(splash!.ClipToBounds);
     }
 
+    [Fact]
+    public void TextButton_PointerClick_DoesNotKeepFocusOverlayAfterPointerUp()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            PrimaryColor = Colors.Coral
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new TextButton(
+                    onPressed: () => { },
+                    child: new Text("Pointer focus"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var renderRoot = RequireRenderObject<RenderObject>(root.ChildElement);
+        var interactiveListener = FindInteractivePointerListener(renderRoot);
+        var focusListener = FindFocusPointerListener(renderRoot);
+        Assert.NotNull(interactiveListener);
+        Assert.NotNull(focusListener);
+
+        interactiveListener!.HandleEvent(
+            new PointerDownEvent(
+                pointer: 17,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(12, 10),
+                buttons: PointerButtons.Primary,
+                timestampUtc: DateTime.UtcNow),
+            new BoxHitTestEntry(interactiveListener, new Point(12, 10)));
+
+        focusListener!.HandleEvent(
+            new PointerDownEvent(
+                pointer: 17,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(12, 10),
+                buttons: PointerButtons.Primary,
+                timestampUtc: DateTime.UtcNow),
+            new BoxHitTestEntry(focusListener, new Point(12, 10)));
+
+        owner.FlushBuild();
+
+        interactiveListener = FindInteractivePointerListener(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(interactiveListener);
+        interactiveListener!.HandleEvent(
+            new PointerUpEvent(
+                pointer: 17,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(12, 10),
+                buttons: PointerButtons.None,
+                timestampUtc: DateTime.UtcNow),
+            new BoxHitTestEntry(interactiveListener, new Point(12, 10)));
+
+        owner.FlushBuild();
+
+        var decorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(decorated);
+        Assert.Null(decorated!.Decoration.Color);
+    }
+
+    [Fact]
+    public void TextButton_TightWidth_ExpandsInkSplashToFullButtonBounds()
+    {
+        using var harness = new WidgetRenderHarness(
+            new Theme(
+                data: ThemeData.Light,
+                child: new SizedBox(
+                    width: 240,
+                    child: new TextButton(
+                        onPressed: () => { },
+                        child: new Text("Wide button")))));
+
+        harness.Pump(new Size(300, 120));
+
+        var renderRoot = harness.RenderView.Child;
+        var splash = FindDescendant<RenderInkSplash>(renderRoot);
+        var decorated = FindDescendant<RenderDecoratedBox>(renderRoot);
+
+        Assert.NotNull(splash);
+        Assert.NotNull(decorated);
+        Assert.Equal(240, decorated!.Size.Width, 3);
+        Assert.Equal(240, splash!.Size.Width, 3);
+        Assert.Equal(decorated.Size.Height, splash.Size.Height, 3);
+    }
+
     private static T RequireRenderObject<T>(Element? element) where T : RenderObject
     {
         Assert.NotNull(element);
@@ -443,6 +532,168 @@ public sealed class MaterialButtonsTests
         });
 
         return result;
+    }
+
+    private static RenderPointerListener? FindFocusPointerListener(RenderObject? root)
+    {
+        if (root is null)
+        {
+            return null;
+        }
+
+        if (root is RenderPointerListener listener
+            && listener.OnPointerDown != null
+            && listener.OnPointerUp == null
+            && listener.OnPointerCancel == null
+            && listener.OnPointerEnter == null
+            && listener.OnPointerExit == null)
+        {
+            return listener;
+        }
+
+        RenderPointerListener? result = null;
+        root.VisitChildren(child =>
+        {
+            if (result is not null)
+            {
+                return;
+            }
+
+            result = FindFocusPointerListener(child);
+        });
+
+        return result;
+    }
+
+    private sealed class WidgetRenderHarness : IDisposable
+    {
+        private readonly BuildOwner _owner = new();
+        private readonly HarnessRootElement _rootElement;
+        private readonly PipelineOwner _pipeline;
+
+        public WidgetRenderHarness(Widget rootWidget)
+        {
+            RenderView = new RenderView();
+            _pipeline = new PipelineOwner(RenderView);
+            _pipeline.Attach(RenderView);
+
+            _rootElement = new HarnessRootElement(RenderView, rootWidget);
+            _rootElement.Attach(_owner);
+            _rootElement.Mount(parent: null, newSlot: null);
+            _owner.FlushBuild();
+        }
+
+        public RenderView RenderView { get; }
+
+        public void Pump(Size size)
+        {
+            _owner.FlushBuild();
+            _pipeline.RequestLayout();
+            _pipeline.FlushLayout(size);
+            _pipeline.FlushCompositingBits();
+            _pipeline.FlushPaint();
+        }
+
+        public void Dispose()
+        {
+            _rootElement.Unmount();
+        }
+
+        private sealed class HarnessRootElement : Element, IRenderObjectHost
+        {
+            private readonly RenderView _renderView;
+            private Element? _child;
+
+            public HarnessRootElement(RenderView renderView, Widget widget) : base(widget)
+            {
+                _renderView = renderView;
+            }
+
+            public override RenderObject? RenderObject => _child?.RenderObject;
+
+            internal override Element? RenderObjectAttachingChild => _child;
+
+            protected override void OnMount()
+            {
+                base.OnMount();
+                Rebuild();
+            }
+
+            internal override void Rebuild()
+            {
+                Dirty = false;
+                _child = UpdateChild(_child, Widget, Slot);
+            }
+
+            internal override void Update(Widget newWidget)
+            {
+                base.Update(newWidget);
+                Rebuild();
+            }
+
+            internal override void ForgetChild(Element child)
+            {
+                if (ReferenceEquals(_child, child))
+                {
+                    _child = null;
+                }
+            }
+
+            internal override void VisitChildren(Action<Element> visitor)
+            {
+                if (_child != null)
+                {
+                    visitor(_child);
+                }
+            }
+
+            public void InsertRenderObjectChild(RenderObject child, object? slot)
+            {
+                if (slot != null)
+                {
+                    throw new InvalidOperationException("HarnessRootElement expects null slot.");
+                }
+
+                if (child is not RenderBox renderBox)
+                {
+                    throw new InvalidOperationException("HarnessRootElement can host only RenderBox.");
+                }
+
+                _renderView.Child = renderBox;
+            }
+
+            public void MoveRenderObjectChild(RenderObject child, object? oldSlot, object? newSlot)
+            {
+                if (!Equals(oldSlot, newSlot))
+                {
+                    throw new InvalidOperationException("HarnessRootElement does not support non-null slot moves.");
+                }
+            }
+
+            public void RemoveRenderObjectChild(RenderObject child, object? slot)
+            {
+                if (slot != null)
+                {
+                    throw new InvalidOperationException("HarnessRootElement expects null slot.");
+                }
+
+                if (ReferenceEquals(_renderView.Child, child))
+                {
+                    _renderView.Child = null;
+                }
+            }
+
+            internal override void Unmount()
+            {
+                if (_child != null)
+                {
+                    UnmountChild(_child);
+                    _child = null;
+                }
+
+                base.Unmount();
+            }
+        }
     }
 
     private static Color ApplyOpacity(Color color, double opacity)

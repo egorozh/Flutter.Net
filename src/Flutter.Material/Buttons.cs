@@ -284,6 +284,7 @@ internal sealed class MaterialButtonCore : StatefulWidget
         private bool _isPressed;
         private bool _hasFocus;
         private bool _isHovered;
+        private bool _suppressFocusOverlay;
         private bool _isSplashActive;
         private double _splashProgress;
         private Point _splashOrigin = CenterSplashOrigin;
@@ -318,6 +319,11 @@ internal sealed class MaterialButtonCore : StatefulWidget
             if (!Enabled && _isHovered)
             {
                 _isHovered = false;
+            }
+
+            if (!Enabled && _suppressFocusOverlay)
+            {
+                _suppressFocusOverlay = false;
             }
 
             if (!Enabled && _isSplashActive)
@@ -443,6 +449,7 @@ internal sealed class MaterialButtonCore : StatefulWidget
 
             if (@event.IsDown)
             {
+                SetFocusOverlaySuppressed(false);
                 StartSplash(CenterSplashOrigin);
                 CurrentWidget.OnPressed?.Invoke();
             }
@@ -452,7 +459,7 @@ internal sealed class MaterialButtonCore : StatefulWidget
 
         private void HandlePointerDown(PointerDownEvent @event)
         {
-            SetPressed(true);
+            SetPressed(true, suppressFocusOverlay: true);
             StartSplash(@event.LocalPosition);
         }
 
@@ -469,7 +476,8 @@ internal sealed class MaterialButtonCore : StatefulWidget
         private void HandleFocusChanged()
         {
             var hasFocus = _focusNode?.HasFocus ?? false;
-            if (_hasFocus == hasFocus)
+            var shouldClearFocusSuppression = !hasFocus && _suppressFocusOverlay;
+            if (_hasFocus == hasFocus && !shouldClearFocusSuppression)
             {
                 return;
             }
@@ -477,17 +485,31 @@ internal sealed class MaterialButtonCore : StatefulWidget
             SetState(() =>
             {
                 _hasFocus = hasFocus;
+                if (!hasFocus)
+                {
+                    _suppressFocusOverlay = false;
+                }
             });
         }
 
-        private void SetPressed(bool value)
+        private void SetPressed(bool value, bool suppressFocusOverlay = false)
         {
-            if (!Enabled || _isPressed == value)
+            if (!Enabled)
             {
                 return;
             }
 
-            SetState(() => _isPressed = value);
+            var nextSuppressFocusOverlay = _suppressFocusOverlay || suppressFocusOverlay;
+            if (_isPressed == value && _suppressFocusOverlay == nextSuppressFocusOverlay)
+            {
+                return;
+            }
+
+            SetState(() =>
+            {
+                _isPressed = value;
+                _suppressFocusOverlay = nextSuppressFocusOverlay;
+            });
         }
 
         private void SetHovered(bool value)
@@ -498,6 +520,16 @@ internal sealed class MaterialButtonCore : StatefulWidget
             }
 
             SetState(() => _isHovered = value);
+        }
+
+        private void SetFocusOverlaySuppressed(bool value)
+        {
+            if (_suppressFocusOverlay == value)
+            {
+                return;
+            }
+
+            SetState(() => _suppressFocusOverlay = value);
         }
 
         private void StartSplash(Point origin)
@@ -564,7 +596,7 @@ internal sealed class MaterialButtonCore : StatefulWidget
 
         private Color? ResolveStateLayerColor()
         {
-            if (_isPressed || _hasFocus)
+            if (_isPressed || (_hasFocus && !_suppressFocusOverlay))
             {
                 return ReduceAlpha(CurrentWidget.StateColor, 0.10);
             }
@@ -584,7 +616,7 @@ internal sealed class MaterialButtonCore : StatefulWidget
                 return null;
             }
 
-            var fade = Math.Clamp(1 - _splashProgress, 0, 1);
+            var fade = ResolveSplashFade(_splashProgress);
             var baseOpacity = _isPressed ? 0.18 : 0.14;
             var opacity = baseOpacity * fade;
 
@@ -594,6 +626,19 @@ internal sealed class MaterialButtonCore : StatefulWidget
             }
 
             return ApplyOpacity(CurrentWidget.StateColor, opacity);
+        }
+
+        private static double ResolveSplashFade(double progress)
+        {
+            var clamped = Math.Clamp(progress, 0, 1);
+            const double fadeStart = 0.72;
+            if (clamped <= fadeStart)
+            {
+                return 1;
+            }
+
+            var tailProgress = (clamped - fadeStart) / (1 - fadeStart);
+            return Math.Clamp(1 - tailProgress, 0, 1);
         }
 
         private void HandleSplashTick()

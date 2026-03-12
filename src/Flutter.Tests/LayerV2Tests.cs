@@ -53,6 +53,35 @@ public sealed class LayerV2Tests
     }
 
     [Fact]
+    public void RenderClipRRect_UpdatesLayerClipRect_WhenSizeChanges()
+    {
+        var clip = new RenderClipRRect(
+            child: new TestExpandRenderBox());
+        var renderView = new RenderView
+        {
+            Child = clip
+        };
+
+        var pipeline = new PipelineOwner(renderView);
+        pipeline.Attach(renderView);
+
+        pipeline.FlushLayout(new Size(80, 40));
+        pipeline.FlushCompositingBits();
+        pipeline.FlushPaint();
+
+        var firstLayer = Assert.IsType<ClipRRectOffsetLayer>(Assert.Single(pipeline.RootLayer.Children));
+        Assert.Equal(new Rect(0, 0, 80, 40), firstLayer.ClipRect);
+
+        pipeline.RequestLayout();
+        pipeline.FlushLayout(new Size(200, 40));
+        pipeline.FlushCompositingBits();
+        pipeline.FlushPaint();
+
+        var secondLayer = Assert.IsType<ClipRRectOffsetLayer>(Assert.Single(pipeline.RootLayer.Children));
+        Assert.Equal(new Rect(0, 0, 200, 40), secondLayer.ClipRect);
+    }
+
+    [Fact]
     public void PushOpacityAndTransform_CreateNestedLayerTree()
     {
         var leaf = new TestOpacityTransformPainterRenderBox();
@@ -124,6 +153,19 @@ public sealed class LayerV2Tests
                 new Rect(offset + new Point(5, 7), new Size(44, 26)),
                 BorderRadius.Circular(8),
                 clipContext => clipContext.DrawRectangle(Brushes.CornflowerBlue, null, new Rect(offset, Size)));
+        }
+    }
+
+    private sealed class TestExpandRenderBox : RenderBox
+    {
+        protected override void PerformLayout()
+        {
+            Size = Constraints.Constrain(Constraints.Biggest);
+        }
+
+        public override void Paint(PaintingContext ctx, Point offset)
+        {
+            ctx.DrawRectangle(Brushes.Transparent, null, new Rect(offset, Size));
         }
     }
 }

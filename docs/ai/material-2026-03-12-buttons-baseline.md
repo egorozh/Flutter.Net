@@ -89,6 +89,16 @@
   - framework now includes rounded clip primitives (`ClipRRectLayer`, `ClipRRectOffsetLayer`, `RenderClipRRect`, `ClipRRect`, and `PaintingContext.PushClipRRect`),
   - `MaterialButtonCore` now wraps `InkSplash` with `ClipRRect` using button `BorderRadius` and disables internal rectangular splash clipping,
   - regression coverage added in `TextButton_UsesRoundedClipForInkSplash`, `PushClipRRect_CreatesClipRRectLayer_WithPictureChild`, and `ClipRRectWidget_CreatesRenderClipRRect_AndUpdatesBorderRadius`.
+- Fixed pointer-click focus-overlay stickiness:
+  - `MaterialButtonCore` now suppresses focus overlay after pointer activation, so background tint is released on `PointerUp`,
+  - keyboard activation re-enables focus overlay behavior,
+  - regression coverage added in `TextButton_PointerClick_DoesNotKeepFocusOverlayAfterPointerUp`.
+- Improved ripple visibility on wide buttons:
+  - splash alpha now remains stable through most of expansion and fades only in tail phase,
+  - added layout regression `TextButton_TightWidth_ExpandsInkSplashToFullButtonBounds` to verify `RenderInkSplash` matches tight button width.
+- Fixed resize-related ripple zone staleness:
+  - `RenderClipRect`/`RenderClipRRect` now request composited-layer property refresh when implicit size-based clip bounds change in layout,
+  - added regression `RenderClipRRect_UpdatesLayerClipRect_WhenSizeChanges` to verify clip bounds follow viewport resize.
 - Added framework-level `State.StateWidget` protected accessor to support stateful widgets in external assemblies (`src/Flutter.Material`).
 - Replaced sample shell `CounterTapButton` usage with Material buttons in both C# and Dart sample galleries (menu entries + back action), and switched Material-buttons-demo control-strip actions to `TextButton`.
 - Added regression coverage for pressed-state visual transitions in `MaterialButtonsTests`.

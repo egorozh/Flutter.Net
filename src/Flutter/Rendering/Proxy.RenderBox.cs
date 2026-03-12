@@ -1389,6 +1389,24 @@ public sealed class RenderClipRect : RenderProxyBox
     public override bool IsRepaintBoundary => Child != null;
     protected override bool AlwaysNeedsCompositing => Child != null;
 
+    protected override void PerformLayout()
+    {
+        var hadSize = HasSize;
+        var previousSize = hadSize ? Size : default;
+        base.PerformLayout();
+
+        if (_hasExplicitClipRect || Child == null)
+        {
+            return;
+        }
+
+        if (!hadSize || previousSize != Size)
+        {
+            MarkNeedsCompositedLayerUpdate();
+            MarkNeedsSemanticsUpdate();
+        }
+    }
+
     protected override OffsetLayer CreateCompositedLayer(OffsetLayer? oldLayer)
     {
         return oldLayer as ClipRectOffsetLayer ?? new ClipRectOffsetLayer();
@@ -1476,6 +1494,24 @@ public sealed class RenderClipRRect : RenderProxyBox
 
     public override bool IsRepaintBoundary => Child != null;
     protected override bool AlwaysNeedsCompositing => Child != null;
+
+    protected override void PerformLayout()
+    {
+        var hadSize = HasSize;
+        var previousSize = hadSize ? Size : default;
+        base.PerformLayout();
+
+        if (_hasExplicitClipRect || Child == null)
+        {
+            return;
+        }
+
+        if (!hadSize || previousSize != Size)
+        {
+            MarkNeedsCompositedLayerUpdate();
+            MarkNeedsSemanticsUpdate();
+        }
+    }
 
     protected override OffsetLayer CreateCompositedLayer(OffsetLayer? oldLayer)
     {
