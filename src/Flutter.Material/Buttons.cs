@@ -583,7 +583,7 @@ internal sealed class MaterialButtonCore : StatefulWidget
                 return MaterialStateProperty<Color?>.All(overlayColor.Value);
             }
 
-            return CreateExplicitOverlayResolver(overlayColor.Value);
+            return CreateDefaultOverlayResolver(overlayColor.Value);
         }
 
         return foregroundColor.HasValue
@@ -593,17 +593,7 @@ internal sealed class MaterialButtonCore : StatefulWidget
 
     internal static MaterialStateProperty<Color?> CreateDefaultSplashResolver(Color stateColor)
     {
-        return MaterialStateProperty<Color?>.ResolveWith(states =>
-        {
-            if (states.HasFlag(MaterialState.Disabled))
-            {
-                return null;
-            }
-
-            return states.HasFlag(MaterialState.Pressed)
-                ? ApplyOpacity(stateColor, 0.18)
-                : ApplyOpacity(stateColor, 0.14);
-        });
+        return CreateDefaultOverlayResolver(stateColor);
     }
 
     internal static MaterialStateProperty<Color?> CreateExplicitSplashResolver(Color splashColor)
@@ -631,11 +621,16 @@ internal sealed class MaterialButtonCore : StatefulWidget
 
         if (overlayColor.HasValue)
         {
-            return CreateExplicitSplashResolver(overlayColor.Value);
+            if (overlayColor.Value.A == 0)
+            {
+                return MaterialStateProperty<Color?>.All(overlayColor.Value);
+            }
+
+            return CreateDefaultOverlayResolver(overlayColor.Value);
         }
 
         return foregroundColor.HasValue
-            ? CreateDefaultSplashResolver(foregroundColor.Value)
+            ? CreateDefaultOverlayResolver(foregroundColor.Value)
             : null;
     }
 
@@ -650,6 +645,7 @@ internal sealed class MaterialButtonCore : StatefulWidget
         private bool _isSplashActive;
         private double _splashProgress;
         private Point _splashOrigin = CenterSplashOrigin;
+        private Color? _splashBaseColor;
         private FocusNode? _focusNode;
         private AnimationController? _splashController;
 
@@ -692,6 +688,7 @@ internal sealed class MaterialButtonCore : StatefulWidget
             {
                 _isSplashActive = false;
                 _splashProgress = 0;
+                _splashBaseColor = null;
                 _splashController?.Stop();
             }
 
@@ -729,7 +726,7 @@ internal sealed class MaterialButtonCore : StatefulWidget
 
             var foreground = ResolveForegroundColor(style, baseStates);
             var background = ResolveBackgroundColor(style, baseStates, overlayStates);
-            var splashColor = ResolveSplashColor(style, overlayStates);
+            var splashColor = ResolveSplashColor();
             var border = style.ResolveSide(baseStates);
             var padding = style.ResolvePadding(baseStates) ?? default;
             var borderRadius = style.ResolveShape(baseStates) ?? Flutter.Rendering.BorderRadius.Zero;
@@ -910,11 +907,15 @@ internal sealed class MaterialButtonCore : StatefulWidget
                 return;
             }
 
+            var splashStates = BuildMaterialStates(enabled: true, includeFocus: !_suppressFocusOverlay);
+            var splashBaseColor = CurrentWidget.Style.ResolveSplashColor(splashStates);
+
             SetState(() =>
             {
                 _isSplashActive = true;
                 _splashProgress = 0;
                 _splashOrigin = origin;
+                _splashBaseColor = splashBaseColor;
             });
 
             _splashController.Forward(0);
@@ -963,7 +964,9 @@ internal sealed class MaterialButtonCore : StatefulWidget
             MaterialState overlayStates)
         {
             var background = style.ResolveBackgroundColor(baseStates);
-            var overlay = style.ResolveOverlayColor(overlayStates);
+            var overlay = HasOverlayState(overlayStates)
+                ? style.ResolveOverlayColor(overlayStates)
+                : null;
 
             if (!background.HasValue)
             {
@@ -978,28 +981,34 @@ internal sealed class MaterialButtonCore : StatefulWidget
             return BlendColorOverlay(background.Value, overlay.Value);
         }
 
-        private Color? ResolveSplashColor(ButtonStyle style, MaterialState states)
+        private static bool HasOverlayState(MaterialState states)
+        {
+            return states.HasFlag(MaterialState.Pressed)
+                   || states.HasFlag(MaterialState.Hovered)
+                   || states.HasFlag(MaterialState.Focused);
+        }
+
+        private Color? ResolveSplashColor()
         {
             if (!_isSplashActive)
             {
                 return null;
             }
 
-            var splashBase = style.ResolveSplashColor(states);
-            if (!splashBase.HasValue)
+            if (!_splashBaseColor.HasValue)
             {
                 return null;
             }
 
             var fade = ResolveSplashFade(_splashProgress);
-            var opacity = Math.Clamp((splashBase.Value.A / 255.0) * fade, 0, 1);
+            var opacity = Math.Clamp((_splashBaseColor.Value.A / 255.0) * fade, 0, 1);
             if (opacity <= 0.001)
             {
                 return null;
             }
 
             var alpha = (byte)Math.Clamp((int)(opacity * 255), 0, 255);
-            return Color.FromArgb(alpha, splashBase.Value.R, splashBase.Value.G, splashBase.Value.B);
+            return Color.FromArgb(alpha, _splashBaseColor.Value.R, _splashBaseColor.Value.G, _splashBaseColor.Value.B);
         }
 
         private static void ValidateMinimumSize(Size minimumSize)
@@ -1070,6 +1079,7 @@ internal sealed class MaterialButtonCore : StatefulWidget
                 _isSplashActive = false;
                 _splashProgress = 0;
                 _splashOrigin = CenterSplashOrigin;
+                _splashBaseColor = null;
             });
         }
 

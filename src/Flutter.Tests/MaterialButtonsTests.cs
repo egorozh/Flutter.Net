@@ -292,7 +292,7 @@ public sealed class MaterialButtonsTests
 
         var splash = FindDescendant<RenderInkSplash>(RequireRenderObject<RenderObject>(root.ChildElement));
         Assert.NotNull(splash);
-        Assert.Equal(ApplyOpacity(styleColor, 0.18), splash!.SplashColor);
+        Assert.Equal(ApplyOpacity(styleColor, 0.10), splash!.SplashColor);
     }
 
     [Fact]
@@ -311,6 +311,10 @@ public sealed class MaterialButtonsTests
         root.Attach(owner);
         root.Mount(parent: null, newSlot: null);
         owner.FlushBuild();
+
+        var initialDecorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(initialDecorated);
+        Assert.Null(initialDecorated!.Decoration.Color);
 
         var hoverListener = FindHoverPointerListener(RequireRenderObject<RenderObject>(root.ChildElement));
         Assert.NotNull(hoverListener);
@@ -349,6 +353,109 @@ public sealed class MaterialButtonsTests
         var splash = FindDescendant<RenderInkSplash>(RequireRenderObject<RenderObject>(root.ChildElement));
         Assert.NotNull(splash);
         Assert.Null(splash!.SplashColor);
+    }
+
+    [Fact]
+    public void TextButton_StyleFrom_OverlayColor_UsesStateOpacitiesAndSplashFallback()
+    {
+        var owner = new BuildOwner();
+        var overlayColor = Colors.DarkMagenta;
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light with
+                {
+                    PrimaryColor = Colors.CadetBlue
+                },
+                child: new TextButton(
+                    onPressed: () => { },
+                    style: TextButton.StyleFrom(overlayColor: overlayColor),
+                    child: new Text("Overlay styleFrom"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var initialDecorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(initialDecorated);
+        Assert.Null(initialDecorated!.Decoration.Color);
+
+        var hoverListener = FindHoverPointerListener(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(hoverListener);
+        hoverListener!.HandleEvent(
+            new PointerEnterEvent(
+                pointer: 24,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(11, 9),
+                buttons: PointerButtons.None,
+                timestampUtc: DateTime.UtcNow),
+            new BoxHitTestEntry(hoverListener, new Point(11, 9)));
+
+        owner.FlushBuild();
+
+        var hoveredDecorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(hoveredDecorated);
+        Assert.Equal(ApplyOpacity(overlayColor, 0.08), hoveredDecorated!.Decoration.Color);
+
+        var interactiveListener = FindInteractivePointerListener(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(interactiveListener);
+        interactiveListener!.HandleEvent(
+            new PointerDownEvent(
+                pointer: 24,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(11, 9),
+                buttons: PointerButtons.Primary,
+                timestampUtc: DateTime.UtcNow),
+            new BoxHitTestEntry(interactiveListener, new Point(11, 9)));
+
+        owner.FlushBuild();
+
+        var pressedDecorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(pressedDecorated);
+        Assert.Equal(ApplyOpacity(overlayColor, 0.10), pressedDecorated!.Decoration.Color);
+
+        var splash = FindDescendant<RenderInkSplash>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(splash);
+        Assert.Equal(ApplyOpacity(overlayColor, 0.10), splash!.SplashColor);
+    }
+
+    [Fact]
+    public void TextButton_ButtonStyleOverlayAll_DoesNotTintAtRest_ButAppliesOnHover()
+    {
+        var owner = new BuildOwner();
+        var overlayColor = Colors.HotPink;
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new TextButton(
+                    onPressed: () => { },
+                    style: new ButtonStyle(
+                        OverlayColor: MaterialStateProperty<Color?>.All(overlayColor)),
+                    child: new Text("Overlay all"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var initialDecorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(initialDecorated);
+        Assert.Null(initialDecorated!.Decoration.Color);
+
+        var hoverListener = FindHoverPointerListener(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(hoverListener);
+        hoverListener!.HandleEvent(
+            new PointerEnterEvent(
+                pointer: 25,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(11, 10),
+                buttons: PointerButtons.None,
+                timestampUtc: DateTime.UtcNow),
+            new BoxHitTestEntry(hoverListener, new Point(11, 10)));
+
+        owner.FlushBuild();
+
+        var hoveredDecorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(hoveredDecorated);
+        Assert.Equal(overlayColor, hoveredDecorated!.Decoration.Color);
     }
 
     [Fact]

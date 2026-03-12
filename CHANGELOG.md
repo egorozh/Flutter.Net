@@ -80,8 +80,10 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Matched Flutter overlay conflict precedence for Material button state layers: `pressed` now wins over `hovered`, and `hovered` wins over `focused`; added regression coverage for combined-state conflicts (`TextButton_PressedOverlayTakesPriorityOverHoverOverlay`, `TextButton_HoverOverlayTakesPriorityOverFocusOverlay`) (`src/Flutter.Material/Buttons.cs`, `src/Flutter.Tests/MaterialButtonsTests.cs`).
 - Continued `StyleFrom(...)` parity with Flutter defaults:
   - `foregroundColor` in `StyleFrom(...)` now derives default overlay and splash state colors when explicit `overlayColor`/`splashColor` are omitted,
-  - explicit `overlayColor` now also drives default splash color when `splashColor` is omitted, including `Colors.Transparent` defeating highlight/splash visuals,
-  - added regression coverage in `TextButton_StyleFrom_ForegroundColor_DerivesOverlayAndSplash` and `TextButton_StyleFrom_TransparentOverlay_DisablesVisualHighlights` (`src/Flutter.Material/Buttons.cs`, `src/Flutter.Tests/MaterialButtonsTests.cs`).
+  - explicit `overlayColor` now follows Flutter-like state opacities (`pressed/focused: 0.10`, `hovered: 0.08`) and drives splash fallback when `splashColor` is omitted, including `Colors.Transparent` defeating highlight/splash visuals,
+  - splash color now follows the same overlay-state resolution and is captured at splash start (matching InkWell behavior where ripple color does not change after press state transitions),
+  - fixed overlay application semantics so state-layer tint is applied only for interactive states (`pressed/hovered/focused`) and not at idle, with regression coverage in `TextButton_ButtonStyleOverlayAll_DoesNotTintAtRest_ButAppliesOnHover`,
+  - added/updated regression coverage in `TextButton_StyleFrom_ForegroundColor_DerivesOverlayAndSplash`, `TextButton_StyleFrom_TransparentOverlay_DisablesVisualHighlights`, and `TextButton_StyleFrom_OverlayColor_UsesStateOpacitiesAndSplashFallback` (`src/Flutter.Material/Buttons.cs`, `src/Flutter.Tests/MaterialButtonsTests.cs`).
 - Added ink/ripple baseline for Material buttons:
   - new `RenderInkSplash` paint primitive with animated radial splash progress and pointer-origin support,
   - new widget-level wrapper `InkSplash`,

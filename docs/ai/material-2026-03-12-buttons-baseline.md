@@ -113,8 +113,10 @@
   - regression coverage added in `TextButton_PressedOverlayTakesPriorityOverHoverOverlay` and `TextButton_HoverOverlayTakesPriorityOverFocusOverlay`.
 - Continued `StyleFrom(...)` parity follow-up:
   - `foregroundColor` now derives default overlay/splash state colors when explicit `overlayColor`/`splashColor` are omitted,
-  - explicit `overlayColor` now drives splash fallback when `splashColor` is omitted, including transparent highlight/splash suppression,
-  - regression coverage added in `TextButton_StyleFrom_ForegroundColor_DerivesOverlayAndSplash` and `TextButton_StyleFrom_TransparentOverlay_DisablesVisualHighlights`.
+  - explicit `overlayColor` now follows Flutter-like state opacities (`pressed/focused: 0.10`, `hovered: 0.08`) and drives splash fallback when `splashColor` is omitted, including transparent highlight/splash suppression,
+  - splash base color is now captured at activation so ripple tint remains stable through press-release transitions,
+  - overlay tint application is now gated to interactive states only (no idle tint when overlay property resolves for `MaterialState.None`),
+  - regression coverage added in `TextButton_StyleFrom_ForegroundColor_DerivesOverlayAndSplash`, `TextButton_StyleFrom_TransparentOverlay_DisablesVisualHighlights`, `TextButton_StyleFrom_OverlayColor_UsesStateOpacitiesAndSplashFallback`, and `TextButton_ButtonStyleOverlayAll_DoesNotTintAtRest_ButAppliesOnHover`.
 - Added framework-level `State.StateWidget` protected accessor to support stateful widgets in external assemblies (`src/Flutter.Material`).
 - Replaced sample shell `CounterTapButton` usage with Material buttons in both C# and Dart sample galleries (menu entries + back action), and switched Material-buttons-demo control-strip actions to `TextButton`.
 - Added regression coverage for pressed-state visual transitions in `MaterialButtonsTests`.
