@@ -21,6 +21,18 @@ class SampleRoutes {
   static const String customSlivers = '/custom-slivers';
   static const String scrollbar = '/scrollbar';
   static const String editableText = '/editable-text';
+  static const String proxyWidgets = '/proxy-widgets';
+  static const String align = '/align';
+  static const String stack = '/stack';
+  static const String decoratedBox = '/decorated-box';
+  static const String container = '/container';
+  static const String aspectRatio = '/aspect-ratio';
+  static const String fractionallySizedBox = '/fractionally-sized-box';
+  static const String fittedBox = '/fitted-box';
+  static const String unconstrainedLimitedBox = '/unconstrained-limited-box';
+  static const String overflowBox = '/overflow-box';
+  static const String overflowIndicator = '/overflow-indicator';
+  static const String offstage = '/offstage';
 }
 
 class SampleRouteDefinition {

@@ -1,16 +1,28 @@
 import 'package:flutter/material.dart';
 
+import 'align_demo_page.dart';
+import 'aspect_ratio_demo_page.dart';
 import 'counter_screen.dart';
 import 'counter_widgets.dart';
+import 'container_demo_page.dart';
 import 'custom_slivers_demo_page.dart';
+import 'decorated_box_demo_page.dart';
 import 'editable_text_demo_page.dart';
+import 'fitted_box_demo_page.dart';
+import 'fractionally_sized_box_demo_page.dart';
 import 'grid_view_demo_page.dart';
 import 'list_view_fixed_extent_demo_page.dart';
 import 'list_view_reverse_demo_page.dart';
 import 'list_view_separated_demo_page.dart';
 import 'navigator_demo_page.dart';
+import 'offstage_demo_page.dart';
+import 'overflow_box_demo_page.dart';
+import 'overflow_indicator_demo_page.dart';
+import 'proxy_widgets_demo_page.dart';
 import 'sample_routes.dart';
 import 'scrollbar_demo_page.dart';
+import 'stack_demo_page.dart';
+import 'unconstrained_limited_box_demo_page.dart';
 
 class SampleGalleryScreen extends StatelessWidget {
   const SampleGalleryScreen({super.key});
@@ -70,6 +82,78 @@ class SampleGalleryScreen extends StatelessWidget {
       subtitle: 'focus + IME + multiline caret',
       builder: () => const EditableTextDemoPage(),
     ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.proxyWidgets,
+      title: 'Proxy widgets',
+      subtitle: 'Opacity + Transform + ClipRect composition',
+      builder: () => const ProxyWidgetsDemoPage(),
+    ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.align,
+      title: 'Align + Center',
+      subtitle: 'single-child alignment and shrink factors',
+      builder: () => const AlignDemoPage(),
+    ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.stack,
+      title: 'Stack + Positioned',
+      subtitle: 'multi-child overlay layout',
+      builder: () => const StackDemoPage(),
+    ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.decoratedBox,
+      title: 'DecoratedBox',
+      subtitle: 'border + radius + fill decoration',
+      builder: () => const DecoratedBoxDemoPage(),
+    ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.container,
+      title: 'Container',
+      subtitle: 'alignment + margin + constraints + transform',
+      builder: () => const ContainerDemoPage(),
+    ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.aspectRatio,
+      title: 'AspectRatio + Spacer',
+      subtitle: 'tight ratio layout + flex gap',
+      builder: () => const AspectRatioDemoPage(),
+    ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.fractionallySizedBox,
+      title: 'FractionallySizedBox',
+      subtitle: 'fractional constraints + alignment',
+      builder: () => const FractionallySizedBoxDemoPage(),
+    ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.fittedBox,
+      title: 'FittedBox',
+      subtitle: 'box-fit scaling + alignment',
+      builder: () => const FittedBoxDemoPage(),
+    ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.unconstrainedLimitedBox,
+      title: 'UnconstrainedBox + LimitedBox',
+      subtitle: 'axis unconstraint + unbounded max clamps',
+      builder: () => const UnconstrainedLimitedBoxDemoPage(),
+    ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.overflowBox,
+      title: 'OverflowBox + SizedOverflowBox',
+      subtitle: 'constraint override + fixed-size overflow',
+      builder: () => const OverflowBoxDemoPage(),
+    ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.overflowIndicator,
+      title: 'Overflow indicator',
+      subtitle: 'RenderFlex debug stripes + overflow label',
+      builder: () => const OverflowIndicatorDemoPage(),
+    ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.offstage,
+      title: 'Offstage',
+      subtitle: 'layout-without-paint and zero-space behavior',
+      builder: () => const OffstageDemoPage(),
+    ),
   ];
 
   static final Map<String, SampleRouteDefinition> _demoPageByRoute =
@@ -80,10 +164,12 @@ class SampleGalleryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Navigator(
-      onGenerateRoute: _buildRoute,
-      observers: <NavigatorObserver>[SampleNavigationObservers.pageRoutes],
-      initialRoute: SampleRoutes.menu,
+    return Scaffold(
+      body: Navigator(
+        onGenerateRoute: _buildRoute,
+        observers: <NavigatorObserver>[SampleNavigationObservers.pageRoutes],
+        initialRoute: SampleRoutes.menu,
+      ),
     );
   }
 

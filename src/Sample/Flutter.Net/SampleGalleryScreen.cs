@@ -28,6 +28,18 @@ internal static class SampleRoutes
     public const string CustomSlivers = "/custom-slivers";
     public const string Scrollbar = "/scrollbar";
     public const string EditableText = "/editable-text";
+    public const string ProxyWidgets = "/proxy-widgets";
+    public const string Align = "/align";
+    public const string Stack = "/stack";
+    public const string DecoratedBox = "/decorated-box";
+    public const string Container = "/container";
+    public const string AspectRatio = "/aspect-ratio";
+    public const string FractionallySizedBox = "/fractionally-sized-box";
+    public const string FittedBox = "/fitted-box";
+    public const string UnconstrainedLimitedBox = "/unconstrained-limited-box";
+    public const string OverflowBox = "/overflow-box";
+    public const string OverflowIndicator = "/overflow-indicator";
+    public const string Offstage = "/offstage";
 }
 
 internal readonly record struct SampleRouteDefinition(
@@ -49,6 +61,18 @@ internal sealed class SampleGalleryScreen : StatelessWidget
         new(SampleRoutes.CustomSlivers, "Custom slivers", "SliverPadding + SliverFixedExtentList", () => new CustomSliversDemoPage()),
         new(SampleRoutes.Scrollbar, "Scrollbar", "controller + thumb", () => new ScrollbarDemoPage()),
         new(SampleRoutes.EditableText, "EditableText", "focus + IME + multiline caret", () => new EditableTextDemoPage()),
+        new(SampleRoutes.ProxyWidgets, "Proxy widgets", "Opacity + Transform + ClipRect composition", () => new ProxyWidgetsDemoPage()),
+        new(SampleRoutes.Align, "Align + Center", "single-child alignment and shrink factors", () => new AlignDemoPage()),
+        new(SampleRoutes.Stack, "Stack + Positioned", "multi-child overlay layout", () => new StackDemoPage()),
+        new(SampleRoutes.DecoratedBox, "DecoratedBox", "border + radius + fill decoration", () => new DecoratedBoxDemoPage()),
+        new(SampleRoutes.Container, "Container", "alignment + margin + constraints + transform", () => new ContainerDemoPage()),
+        new(SampleRoutes.AspectRatio, "AspectRatio + Spacer", "tight ratio layout + flex gap", () => new AspectRatioDemoPage()),
+        new(SampleRoutes.FractionallySizedBox, "FractionallySizedBox", "fractional constraints + alignment", () => new FractionallySizedBoxDemoPage()),
+        new(SampleRoutes.FittedBox, "FittedBox", "box-fit scaling + alignment", () => new FittedBoxDemoPage()),
+        new(SampleRoutes.UnconstrainedLimitedBox, "UnconstrainedBox + LimitedBox", "axis unconstraint + unbounded max clamps", () => new UnconstrainedLimitedBoxDemoPage()),
+        new(SampleRoutes.OverflowBox, "OverflowBox + SizedOverflowBox", "constraint override + fixed-size overflow", () => new OverflowBoxDemoPage()),
+        new(SampleRoutes.OverflowIndicator, "Overflow indicator", "RenderFlex debug stripes + overflow label", () => new OverflowIndicatorDemoPage()),
+        new(SampleRoutes.Offstage, "Offstage", "layout-without-paint and zero-space behavior", () => new OffstageDemoPage()),
     ];
 
     private static readonly IReadOnlyDictionary<string, SampleRouteDefinition> DemoPageByRoute =

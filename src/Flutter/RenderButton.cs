@@ -123,7 +123,7 @@ public sealed class RenderButton : RenderBox
         {
             _layout = new TextLayout(
                 text: Label,
-                typeface: new Typeface("Segoe UI"),
+                typeface: new Typeface(FontFamily.Default, FontStyle.Normal, FontWeight.Normal, FontStretch.Normal),
                 fontSize: FontSize,
                 foreground: new SolidColorBrush(Foreground),
                 maxWidth: maxTextWidth);

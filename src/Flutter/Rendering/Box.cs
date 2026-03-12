@@ -81,6 +81,10 @@ public readonly record struct BoxConstraints(
 
     public bool IsNormalized => MinWidth >= 0.0 && MinWidth <= MaxWidth && MinHeight >= 0.0 && MinHeight <= MaxHeight;
 
+    public bool HasBoundedWidth => double.IsFinite(MaxWidth);
+
+    public bool HasBoundedHeight => double.IsFinite(MaxHeight);
+
     /// A box constraints with the width and height constraints flipped.
     public BoxConstraints Flipped => new(
         MinWidth: MinHeight,
@@ -111,6 +115,8 @@ public readonly record struct BoxConstraints(
             height ?? double.PositiveInfinity);
 
     public static BoxConstraints Loose(Size s) => new BoxConstraints(0, s.Width, 0, s.Height);
+
+    public BoxConstraints Loosen() => new BoxConstraints(MaxWidth: MaxWidth, MaxHeight: MaxHeight);
 
     public BoxConstraints Tighten(double? width = null, double? height = null)
     {
@@ -172,5 +178,50 @@ public readonly record struct BoxConstraints(
     {
         //assert(debugAssertIsValid());
         return Math.Clamp(height, MinHeight, MaxHeight);
+    }
+
+    public Size ConstrainSizeAndAttemptToPreserveAspectRatio(Size size)
+    {
+        if (IsTight)
+        {
+            return Smallest;
+        }
+
+        if (size.Width <= 0.0 || size.Height <= 0.0)
+        {
+            return Constrain(size);
+        }
+
+        var width = size.Width;
+        var height = size.Height;
+        var aspectRatio = width / height;
+
+        if (width > MaxWidth)
+        {
+            width = MaxWidth;
+            height = width / aspectRatio;
+        }
+
+        if (height > MaxHeight)
+        {
+            height = MaxHeight;
+            width = height * aspectRatio;
+        }
+
+        if (width < MinWidth)
+        {
+            width = MinWidth;
+            height = width / aspectRatio;
+        }
+
+        if (height < MinHeight)
+        {
+            height = MinHeight;
+            width = height * aspectRatio;
+        }
+
+        return new Size(
+            ConstrainWidth(width),
+            ConstrainHeight(height));
     }
 }

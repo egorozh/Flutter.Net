@@ -19,4 +19,22 @@ public enum TextDirection
     Ltr
 }
 
+/// How the horizontal alignment of text should be handled.
+public enum TextAlign
+{
+    Left,
+    Right,
+    Center,
+    Justify,
+    Start,
+    End
+}
+
+/// Visual overflow handling for laid out text.
+public enum TextOverflow
+{
+    Clip,
+    Ellipsis
+}
+
 // Dart parity source (reference): flutter/engine/src/flutter/lib/ui/text.dart (engine parity, approximate)

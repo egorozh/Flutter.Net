@@ -8,9 +8,9 @@ Use this block as the fastest machine-readable status summary.
 
 ```yaml
 framework_plan_version: 1
-last_updated: 2026-03-10
+last_updated: 2026-03-11
 north_star: "Flutter-like widget/rendering framework in C# with Avalonia as host infrastructure."
-current_phase: "Port-first widget set expansion (M3) in progress."
+current_phase: "Post-M3 control parity hardening (text rendering behavior alignment) in progress."
 status:
   widget_element_state_lifecycle: done
   render_pipeline_layout_paint_compositing_semantics: done
@@ -31,7 +31,7 @@ next_milestones:
     status: done
   - id: M3
     title: "Port-first widget set expansion"
-    status: in_progress
+    status: done
   - id: M4
     title: "Cross-host sample parity and stability"
     status: planned
@@ -75,7 +75,7 @@ Completion note:
 
 - Closed on 2026-03-10 after delivering text-editing ergonomics baselines (word/paragraph shortcuts, clipboard copy/cut/paste, grapheme-safe caret/delete behavior), transform-aware directional traversal rect resolution, and host semantics bridge runtime surface (`SemanticsRoot`, `SemanticsUpdated`, action dispatch) with coverage in framework tests.
 
-Progress update (2026-03-10):
+Progress update (2026-03-11):
 
 - Keyboard/focus baseline is implemented and host-wired (`KeyEvent`, `FocusNode`, `FocusManager`, `Focus`).
 - Focus scopes are now available (`FocusScopeNode`, `FocusScope`) and traversal is bounded to the active scope (Tab + directional keys).
@@ -102,7 +102,39 @@ Exit criteria:
 
 ### M3. Port-First Widget Set Expansion
 
-Status: `planned`
+Status: `done`
+
+Completion note:
+
+- Closed on 2026-03-11 after delivering the planned port-first widget baseline set (proxy, alignment, stack/positioned, decoration/container composition, ratio/fractional/fitted sizing, unconstrained/overflow/offstage) with mirrored C#/Dart sample routes and focused regression coverage.
+- Included post-baseline text-rendering parity hardening needed for control-port fidelity: `Text` now wires `textAlign`/`softWrap`/`maxLines`/`overflow`/`textDirection`, and `RenderParagraph` no longer applies a synthetic `maxWidth=1000` cap for unbounded layout.
+- Continued post-M3 typography parity hardening: framework `Text` now exposes `fontWeight`, `fontStyle`, `height`, and `letterSpacing`, with matching `RenderParagraph` layout support and host-default font-family defaults across paragraph/button/editable text layout paths.
+- Continued text-style inheritance parity hardening: framework now includes `DefaultTextStyle`/`TextStyle`, and `Text` resolves inherited typography defaults (`fontFamily`, `fontSize`, `color`, `fontWeight`, `fontStyle`, `height`, `letterSpacing`) with local override precedence; sample root now provides a Material-like default body style to reduce C#/Dart menu text wrapping and line-height drift.
+- Continued paragraph-alignment parity hardening: `RenderParagraph` now normalizes loose-width `center/right/end` layout width to content width when host layout reports positive internal glyph offset, eliminating right-shifted intrinsic label paint in sample list/button scenarios while retaining tight-width aligned behavior.
+- Counter sample viewport hardening: `CounterScreen` now uses outer `SingleChildScrollView` in both C# and Dart samples so smaller desktop heights avoid `RenderFlex` bottom-overflow debug zones while preserving existing demo modules on the page.
+- Overflow-debug parity progression: `RenderFlex` now paints Flutter-style yellow/black overflow indicators with clipped overflow child paint, 45-degree marker geometry, and edge-aligned/rotated labels for main-axis overflow; both samples include a dedicated overflow-indicator demo page for runtime verification.
+
+Completion snapshot:
+
+- Added first proxy-widget port baseline in framework widget layer: `Opacity`, `Transform`, and `ClipRect` wrappers over existing render primitives (`RenderOpacity`, `RenderTransform`, `RenderClipRect`) with focused rebuild/update regression coverage.
+- Added sample parity route/page in both C# and Dart sample galleries for interactive proxy-widget composition checks (`Opacity`, `Transform`, `ClipRect`).
+- Fixed compositing edge case where repaint-boundary layer-property updates could be dropped when repaint and composited-layer invalidation happened in the same frame.
+- Added single-child alignment baseline in framework widget layer: `Align` and `Center` over new `RenderAlign`, including width/height shrink factors and parity sample route/page in both C# and Dart galleries.
+- Added multi-child overlay baseline in framework widget layer: `Stack` and `Positioned` over new `RenderStack`/`StackParentData`, including positioned insets/size behavior and parity sample route/page in both C# and Dart galleries.
+- Added decoration baseline in framework widget layer: `DecoratedBox` over `RenderDecoratedBox` plus value objects (`BoxDecoration`, `BorderSide`, `BorderRadius`) and parity sample route/page in both C# and Dart galleries.
+- Extended `Container` composition baseline with `alignment`, `margin`, `constraints`, and `transform` support (including Flutter-like width/height tightening against explicit constraints), plus parity sample route/page updates in both C# and Dart galleries.
+- Added ratio/flex layout primitive baseline in framework widget layer: `AspectRatio` over new `RenderAspectRatio` plus `Spacer` (expanded tight-flex gap helper), with regression coverage for ratio sizing, widget update wiring, and flex parent-data propagation.
+- Added sample parity route/page in both C# and Dart sample galleries for interactive `AspectRatio` and `Spacer` behavior checks.
+- Hardened `Spacer` demo observability and coverage: updated parity demo to compare two spacer slots with asymmetric flex and added regression coverage for proportional `RenderFlex` distribution across two spacer allocations.
+- Added fractional sizing baseline in framework widget layer: `FractionallySizedBox` over new `RenderFractionallySizedBox` with bounded-axis factor constraints and alignment-aware child placement, plus parity sample route/page in both C# and Dart galleries.
+- Added fitted scaling baseline in framework widget layer: `FittedBox` over new `RenderFittedBox` with `BoxFit` sizing semantics, transform-aware paint/hit-test mapping, and alignment-controlled placement.
+- Added sample parity route/page in both C# and Dart sample galleries for interactive `FittedBox` (`contain/cover/fill/none/scaleDown`) and alignment checks.
+- Added unconstrained/limited constraints baseline in framework widget layer: `UnconstrainedBox` over `RenderUnconstrainedBox` (axis-specific unconstraining + alignment) and `LimitedBox` over `RenderLimitedBox` (max clamp applied only on unbounded axes).
+- Added sample parity route/page in both C# and Dart sample galleries for interactive `UnconstrainedBox + LimitedBox` behavior checks (`constrainedAxis` and `maxWidth/maxHeight`).
+- Added overflow constraints baseline in framework widget layer: `OverflowBox` over `RenderConstrainedOverflowBox` (optional min/max overrides + `OverflowBoxFit` sizing mode) and `SizedOverflowBox` over `RenderSizedOverflowBox` (fixed own size with parent constraints passed through to child).
+- Added sample parity route/page in both C# and Dart sample galleries for interactive `OverflowBox + SizedOverflowBox` behavior checks (`fit`, `alignment`, override max constraints, requested own size).
+- Added offstage layout baseline in framework widget layer: `Offstage` over `RenderOffstage` with Flutter-like offstage behavior (child still laid out, parent collapses to smallest size, and paint/hit-test/semantics participation suppressed while offstage).
+- Added sample parity route/page in both C# and Dart sample galleries for interactive `Offstage` behavior checks in row layout (state toggle and zero-space collapse).
 
 Exit criteria:
 

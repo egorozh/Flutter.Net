@@ -1127,7 +1127,7 @@ public sealed class EditableText : StatefulWidget
             {
                 layout = new TextLayout(
                     text: text,
-                    typeface: new Typeface("Segoe UI"),
+                    typeface: new Typeface(FontFamily.Default, FontStyle.Normal, FontWeight.Normal, FontStretch.Normal),
                     fontSize: Widget.FontSize,
                     foreground: Brushes.Transparent,
                     textWrapping: Widget.Multiline ? TextWrapping.Wrap : TextWrapping.NoWrap,
