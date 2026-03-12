@@ -228,6 +228,65 @@ public sealed class MaterialButtonsTests
         Assert.Equal(background, releasedDecoration!.Decoration.Color);
     }
 
+    [Fact]
+    public void TextButton_HoverStateAppliesOverlayUntilExit()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            PrimaryColor = Colors.IndianRed
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new TextButton(
+                    onPressed: () => { },
+                    child: new Text("Hover"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var initialDecorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(initialDecorated);
+        Assert.Null(initialDecorated!.Decoration.Color);
+
+        var hoverListener = FindHoverPointerListener(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(hoverListener);
+        hoverListener!.HandleEvent(
+            new PointerEnterEvent(
+                pointer: 1,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(8, 8),
+                buttons: PointerButtons.None,
+                timestampUtc: DateTime.UtcNow),
+            new BoxHitTestEntry(hoverListener, new Point(8, 8)));
+
+        owner.FlushBuild();
+
+        var hoveredDecorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(hoveredDecorated);
+        Assert.Equal(ApplyOpacity(theme.PrimaryColor, 0.08), hoveredDecorated!.Decoration.Color);
+
+        hoverListener = FindHoverPointerListener(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(hoverListener);
+        hoverListener!.HandleEvent(
+            new PointerExitEvent(
+                pointer: 1,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(120, 8),
+                buttons: PointerButtons.None,
+                timestampUtc: DateTime.UtcNow),
+            new BoxHitTestEntry(hoverListener, new Point(120, 8)));
+
+        owner.FlushBuild();
+
+        var exitedDecorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(exitedDecorated);
+        Assert.Null(exitedDecorated!.Decoration.Color);
+    }
+
     private static T RequireRenderObject<T>(Element? element) where T : RenderObject
     {
         Assert.NotNull(element);
@@ -284,6 +343,34 @@ public sealed class MaterialButtonsTests
             }
 
             result = FindInteractivePointerListener(child);
+        });
+
+        return result;
+    }
+
+    private static RenderPointerListener? FindHoverPointerListener(RenderObject? root)
+    {
+        if (root is null)
+        {
+            return null;
+        }
+
+        if (root is RenderPointerListener listener
+            && listener.OnPointerEnter != null
+            && listener.OnPointerExit != null)
+        {
+            return listener;
+        }
+
+        RenderPointerListener? result = null;
+        root.VisitChildren(child =>
+        {
+            if (result is not null)
+            {
+                return;
+            }
+
+            result = FindHoverPointerListener(child);
         });
 
         return result;

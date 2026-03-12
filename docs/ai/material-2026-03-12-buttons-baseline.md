@@ -76,6 +76,11 @@
   - `OutlinedButton_UsesThemeOutlineColorForBorderByDefault`,
   - `OutlinedButton_DefaultForegroundUsesThemePrimaryColor`,
   - `ElevatedButton_DisabledStateUsesThemeOnSurfaceTones`.
+- Added hover-state parity baseline:
+  - framework pointer layer now dispatches `PointerEnterEvent`/`PointerExitEvent` via hover hit-path transitions,
+  - `MaterialButtonCore` now resolves hover overlay with `0.08` opacity and clears it on exit,
+  - regression coverage added in `TextButton_HoverStateAppliesOverlayUntilExit`,
+  - framework transition dispatch coverage added in `GestureBinding_HoverDispatchesPointerEnterAndPointerExitTransitions`.
 - Added framework-level `State.StateWidget` protected accessor to support stateful widgets in external assemblies (`src/Flutter.Material`).
 - Replaced sample shell `CounterTapButton` usage with Material buttons in both C# and Dart sample galleries (menu entries + back action), and switched Material-buttons-demo control-strip actions to `TextButton`.
 - Added regression coverage for pressed-state visual transitions in `MaterialButtonsTests`.

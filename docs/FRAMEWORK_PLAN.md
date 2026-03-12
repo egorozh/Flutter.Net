@@ -172,6 +172,7 @@ Progress update (2026-03-12):
 - Added core framework support for stateful widgets implemented in external assemblies (`State.StateWidget` protected accessor) to keep `src/Flutter.Material` decoupled while preserving stateful widget patterns.
 - Applied strict parity follow-up for button defaults/state layers from Flutter Dart source: `TextButton`/`ElevatedButton`/`OutlinedButton` now enforce baseline minimum size `64x40`, use stadium-like default radius, and use normalized state-layer overlay (`pressed/focused`) instead of custom focus-border widening heuristics.
 - Continued strict parity follow-up for button theming tokens/defaults: `ThemeData` now exposes `onSurfaceColor`, `outlineColor`, and `surfaceContainerLowColor`; `ElevatedButton` defaults now use surface-container/primary color pairing with on-surface disabled tones; `OutlinedButton` default border now resolves from outline token while foreground remains primary.
+- Added hover interaction baseline for Material buttons: framework pointer stack now dispatches enter/exit transitions (`PointerEnterEvent`/`PointerExitEvent` via `GestureBinding` hover-hit tracking), and `MaterialButtonCore` applies hover state-layer opacity (`0.08`) in addition to pressed/focused overlays.
 
 Initial scope:
 

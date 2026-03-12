@@ -63,6 +63,11 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   - `ElevatedButton` default colors now follow Material-like surface-container/primary pairing with disabled colors derived from `onSurface`,
   - `OutlinedButton` default border now resolves from `outlineColor`, while default foreground resolves from `primary`,
   - disabled border/foreground resolution now uses explicit theme tokens instead of ad hoc alpha from the active colors (`src/Flutter.Material/ThemeData.cs`, `src/Flutter.Material/Buttons.cs`).
+- Added hover-state infrastructure for framework pointer listeners:
+  - introduced `PointerEnterEvent` and `PointerExitEvent`,
+  - extended `Listener`/`RenderPointerListener` with `onPointerEnter`/`onPointerExit`,
+  - added hover enter/exit transition dispatch in `GestureBinding` by tracking per-pointer hover hit-test paths (`src/Flutter/UI/PointerEvents.cs`, `src/Flutter/Widgets/Gestures.cs`, `src/Flutter/Rendering/Proxy.RenderBox.cs`, `src/Flutter/Gestures/GestureBinding.cs`).
+- Material buttons now consume framework hover enter/exit events and apply Flutter-like hover state-layer opacity (`0.08`) with regression coverage (`src/Flutter.Material/Buttons.cs`, `src/Flutter.Tests/MaterialButtonsTests.cs`).
 
 ## [2026-03-12] - Post-M3 typography and visual parity hardening
 

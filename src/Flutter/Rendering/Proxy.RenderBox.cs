@@ -1431,6 +1431,8 @@ public sealed class RenderPointerListener : RenderProxyBox
     public RenderPointerListener(
         Action<PointerDownEvent>? onPointerDown = null,
         Action<PointerMoveEvent>? onPointerMove = null,
+        Action<PointerEnterEvent>? onPointerEnter = null,
+        Action<PointerExitEvent>? onPointerExit = null,
         Action<PointerHoverEvent>? onPointerHover = null,
         Action<PointerUpEvent>? onPointerUp = null,
         Action<PointerCancelEvent>? onPointerCancel = null,
@@ -1440,6 +1442,8 @@ public sealed class RenderPointerListener : RenderProxyBox
     {
         OnPointerDown = onPointerDown;
         OnPointerMove = onPointerMove;
+        OnPointerEnter = onPointerEnter;
+        OnPointerExit = onPointerExit;
         OnPointerHover = onPointerHover;
         OnPointerUp = onPointerUp;
         OnPointerCancel = onPointerCancel;
@@ -1451,6 +1455,10 @@ public sealed class RenderPointerListener : RenderProxyBox
     public Action<PointerDownEvent>? OnPointerDown { get; set; }
 
     public Action<PointerMoveEvent>? OnPointerMove { get; set; }
+
+    public Action<PointerEnterEvent>? OnPointerEnter { get; set; }
+
+    public Action<PointerExitEvent>? OnPointerExit { get; set; }
 
     public Action<PointerHoverEvent>? OnPointerHover { get; set; }
 
@@ -1496,6 +1504,12 @@ public sealed class RenderPointerListener : RenderProxyBox
                 break;
             case PointerMoveEvent moveEvent:
                 OnPointerMove?.Invoke(moveEvent);
+                break;
+            case PointerEnterEvent enterEvent:
+                OnPointerEnter?.Invoke(enterEvent);
+                break;
+            case PointerExitEvent exitEvent:
+                OnPointerExit?.Invoke(exitEvent);
                 break;
             case PointerHoverEvent hoverEvent:
                 OnPointerHover?.Invoke(hoverEvent);

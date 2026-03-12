@@ -262,6 +262,57 @@ public sealed class GesturePipelineTests
         binding.ResetForTests();
     }
 
+    [Fact]
+    public void GestureBinding_HoverDispatchesPointerEnterAndPointerExitTransitions()
+    {
+        var binding = GestureBinding.Instance;
+        binding.ResetForTests();
+
+        var enters = 0;
+        var exits = 0;
+        var hovers = 0;
+
+        var listener = new RenderPointerListener(
+            behavior: HitTestBehavior.Opaque,
+            onPointerEnter: _ => enters += 1,
+            onPointerExit: _ => exits += 1,
+            onPointerHover: _ => hovers += 1,
+            child: new FixedHitTestBox(new Size(80, 80), hitSelf: true));
+        var pipeline = BuildPipeline(listener);
+
+        binding.HandlePointerEvent(
+            pipeline.Root,
+            new PointerHoverEvent(
+                pointer: 91,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(10, 10),
+                buttons: PointerButtons.None,
+                timestampUtc: DateTime.UtcNow));
+
+        binding.HandlePointerEvent(
+            pipeline.Root,
+            new PointerHoverEvent(
+                pointer: 91,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(14, 14),
+                buttons: PointerButtons.None,
+                timestampUtc: DateTime.UtcNow));
+
+        binding.HandlePointerEvent(
+            pipeline.Root,
+            new PointerHoverEvent(
+                pointer: 91,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(140, 140),
+                buttons: PointerButtons.None,
+                timestampUtc: DateTime.UtcNow));
+
+        Assert.Equal(1, enters);
+        Assert.Equal(1, exits);
+        Assert.Equal(2, hovers);
+        binding.ResetForTests();
+    }
+
     private static PipelineOwner BuildPipeline(RenderBox child)
     {
         var root = new RenderView

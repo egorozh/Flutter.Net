@@ -280,6 +280,7 @@ internal sealed class MaterialButtonCore : StatefulWidget
     {
         private bool _isPressed;
         private bool _hasFocus;
+        private bool _isHovered;
         private FocusNode? _focusNode;
 
         private MaterialButtonCore CurrentWidget => (MaterialButtonCore)StateWidget;
@@ -298,6 +299,11 @@ internal sealed class MaterialButtonCore : StatefulWidget
             if (!Enabled && _isPressed)
             {
                 _isPressed = false;
+            }
+
+            if (!Enabled && _isHovered)
+            {
+                _isHovered = false;
             }
 
             if (!Enabled && _focusNode != null && _focusNode.HasFocus)
@@ -371,6 +377,8 @@ internal sealed class MaterialButtonCore : StatefulWidget
                 onPointerDown: _ => SetPressed(true),
                 onPointerUp: _ => SetPressed(false),
                 onPointerCancel: _ => SetPressed(false),
+                onPointerEnter: _ => SetHovered(true),
+                onPointerExit: _ => SetHovered(false),
                 child: content);
 
             return new Focus(
@@ -424,6 +432,16 @@ internal sealed class MaterialButtonCore : StatefulWidget
             SetState(() => _isPressed = value);
         }
 
+        private void SetHovered(bool value)
+        {
+            if (!Enabled || _isHovered == value)
+            {
+                return;
+            }
+
+            SetState(() => _isHovered = value);
+        }
+
         private Color? ResolveBackgroundColor(bool enabled)
         {
             var widget = CurrentWidget;
@@ -474,6 +492,11 @@ internal sealed class MaterialButtonCore : StatefulWidget
             if (_isPressed || _hasFocus)
             {
                 return ReduceAlpha(CurrentWidget.StateColor, 0.10);
+            }
+
+            if (_isHovered)
+            {
+                return ReduceAlpha(CurrentWidget.StateColor, 0.08);
             }
 
             return null;
