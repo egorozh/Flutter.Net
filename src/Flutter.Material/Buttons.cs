@@ -120,7 +120,7 @@ public sealed class TextButton : StatelessWidget
                     : stateColor),
             BackgroundColor: MaterialStateProperty<Color?>.All(null),
             OverlayColor: MaterialButtonCore.CreateDefaultOverlayResolver(stateColor),
-            SplashColor: MaterialButtonCore.CreateDefaultSplashResolver(stateColor),
+            SplashColor: null,
             Side: MaterialStateProperty<BorderSide?>.All(null),
             Padding: MaterialStateProperty<Thickness?>.All(new Thickness(12, 8)),
             Shape: MaterialStateProperty<BorderRadius?>.All(Flutter.Rendering.BorderRadius.Circular(20)),
@@ -278,7 +278,7 @@ public sealed class ElevatedButton : StatelessWidget
                     ? MaterialButtonCore.ApplyOpacity(theme.OnSurfaceColor, 0.12)
                     : theme.SurfaceContainerLowColor),
             OverlayColor: MaterialButtonCore.CreateDefaultOverlayResolver(stateColor),
-            SplashColor: MaterialButtonCore.CreateDefaultSplashResolver(stateColor),
+            SplashColor: null,
             Side: MaterialStateProperty<BorderSide?>.All(null),
             Padding: MaterialStateProperty<Thickness?>.All(new Thickness(24, 8)),
             Shape: MaterialStateProperty<BorderRadius?>.All(Flutter.Rendering.BorderRadius.Circular(20)),
@@ -446,7 +446,7 @@ public sealed class OutlinedButton : StatelessWidget
                     : stateColor),
             BackgroundColor: MaterialStateProperty<Color?>.All(null),
             OverlayColor: MaterialButtonCore.CreateDefaultOverlayResolver(stateColor),
-            SplashColor: MaterialButtonCore.CreateDefaultSplashResolver(stateColor),
+            SplashColor: null,
             Side: MaterialStateProperty<BorderSide?>.ResolveWith(states =>
                 states.HasFlag(MaterialState.Disabled)
                     ? new BorderSide(MaterialButtonCore.ApplyOpacity(theme.OnSurfaceColor, 0.12), 1)
@@ -992,7 +992,9 @@ internal sealed class MaterialButtonCore : StatefulWidget
             }
 
             var splashStates = BuildMaterialStates(enabled: true, includeFocus: !_suppressFocusOverlay);
-            var splashBaseColor = CurrentWidget.Style.ResolveSplashColor(splashStates);
+            var style = CurrentWidget.Style;
+            var splashBaseColor = style.ResolveSplashColor(splashStates)
+                                  ?? style.ResolveOverlayColor(splashStates);
 
             SetState(() =>
             {
