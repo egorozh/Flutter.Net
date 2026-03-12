@@ -57,6 +57,12 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Updated Dart sample gallery shell controls to mirror the same Material-button shell behavior for parity (`dart_sample/lib/sample_gallery_screen.dart`).
 - Updated Material buttons demo control-strip actions (`Enabled`/`Reset`) in both C# and Dart samples to use `TextButton` instead of `CounterTapButton` (`src/Sample/Flutter.Net/MaterialButtonsDemoPage.cs`, `dart_sample/lib/material_buttons_demo_page.dart`).
 - Fixed Material button layout behavior in unbounded vertical constraints by switching internal label centering to shrink-wrapped alignment (`Align` with `widthFactor/heightFactor`), preventing button rows in `Column`/`Row` compositions from expanding to effectively infinite height (`src/Flutter.Material/Buttons.cs`).
+- Strict parity pass for Material button defaults/state layer behavior based on Flutter source references (`text_button.dart`, `elevated_button.dart`, `outlined_button.dart`): baseline minimum size is now `64x40`, default shape moved to pill/stadium-like radius, state-layer pressed/focused overlay is normalized to `0.10`, and focus-specific border-thickening heuristics were removed in favor of Flutter-like overlay-driven feedback (`src/Flutter.Material/Buttons.cs`).
+- Continued strict parity pass for button theming tokens and defaults:
+  - `ThemeData` now includes `onSurfaceColor`, `outlineColor`, and `surfaceContainerLowColor`,
+  - `ElevatedButton` default colors now follow Material-like surface-container/primary pairing with disabled colors derived from `onSurface`,
+  - `OutlinedButton` default border now resolves from `outlineColor`, while default foreground resolves from `primary`,
+  - disabled border/foreground resolution now uses explicit theme tokens instead of ad hoc alpha from the active colors (`src/Flutter.Material/ThemeData.cs`, `src/Flutter.Material/Buttons.cs`).
 
 ## [2026-03-12] - Post-M3 typography and visual parity hardening
 

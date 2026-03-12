@@ -62,6 +62,20 @@
   - focus visual treatment,
   - keyboard activation for `Enter`/`Return`/`Space`.
 - Fixed button sizing in unbounded vertical layouts by replacing internal `Center` with shrink-wrapped `Align(widthFactor: 1, heightFactor: 1)`.
+- Applied strict parity follow-up from Flutter button sources (`text_button.dart`, `elevated_button.dart`, `outlined_button.dart`):
+  - baseline minimum size aligned to `64x40`,
+  - default radius moved to stadium-like shape approximation,
+  - state feedback aligned to overlay layer model (`pressed/focused` 0.10) instead of custom focus-border thickening.
+- Added regression coverage for baseline minimum size (`TextButton` default `64x40`) in `MaterialButtonsTests`.
+- Continued strict parity defaults alignment with explicit theme tokens:
+  - `ThemeData` expanded with `OnSurfaceColor`, `OutlineColor`, `SurfaceContainerLowColor`,
+  - `ElevatedButton` defaults now resolve `foreground/background/disabled` from `primary/surfaceContainerLow/onSurface`,
+  - `OutlinedButton` defaults now resolve border from `outline` and disabled border/foreground from `onSurface`.
+- Added regression coverage for the new default mapping:
+  - `ElevatedButton_UsesThemeSurfaceContainerAndPrimaryColorsByDefault`,
+  - `OutlinedButton_UsesThemeOutlineColorForBorderByDefault`,
+  - `OutlinedButton_DefaultForegroundUsesThemePrimaryColor`,
+  - `ElevatedButton_DisabledStateUsesThemeOnSurfaceTones`.
 - Added framework-level `State.StateWidget` protected accessor to support stateful widgets in external assemblies (`src/Flutter.Material`).
 - Replaced sample shell `CounterTapButton` usage with Material buttons in both C# and Dart sample galleries (menu entries + back action), and switched Material-buttons-demo control-strip actions to `TextButton`.
 - Added regression coverage for pressed-state visual transitions in `MaterialButtonsTests`.

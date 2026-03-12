@@ -36,13 +36,35 @@ public sealed class MaterialButtonsTests
     }
 
     [Fact]
-    public void ElevatedButton_UsesThemePrimaryAndOnPrimaryColorsByDefault()
+    public void TextButton_DefaultMinSize_UsesMaterialBaseline64x40()
+    {
+        var owner = new BuildOwner();
+
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new TextButton(
+                    onPressed: () => { },
+                    child: new Text("Min size"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var constrainedBox = FindDescendant<RenderConstrainedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(constrainedBox);
+        Assert.Equal(64, constrainedBox!.AdditionalConstraints.MinWidth);
+        Assert.Equal(40, constrainedBox.AdditionalConstraints.MinHeight);
+    }
+
+    [Fact]
+    public void ElevatedButton_UsesThemeSurfaceContainerAndPrimaryColorsByDefault()
     {
         var owner = new BuildOwner();
         var theme = ThemeData.Light with
         {
             PrimaryColor = Colors.DarkSlateBlue,
-            OnPrimaryColor = Colors.Bisque
+            SurfaceContainerLowColor = Colors.Bisque
         };
 
         var root = new TestRootElement(
@@ -61,18 +83,18 @@ public sealed class MaterialButtonsTests
         var paragraph = FindDescendant<RenderParagraph>(renderRoot);
 
         Assert.NotNull(decorated);
-        Assert.Equal(Colors.DarkSlateBlue, decorated!.Decoration.Color);
+        Assert.Equal(Colors.Bisque, decorated!.Decoration.Color);
         Assert.NotNull(paragraph);
-        Assert.Equal(Colors.Bisque, Assert.IsType<SolidColorBrush>(paragraph!.Foreground).Color);
+        Assert.Equal(Colors.DarkSlateBlue, Assert.IsType<SolidColorBrush>(paragraph!.Foreground).Color);
     }
 
     [Fact]
-    public void OutlinedButton_UsesThemePrimaryColorForBorderByDefault()
+    public void OutlinedButton_UsesThemeOutlineColorForBorderByDefault()
     {
         var owner = new BuildOwner();
         var theme = ThemeData.Light with
         {
-            PrimaryColor = Colors.CadetBlue
+            OutlineColor = Colors.CadetBlue
         };
 
         var root = new TestRootElement(
@@ -92,15 +114,45 @@ public sealed class MaterialButtonsTests
     }
 
     [Fact]
-    public void ElevatedButton_DisabledStateDimsForegroundAndBackground()
+    public void OutlinedButton_DefaultForegroundUsesThemePrimaryColor()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            PrimaryColor = Colors.MediumVioletRed,
+            OutlineColor = Colors.CadetBlue
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new OutlinedButton(
+                    onPressed: () => { },
+                    child: new Text("Outline fg"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var paragraph = FindDescendant<RenderParagraph>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(paragraph);
+        Assert.Equal(Colors.MediumVioletRed, Assert.IsType<SolidColorBrush>(paragraph!.Foreground).Color);
+    }
+
+    [Fact]
+    public void ElevatedButton_DisabledStateUsesThemeOnSurfaceTones()
     {
         var owner = new BuildOwner();
         var background = Colors.DarkGreen;
         var foreground = Colors.White;
+        var theme = ThemeData.Light with
+        {
+            OnSurfaceColor = Colors.Black
+        };
 
         var root = new TestRootElement(
             new Theme(
-                data: ThemeData.Light,
+                data: theme,
                 child: new ElevatedButton(
                     onPressed: null,
                     backgroundColor: background,
@@ -116,9 +168,9 @@ public sealed class MaterialButtonsTests
         var paragraph = FindDescendant<RenderParagraph>(renderRoot);
 
         Assert.NotNull(decorated);
-        Assert.Equal(ReduceAlpha(background, 0.12), decorated!.Decoration.Color);
+        Assert.Equal(ApplyOpacity(theme.OnSurfaceColor, 0.12), decorated!.Decoration.Color);
         Assert.NotNull(paragraph);
-        Assert.Equal(ReduceAlpha(foreground, 0.38), Assert.IsType<SolidColorBrush>(paragraph!.Foreground).Color);
+        Assert.Equal(ApplyOpacity(theme.OnSurfaceColor, 0.38), Assert.IsType<SolidColorBrush>(paragraph!.Foreground).Color);
     }
 
     [Fact]
@@ -237,9 +289,9 @@ public sealed class MaterialButtonsTests
         return result;
     }
 
-    private static Color ReduceAlpha(Color color, double factor)
+    private static Color ApplyOpacity(Color color, double opacity)
     {
-        var alpha = (byte)Math.Clamp((int)(color.A * factor), 0, 255);
+        var alpha = (byte)Math.Clamp((int)(255 * opacity), 0, 255);
         return Color.FromArgb(alpha, color.R, color.G, color.B);
     }
 

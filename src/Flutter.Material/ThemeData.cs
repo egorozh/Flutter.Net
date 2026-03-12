@@ -45,13 +45,19 @@ public sealed record ThemeData
         Color? scaffoldBackgroundColor = null,
         Color? canvasColor = null,
         Color? primaryColor = null,
-        Color? onPrimaryColor = null)
+        Color? onPrimaryColor = null,
+        Color? onSurfaceColor = null,
+        Color? outlineColor = null,
+        Color? surfaceContainerLowColor = null)
     {
         TextTheme = textTheme ?? MaterialTextTheme.Fallback;
         ScaffoldBackgroundColor = scaffoldBackgroundColor ?? Colors.White;
         CanvasColor = canvasColor ?? Colors.White;
         PrimaryColor = primaryColor ?? Colors.Blue;
         OnPrimaryColor = onPrimaryColor ?? Colors.White;
+        OnSurfaceColor = onSurfaceColor ?? Colors.Black;
+        OutlineColor = outlineColor ?? Color.Parse("#FF79747E");
+        SurfaceContainerLowColor = surfaceContainerLowColor ?? Color.Parse("#FFF7F2FA");
     }
 
     public MaterialTextTheme TextTheme { get; init; }
@@ -63,6 +69,12 @@ public sealed record ThemeData
     public Color PrimaryColor { get; init; }
 
     public Color OnPrimaryColor { get; init; }
+
+    public Color OnSurfaceColor { get; init; }
+
+    public Color OutlineColor { get; init; }
+
+    public Color SurfaceContainerLowColor { get; init; }
 
     public static ThemeData Light { get; } = new();
 }
