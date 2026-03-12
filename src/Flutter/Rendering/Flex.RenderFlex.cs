@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using Avalonia;
 using Avalonia.Media;
+using Avalonia.Media.TextFormatting;
 using Flutter.Foundation;
 using Flutter.Painting;
 using Flutter.UI;
@@ -15,6 +16,27 @@ namespace Flutter.Rendering;
 public class RenderFlex : RenderBox, IRenderBoxContainerDefaultsMixin<RenderBox, FlexParentData>, IRenderObjectContainer
 {
     private readonly RenderBoxContainerDefaultsMixin<RenderBox, FlexParentData> _mixin1;
+    private static readonly Color OverflowBlackColor = Color.FromArgb(0xBF, 0x00, 0x00, 0x00);
+    private static readonly Color OverflowYellowColor = Color.FromArgb(0xBF, 0xFF, 0xFF, 0x00);
+    private static readonly IBrush OverflowLabelBackgroundBrush = new SolidColorBrush(Colors.White);
+    private static readonly IBrush OverflowLabelForegroundBrush = new SolidColorBrush(Color.Parse("#FF900000"));
+    private const double OverflowIndicatorFraction = 0.1;
+    private const double OverflowIndicatorTileSize = 10.0;
+    private const double OverflowIndicatorLabelFontSize = 7.5;
+    private const double OverflowIndicatorLabelPadding = 1.0;
+    private static readonly IBrush OverflowIndicatorBrush = new LinearGradientBrush
+    {
+        StartPoint = new RelativePoint(0, 0, RelativeUnit.Absolute),
+        EndPoint = new RelativePoint(OverflowIndicatorTileSize, OverflowIndicatorTileSize, RelativeUnit.Absolute),
+        SpreadMethod = GradientSpreadMethod.Repeat,
+        GradientStops = new GradientStops
+        {
+            new GradientStop(OverflowBlackColor, 0.25),
+            new GradientStop(OverflowYellowColor, 0.25),
+            new GradientStop(OverflowYellowColor, 0.75),
+            new GradientStop(OverflowBlackColor, 0.75),
+        }
+    };
 
     public RenderFlex(
         List<RenderBox>? children,
@@ -311,8 +333,10 @@ public class RenderFlex : RenderBox, IRenderBoxContainerDefaultsMixin<RenderBox,
         {
             return;
         }
-        
-        DefaultPaint(ctx, offset);
+
+        var clipRect = new Rect(offset, Size);
+        ctx.PushClipRect(clipRect, clippedContext => DefaultPaint(clippedContext, offset));
+        PaintOverflowIndicator(ctx, offset);
     }
 
     public override void VisitChildren(Action<RenderObject> visitor)
@@ -693,6 +717,136 @@ public class RenderFlex : RenderBox, IRenderBoxContainerDefaultsMixin<RenderBox,
 
             _ => throw new ArgumentOutOfRangeException(nameof(crossAxisAlignment), crossAxisAlignment, null)
         };
+    }
+
+    private void PaintOverflowIndicator(PaintingContext context, Point offset)
+    {
+        var containerRect = new Rect(offset, Size);
+        var overflowChildRect = Direction switch
+        {
+            Axis.Horizontal => new Rect(containerRect.X, containerRect.Y, containerRect.Width + _overflow, 0),
+            Axis.Vertical => new Rect(containerRect.X, containerRect.Y, 0, containerRect.Height + _overflow),
+            _ => throw new ArgumentOutOfRangeException()
+        };
+
+        var overflowRight = Math.Max(0, overflowChildRect.Right - containerRect.Right);
+        var overflowBottom = Math.Max(0, overflowChildRect.Bottom - containerRect.Bottom);
+
+        if (overflowRight <= Constants.PrecisionErrorTolerance
+            && overflowBottom <= Constants.PrecisionErrorTolerance)
+        {
+            return;
+        }
+
+        if (overflowRight > Constants.PrecisionErrorTolerance)
+        {
+            var markerRect = new Rect(
+                x: containerRect.X + containerRect.Width * (1.0 - OverflowIndicatorFraction),
+                y: containerRect.Y,
+                width: containerRect.Width * OverflowIndicatorFraction,
+                height: containerRect.Height);
+            PaintStripedMarker(context, markerRect);
+            PaintOverflowLabel(
+                context,
+                label: $"RIGHT OVERFLOWED BY {FormatOverflowPixels(overflowRight)} PIXELS",
+                labelOffset: new Point(
+                    markerRect.Right - (OverflowIndicatorLabelFontSize + OverflowIndicatorLabelPadding),
+                    markerRect.Y + markerRect.Height / 2),
+                rotation: -Math.PI / 2.0);
+        }
+
+        if (overflowBottom > Constants.PrecisionErrorTolerance)
+        {
+            var markerRect = new Rect(
+                x: containerRect.X,
+                y: containerRect.Y + containerRect.Height * (1.0 - OverflowIndicatorFraction),
+                width: containerRect.Width,
+                height: containerRect.Height * OverflowIndicatorFraction);
+            PaintStripedMarker(context, markerRect);
+            PaintOverflowLabel(
+                context,
+                label: $"BOTTOM OVERFLOWED BY {FormatOverflowPixels(overflowBottom)} PIXELS",
+                labelOffset: new Point(
+                    markerRect.X + markerRect.Width / 2,
+                    markerRect.Bottom - (OverflowIndicatorLabelFontSize + OverflowIndicatorLabelPadding)),
+                rotation: 0);
+        }
+    }
+
+    private static void PaintStripedMarker(PaintingContext context, Rect markerRect)
+    {
+        if (markerRect.Width <= 0 || markerRect.Height <= 0)
+        {
+            return;
+        }
+
+        context.DrawRectangle(OverflowIndicatorBrush, null, markerRect);
+    }
+
+    private static void PaintOverflowLabel(PaintingContext context, string label, Point labelOffset, double rotation)
+    {
+        if (string.IsNullOrEmpty(label))
+        {
+            return;
+        }
+
+        try
+        {
+            var labelLayout = new TextLayout(
+                text: label,
+                typeface: new Typeface(FontFamily.Default, FontStyle.Normal, FontWeight.ExtraBold, FontStretch.Normal),
+                fontSize: OverflowIndicatorLabelFontSize,
+                foreground: OverflowLabelForegroundBrush);
+
+            var labelOrigin = new Point(-labelLayout.Width / 2.0, 0);
+            var backgroundRect = new Rect(
+                x: labelOrigin.X,
+                y: labelOrigin.Y,
+                width: labelLayout.Width,
+                height: labelLayout.Height);
+
+            context.PushTransform(Matrix.CreateTranslation(labelOffset.X, labelOffset.Y), translatedContext =>
+            {
+                if (Math.Abs(rotation) > Constants.PrecisionErrorTolerance)
+                {
+                    translatedContext.PushTransform(CreateRotationMatrix(rotation), rotatedContext =>
+                    {
+                        rotatedContext.DrawRectangle(OverflowLabelBackgroundBrush, null, backgroundRect);
+                        rotatedContext.DrawTextLayout(labelLayout, labelOrigin);
+                    });
+                    return;
+                }
+
+                translatedContext.DrawRectangle(OverflowLabelBackgroundBrush, null, backgroundRect);
+                translatedContext.DrawTextLayout(labelLayout, labelOrigin);
+            });
+        }
+        catch (Exception exception) when (TextLayoutFallback.IsMissingFontManager(exception))
+        {
+            // In host-less test environments label text layout may be unavailable.
+        }
+    }
+
+    private static Matrix CreateRotationMatrix(double angle)
+    {
+        var cos = Math.Cos(angle);
+        var sin = Math.Sin(angle);
+        return new Matrix(cos, sin, -sin, cos, 0, 0);
+    }
+
+    private static string FormatOverflowPixels(double value)
+    {
+        if (value > 10.0)
+        {
+            return value.ToString("0");
+        }
+
+        if (value > 1.0)
+        {
+            return value.ToString("0.0");
+        }
+
+        return value.ToString("0.###");
     }
 
 

@@ -38,6 +38,7 @@ internal static class SampleRoutes
     public const string FittedBox = "/fitted-box";
     public const string UnconstrainedLimitedBox = "/unconstrained-limited-box";
     public const string OverflowBox = "/overflow-box";
+    public const string OverflowIndicator = "/overflow-indicator";
     public const string Offstage = "/offstage";
 }
 
@@ -70,6 +71,7 @@ internal sealed class SampleGalleryScreen : StatelessWidget
         new(SampleRoutes.FittedBox, "FittedBox", "box-fit scaling + alignment", () => new FittedBoxDemoPage()),
         new(SampleRoutes.UnconstrainedLimitedBox, "UnconstrainedBox + LimitedBox", "axis unconstraint + unbounded max clamps", () => new UnconstrainedLimitedBoxDemoPage()),
         new(SampleRoutes.OverflowBox, "OverflowBox + SizedOverflowBox", "constraint override + fixed-size overflow", () => new OverflowBoxDemoPage()),
+        new(SampleRoutes.OverflowIndicator, "Overflow indicator", "RenderFlex debug stripes + overflow label", () => new OverflowIndicatorDemoPage()),
         new(SampleRoutes.Offstage, "Offstage", "layout-without-paint and zero-space behavior", () => new OffstageDemoPage()),
     ];
 

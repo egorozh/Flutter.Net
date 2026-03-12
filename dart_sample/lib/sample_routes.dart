@@ -31,6 +31,7 @@ class SampleRoutes {
   static const String fittedBox = '/fitted-box';
   static const String unconstrainedLimitedBox = '/unconstrained-limited-box';
   static const String overflowBox = '/overflow-box';
+  static const String overflowIndicator = '/overflow-indicator';
   static const String offstage = '/offstage';
 }
 

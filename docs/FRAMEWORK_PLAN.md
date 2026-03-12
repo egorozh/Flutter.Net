@@ -111,6 +111,8 @@ Completion note:
 - Continued post-M3 typography parity hardening: framework `Text` now exposes `fontWeight`, `fontStyle`, `height`, and `letterSpacing`, with matching `RenderParagraph` layout support and host-default font-family defaults across paragraph/button/editable text layout paths.
 - Continued text-style inheritance parity hardening: framework now includes `DefaultTextStyle`/`TextStyle`, and `Text` resolves inherited typography defaults (`fontFamily`, `fontSize`, `color`, `fontWeight`, `fontStyle`, `height`, `letterSpacing`) with local override precedence; sample root now provides a Material-like default body style to reduce C#/Dart menu text wrapping and line-height drift.
 - Continued paragraph-alignment parity hardening: `RenderParagraph` now normalizes loose-width `center/right/end` layout width to content width when host layout reports positive internal glyph offset, eliminating right-shifted intrinsic label paint in sample list/button scenarios while retaining tight-width aligned behavior.
+- Counter sample viewport hardening: `CounterScreen` now uses outer `SingleChildScrollView` in both C# and Dart samples so smaller desktop heights avoid `RenderFlex` bottom-overflow debug zones while preserving existing demo modules on the page.
+- Overflow-debug parity progression: `RenderFlex` now paints Flutter-style yellow/black overflow indicators with clipped overflow child paint, 45-degree marker geometry, and edge-aligned/rotated labels for main-axis overflow; both samples include a dedicated overflow-indicator demo page for runtime verification.
 
 Completion snapshot:
 

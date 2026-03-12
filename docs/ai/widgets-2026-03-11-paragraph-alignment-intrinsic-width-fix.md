@@ -3,11 +3,12 @@
 ## Goal
 
 - Fix visible C#/Dart mismatch where centered intrinsic-width labels in the `Counter` page (`Keyed List`) were painted with a right-shift in C#.
+- Remove remaining mismatch from Flutter overflow debug zones by preventing bottom overflow on shorter viewports in both samples.
 
 ## Non-Goals
 
 - No full typography/theming rewrite.
-- No changes to Dart sample behavior.
+- No framework-wide redesign of page scrolling composition beyond `CounterScreen`.
 
 ## Context Budget Plan
 
@@ -35,11 +36,14 @@
 
 - Files to edit:
   - `src/Flutter/RenderParagraph.cs`
+  - `src/Sample/Flutter.Net/CounterScreen.cs`
+  - `dart_sample/lib/counter_screen.dart`
   - `CHANGELOG.md`
   - `docs/FRAMEWORK_PLAN.md`
   - `docs/ai/PARITY_MATRIX.md`
 - Brief intent per file:
   - `RenderParagraph`: normalize aligned loose-width layout width when host text layout applies internal positive glyph offset.
+  - Counter sample screens: wrap main content with `SingleChildScrollView` to avoid bottom overflow debug zones at smaller heights.
   - docs/changelog: capture parity rationale and runtime verification target.
 
 ## Test Plan

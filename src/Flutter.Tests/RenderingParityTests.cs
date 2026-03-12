@@ -1,5 +1,8 @@
 using Avalonia;
+using Avalonia.Media;
 using Flutter.Rendering;
+using System.Collections;
+using System.Reflection;
 using Xunit;
 
 // Dart parity source (reference): flutter/packages/flutter/lib/src/rendering/object.dart; flutter/packages/flutter/lib/src/rendering/box.dart (parity regression tests)
@@ -187,6 +190,19 @@ public sealed class RenderingParityTests
     }
 
     [Fact]
+    public void RenderFlex_OverflowPaint_AddsDebugIndicatorCommands()
+    {
+        var commandsWithoutOverflow = MeasureFlexPictureCommandCount(viewportHeight: 260, out var nonOverflowFlex);
+        Assert.False(nonOverflowFlex._hasOverflow);
+
+        var commandsWithOverflow = MeasureFlexPictureCommandCount(viewportHeight: 60, out var overflowFlex);
+        Assert.True(overflowFlex._hasOverflow);
+        Assert.True(
+            commandsWithOverflow > commandsWithoutOverflow,
+            $"Expected overflow paint command count ({commandsWithOverflow}) to exceed non-overflow count ({commandsWithoutOverflow}).");
+    }
+
+    [Fact]
     public void RelayoutBoundary_ChildDirty_RelayoutsOnlyBoundary()
     {
         var child = new CountingRenderBox();
@@ -361,5 +377,85 @@ public sealed class RenderingParityTests
         {
             ctx.PaintChild(_child, offset);
         }
+    }
+
+    private sealed class PaintedFixedSizeRenderBox : RenderBox
+    {
+        private readonly Size _desiredSize;
+
+        public PaintedFixedSizeRenderBox(double width, double height)
+        {
+            _desiredSize = new Size(width, height);
+        }
+
+        protected override void PerformLayout()
+        {
+            Size = Constraints.Constrain(_desiredSize);
+        }
+
+        public override void Paint(PaintingContext ctx, Point offset)
+        {
+            ctx.DrawRectangle(
+                new SolidColorBrush(Color.Parse("#FFC8E6C9")),
+                null,
+                new Rect(offset, Size));
+        }
+    }
+
+    private static int MeasureFlexPictureCommandCount(double viewportHeight, out RenderFlex flex)
+    {
+        flex = new RenderFlex(
+            direction: Axis.Vertical,
+            spacing: 8,
+            children:
+            [
+                new PaintedFixedSizeRenderBox(80, 72),
+                new PaintedFixedSizeRenderBox(80, 72),
+                new PaintedFixedSizeRenderBox(80, 72),
+            ]);
+
+        var root = new RenderView
+        {
+            Child = flex
+        };
+
+        var pipeline = new PipelineOwner(root);
+        pipeline.Attach(root);
+        pipeline.FlushLayout(new Size(220, viewportHeight));
+        pipeline.FlushCompositingBits();
+        pipeline.FlushPaint();
+
+        return CountPictureCommandsRecursive(pipeline.RootLayer);
+    }
+
+    private static int CountPictureCommandsRecursive(ContainerLayer layer)
+    {
+        var total = 0;
+        foreach (var child in layer.Children)
+        {
+            if (child is PictureLayer pictureLayer)
+            {
+                total += CountPictureCommands(pictureLayer);
+                continue;
+            }
+
+            if (child is ContainerLayer containerLayer)
+            {
+                total += CountPictureCommandsRecursive(containerLayer);
+            }
+        }
+
+        return total;
+    }
+
+    private static int CountPictureCommands(PictureLayer pictureLayer)
+    {
+        var commandsField = typeof(PictureLayer).GetField(
+            "_commands",
+            BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("PictureLayer._commands field was not found.");
+        var commands = (ICollection?)commandsField.GetValue(pictureLayer)
+            ?? throw new InvalidOperationException("PictureLayer commands collection is null.");
+        return commands.Count;
     }
 }
