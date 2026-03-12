@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Media;
 using Flutter.Material;
 using Flutter.Rendering;
+using Flutter.UI;
 using Flutter.Widgets;
 using Xunit;
 
@@ -120,6 +121,61 @@ public sealed class MaterialButtonsTests
         Assert.Equal(ReduceAlpha(foreground, 0.38), Assert.IsType<SolidColorBrush>(paragraph!.Foreground).Color);
     }
 
+    [Fact]
+    public void ElevatedButton_PointerPressedStateDarkensBackgroundUntilPointerUp()
+    {
+        var owner = new BuildOwner();
+        var background = Colors.SteelBlue;
+
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new ElevatedButton(
+                    onPressed: () => { },
+                    backgroundColor: background,
+                    child: new Text("Press"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var renderRoot = RequireRenderObject<RenderObject>(root.ChildElement);
+        var pointerListener = FindInteractivePointerListener(renderRoot);
+        Assert.NotNull(pointerListener);
+        pointerListener!.HandleEvent(
+            new PointerDownEvent(
+                pointer: 1,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(8, 8),
+                buttons: PointerButtons.Primary,
+                timestampUtc: DateTime.UtcNow),
+            new BoxHitTestEntry(pointerListener, new Point(8, 8)));
+
+        owner.FlushBuild();
+
+        var pressedRoot = RequireRenderObject<RenderObject>(root.ChildElement);
+        var pressedDecoration = FindDescendant<RenderDecoratedBox>(pressedRoot);
+        Assert.NotNull(pressedDecoration);
+        Assert.NotEqual(background, pressedDecoration!.Decoration.Color);
+
+        pointerListener = FindInteractivePointerListener(pressedRoot);
+        Assert.NotNull(pointerListener);
+        pointerListener!.HandleEvent(
+            new PointerUpEvent(
+                pointer: 1,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(8, 8),
+                buttons: PointerButtons.None,
+                timestampUtc: DateTime.UtcNow),
+            new BoxHitTestEntry(pointerListener, new Point(8, 8)));
+
+        owner.FlushBuild();
+
+        var releasedDecoration = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(releasedDecoration);
+        Assert.Equal(background, releasedDecoration!.Decoration.Color);
+    }
+
     private static T RequireRenderObject<T>(Element? element) where T : RenderObject
     {
         Assert.NotNull(element);
@@ -148,6 +204,34 @@ public sealed class MaterialButtonsTests
             }
 
             result = FindDescendant<T>(child);
+        });
+
+        return result;
+    }
+
+    private static RenderPointerListener? FindInteractivePointerListener(RenderObject? root)
+    {
+        if (root is null)
+        {
+            return null;
+        }
+
+        if (root is RenderPointerListener listener
+            && listener.OnPointerDown != null
+            && listener.OnPointerUp != null)
+        {
+            return listener;
+        }
+
+        RenderPointerListener? result = null;
+        root.VisitChildren(child =>
+        {
+            if (result is not null)
+            {
+                return;
+            }
+
+            result = FindInteractivePointerListener(child);
         });
 
         return result;

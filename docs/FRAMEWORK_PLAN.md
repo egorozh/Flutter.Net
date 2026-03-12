@@ -167,6 +167,9 @@ Progress update (2026-03-12):
 - Added first Material control set: `TextButton`, `ElevatedButton`, and `OutlinedButton` in `src/Flutter.Material` with inherited-theme defaults and disabled-state styling behavior.
 - Added Material buttons demo route/page in both C# and Dart sample galleries for parity/runtime validation.
 - Added regression coverage for Material button default color resolution and disabled visuals in `src/Flutter.Tests/MaterialButtonsTests.cs`.
+- Added initial Material button interaction polish: pointer-pressed visuals, focus visuals, and keyboard activation (`Enter`/`Return`/`Space`) through `Focus` integration in `MaterialButtonCore`.
+- Sample gallery shell buttons (menu entries and demo-page back action) now use Material button controls on both C# and Dart samples; Material-buttons demo control-strip actions now also use Material buttons instead of `CounterTapButton`.
+- Added core framework support for stateful widgets implemented in external assemblies (`State.StateWidget` protected accessor) to keep `src/Flutter.Material` decoupled while preserving stateful widget patterns.
 
 Initial scope:
 
@@ -207,6 +210,7 @@ Exit criteria:
 
 - Always update this file when milestone status changes (`done`, `in_progress`, `planned`, `blocked`).
 - Always record shipped outcomes in `CHANGELOG.md`.
+- For Dart-to-C# control/widget ports, follow mandatory parity-first workflow in `docs/ai/PORTING_MODE.md` (strict `1:1` default; documented divergences only).
 - For every meaningful feature change, update both:
   - semantic status (this document),
   - historical record (`CHANGELOG.md`).

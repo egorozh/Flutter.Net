@@ -158,13 +158,14 @@ internal sealed class SampleMenuPage : StatelessWidget
 
     private static Widget BuildPageButton(BuildContext context, SampleRouteDefinition page)
     {
-        return new CounterTapButton(
-            label: $"{page.Title}  |  {page.Subtitle}",
-            onTap: () => Navigator.Of(context).PushNamed(page.RouteName),
-            background: Color.Parse("#FFDCE3ED"),
-            foreground: Colors.Black,
-            fontSize: 12,
-            padding: new Thickness(10, 8));
+        return new OutlinedButton(
+            onPressed: () => Navigator.Of(context).PushNamed(page.RouteName),
+            backgroundColor: Color.Parse("#FFDCE3ED"),
+            borderColor: Color.Parse("#FFB8C4D4"),
+            foregroundColor: Colors.Black,
+            minHeight: 44,
+            padding: new Thickness(10, 8),
+            child: new Text($"{page.Title}  |  {page.Subtitle}", fontSize: 12));
     }
 }
 
@@ -191,14 +192,15 @@ internal sealed class SampleDemoPage : StatelessWidget
         return new Scaffold(
             appBar: new AppBar(
                 titleText: _title,
-                leadingWidth: 90,
-                leading: new CounterTapButton(
-                    label: "Back",
-                    onTap: () => Navigator.Of(context).MaybePop(),
-                    background: Colors.SteelBlue,
-                    foreground: Colors.White,
-                    fontSize: 12,
-                    padding: new Thickness(10, 8))),
+                leadingWidth: 96,
+                leading: new SizedBox(
+                    width: 84,
+                    child: new ElevatedButton(
+                        onPressed: () => Navigator.Of(context).MaybePop(),
+                        minHeight: 34,
+                        padding: new Thickness(10, 8),
+                        borderRadius: BorderRadius.Circular(8),
+                        child: new Text("Back", fontSize: 12)))),
             body: new Container(
                 padding: new Thickness(16),
                 child: new Column(

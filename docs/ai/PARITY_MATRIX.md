@@ -2,6 +2,8 @@
 
 Scope: structural parity of sample routes/modules between C# and Dart samples.
 
+Policy note: sample parity updates must follow `docs/ai/PORTING_MODE.md` (Dart source of truth, strict `1:1` default, documented divergences).
+
 Last checked: 2026-03-12
 
 Status legend:
@@ -16,7 +18,7 @@ Status legend:
 | --- | --- | --- | --- | --- |
 | App bootstrap | `src/Sample/Flutter.Net/CounterApp.cs` | `dart_sample/lib/counter_app.dart` | done | Counter model + scope app root present on both sides; C# root now uses framework Material `Theme(data: ThemeData.Light, ...)` (`Flutter.Material`) and Dart `MaterialApp` now sets explicit `ThemeData.textTheme.bodyMedium` baseline (`14/1.43/0.25`) so inherited text defaults stay aligned. |
 | Route constants + route data | `src/Sample/Flutter.Net/SampleGalleryScreen.cs` | `dart_sample/lib/sample_routes.dart` | done | Same route set including navigator details route. |
-| Sample gallery menu | `src/Sample/Flutter.Net/SampleGalleryScreen.cs` | `dart_sample/lib/sample_gallery_screen.dart` | done | Same demo page set and menu flow; both sides now use Material shell structure (`Scaffold` + `AppBar`) for menu and demo page wrappers, with C# side routed through framework `Flutter.Material` implementation. |
+| Sample gallery menu | `src/Sample/Flutter.Net/SampleGalleryScreen.cs` | `dart_sample/lib/sample_gallery_screen.dart` | done | Same demo page set and menu flow; both sides now use Material shell structure (`Scaffold` + `AppBar`) for menu and demo page wrappers, and shell actions now use Material buttons (outlined route entries + elevated back button). |
 | Counter page | `src/Sample/Flutter.Net/CounterScreen.cs` | `dart_sample/lib/counter_screen.dart` | verify-runtime | Structural match; centered label parity hardened for intrinsic-width rows (notably `Keyed List`) via `RenderParagraph` loose-width center/right/end alignment normalization, and both samples now wrap page content with `SingleChildScrollView` to avoid bottom overflow-debug zones on shorter viewports. |
 | Navigator demo | `src/Sample/Flutter.Net/NavigatorDemoPage.cs` | `dart_sample/lib/navigator_demo_page.dart` | verify-runtime | Route operations and observer flows are mirrored. |
 | ListView separated demo | `src/Sample/Flutter.Net/ListViewSeparatedDemoPage.cs` | `dart_sample/lib/list_view_separated_demo_page.dart` | verify-runtime | |
@@ -26,7 +28,7 @@ Status legend:
 | Custom slivers demo | `src/Sample/Flutter.Net/CustomSliversDemoPage.cs` | `dart_sample/lib/custom_slivers_demo_page.dart` | verify-runtime | |
 | Scrollbar demo | `src/Sample/Flutter.Net/ScrollbarDemoPage.cs` | `dart_sample/lib/scrollbar_demo_page.dart` | verify-runtime | |
 | Editable text demo | `src/Sample/Flutter.Net/EditableTextDemoPage.cs` | `dart_sample/lib/editable_text_demo_page.dart` | verify-runtime | Includes baseline input flow plus multiline Notes demo (`Enter` newline, Up/Down caret travel), seed action, and escaped live value summary. |
-| Material buttons demo | `src/Sample/Flutter.Net/MaterialButtonsDemoPage.cs` | `dart_sample/lib/material_buttons_demo_page.dart` | verify-runtime | Demonstrates first Material control set (`TextButton`, `ElevatedButton`, `OutlinedButton`) with enabled/disabled toggles, tap counters, and custom color overrides. |
+| Material buttons demo | `src/Sample/Flutter.Net/MaterialButtonsDemoPage.cs` | `dart_sample/lib/material_buttons_demo_page.dart` | verify-runtime | Demonstrates first Material control set (`TextButton`, `ElevatedButton`, `OutlinedButton`) with enabled/disabled toggles, tap counters, and custom color overrides; control-strip actions now also use Material `TextButton`. |
 | Proxy widgets demo | `src/Sample/Flutter.Net/ProxyWidgetsDemoPage.cs` | `dart_sample/lib/proxy_widgets_demo_page.dart` | verify-runtime | Demonstrates widget-level `Opacity`, `Transform`, and `ClipRect` composition with interactive controls. |
 | Align demo | `src/Sample/Flutter.Net/AlignDemoPage.cs` | `dart_sample/lib/align_demo_page.dart` | verify-runtime | Demonstrates widget-level `Align` and `Center` with alignment positions and shrink-wrap factors. |
 | Stack demo | `src/Sample/Flutter.Net/StackDemoPage.cs` | `dart_sample/lib/stack_demo_page.dart` | verify-runtime | Demonstrates widget-level `Stack` and `Positioned` overlay behavior with movable/pinned badge positioning. |

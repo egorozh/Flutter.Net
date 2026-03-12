@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'counter_widgets.dart';
-
 class MaterialButtonsDemoPage extends StatefulWidget {
   const MaterialButtonsDemoPage({super.key});
 
@@ -109,13 +107,16 @@ class _MaterialButtonsDemoPageState extends State<MaterialButtonsDemoPage> {
   }) {
     return SizedBox(
       width: width,
-      child: CounterTapButton(
-        label: label,
-        onTap: onTap,
-        background: background,
-        foreground: Colors.black,
-        fontSize: 12,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      child: TextButton(
+        onPressed: onTap,
+        style: TextButton.styleFrom(
+          backgroundColor: background,
+          foregroundColor: Colors.black,
+          minimumSize: const Size(0, 36),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        child: Text(label, style: const TextStyle(fontSize: 12)),
       ),
     );
   }

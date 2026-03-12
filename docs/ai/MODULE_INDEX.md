@@ -5,6 +5,7 @@ Purpose: quickly select the smallest useful context for a task.
 Related docs:
 
 - `docs/ai/INVARIANTS.md`
+- `docs/ai/PORTING_MODE.md`
 - `docs/ai/TEST_MATRIX.md`
 - `docs/ai/PARITY_MATRIX.md`
 - `docs/ai/FEATURE_TEMPLATE.md`
@@ -13,8 +14,9 @@ Related docs:
 
 1. Read `AGENTS.md`.
 2. Read `docs/FRAMEWORK_PLAN.md`.
-3. Pick one subsystem below and open only its `Read First` files.
-4. Open additional files only after a concrete blocker.
+3. For Dart-to-C# ports, read `docs/ai/PORTING_MODE.md` and open matching Dart reference files first.
+4. Pick one subsystem below and open only its `Read First` files.
+5. Open additional files only after a concrete blocker.
 
 Current priority (2026-03-12):
 
@@ -30,6 +32,7 @@ Current priority (2026-03-12):
   - `src/Flutter.Material/Theme.cs`
   - `src/Flutter.Material/Scaffold.cs`
   - `src/Flutter.Material/Buttons.cs`
+  - `src/Flutter/Widgets/Framework.Widget.cs`
   - `src/Flutter/Widgets/DefaultTextStyle.cs`
   - `src/Flutter/Widgets/Text.cs`
   - `src/Sample/Flutter.Net/CounterApp.cs`

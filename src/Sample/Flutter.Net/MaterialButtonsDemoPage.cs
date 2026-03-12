@@ -98,13 +98,16 @@ internal sealed class MaterialButtonsDemoPageState : State
     {
         return new SizedBox(
             width: width,
-            child: new CounterTapButton(
-                label: label,
-                onTap: onTap,
-                background: background,
-                foreground: Colors.Black,
-                fontSize: 12,
-                padding: new Thickness(10, 8)));
+            child: new TextButton(
+                onPressed: onTap,
+                backgroundColor: background,
+                foregroundColor: Colors.Black,
+                minHeight: 36,
+                padding: new Thickness(10, 8),
+                borderRadius: BorderRadius.Circular(8),
+                child: new Text(
+                    label,
+                    fontSize: 12)));
     }
 
     private void ToggleEnabled()

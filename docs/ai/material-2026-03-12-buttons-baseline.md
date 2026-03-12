@@ -7,7 +7,7 @@
 ## Non-Goals
 
 - No full Material button-style system (`ButtonStyle` parity, state-property resolution, animation layer) in this iteration.
-- No advanced interaction visuals (hover/focus/ink ripple/elevation animation).
+- No full advanced interaction parity (hover tracking, ink ripple/elevation animation, state-property matrix).
 - No cross-host environment/toolchain fixes for Android/iOS blockers.
 
 ## Context Budget Plan
@@ -54,6 +54,17 @@
   - sample files: add Material buttons demo route/page parity in both C# and Dart galleries.
   - `MaterialButtonsTests.cs`: lock button default-theme and disabled behavior in regression tests.
   - docs/changelog: record shipped M4 control-set progress and coverage updates.
+
+## Follow-up Iteration (2026-03-12)
+
+- Extended `MaterialButtonCore` from stateless to stateful composition with:
+  - pointer-pressed visual state,
+  - focus visual treatment,
+  - keyboard activation for `Enter`/`Return`/`Space`.
+- Fixed button sizing in unbounded vertical layouts by replacing internal `Center` with shrink-wrapped `Align(widthFactor: 1, heightFactor: 1)`.
+- Added framework-level `State.StateWidget` protected accessor to support stateful widgets in external assemblies (`src/Flutter.Material`).
+- Replaced sample shell `CounterTapButton` usage with Material buttons in both C# and Dart sample galleries (menu entries + back action), and switched Material-buttons-demo control-strip actions to `TextButton`.
+- Added regression coverage for pressed-state visual transitions in `MaterialButtonsTests`.
 
 ## Test Plan
 

@@ -8,6 +8,12 @@ These rules are non-negotiable unless explicitly changed via documented architec
 - Avalonia is host/platform infrastructure, not business logic for framework widgets.
 - Core direction remains `Widget -> Element -> RenderObject -> platform adapter`.
 
+## Dart Porting Invariants
+
+- Dart implementation is the source of truth for matching controls/widgets; ports must follow strict `1:1` structure/behavior by default (see `docs/ai/PORTING_MODE.md`).
+- Missing primitives must be implemented in framework layers first; do not hide parity gaps with control-local workarounds.
+- Any intentional divergence from Dart behavior must be documented with reason and expected delta in the same iteration.
+
 ## Widget and Element Lifecycle
 
 - `StatefulWidget` identity is preserved only when reconciliation keys/type allow it.

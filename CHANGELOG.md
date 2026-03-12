@@ -8,9 +8,13 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ### Planned
 
-- Continue `M4` Material library rewrite with Material control refinements (button state/styling polish) after shipping baseline theming + shell + first button set.
+- Continue `M4` Material library rewrite with advanced Material control refinements (hover/ripple/style-system expansion) after shipping baseline theming + shell + first button set plus initial interaction polish.
 - Run cross-host parity/stability validation in final `M5` phase after Material rewrite sequencing completes.
 - Improve architecture docs and migration guidance for Dart-to-C# rewrites.
+
+### Changed
+
+- Documentation policy update: Dart-to-C# control/widget work now uses mandatory parity-first porting mode (`docs/ai/PORTING_MODE.md`) with strict `1:1` default behavior, required divergence logging, and explicit parity-validation workflow references in `AGENTS.md`, `docs/FRAMEWORK_PLAN.md`, `docs/ai/INVARIANTS.md`, `docs/ai/MODULE_INDEX.md`, `docs/ai/FEATURE_TEMPLATE.md`, `docs/ai/TEST_MATRIX.md`, and `docs/ai/PARITY_MATRIX.md`.
 
 ## [2026-03-12] - M4 theming baseline and Material project split
 
@@ -38,6 +42,21 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Added first Material button set in `Flutter.Material`: `TextButton`, `ElevatedButton`, and `OutlinedButton` with Flutter-like API shape (`child`, `onPressed`, color/padding/radius overrides), default theme resolution, and disabled-state color treatment for foreground/background/border (`src/Flutter.Material/Buttons.cs`).
 - Extended sample gallery route map with a dedicated Material buttons demo page in both C# and Dart samples (`src/Sample/Flutter.Net/MaterialButtonsDemoPage.cs`, `dart_sample/lib/material_buttons_demo_page.dart`, `src/Sample/Flutter.Net/SampleGalleryScreen.cs`, `dart_sample/lib/sample_gallery_screen.dart`, `dart_sample/lib/sample_routes.dart`).
 - Added focused regression coverage for Material button defaults and disabled styling in framework tests (`src/Flutter.Tests/MaterialButtonsTests.cs`).
+
+## [2026-03-12] - M4 material button interaction polish
+
+### Added
+
+- Added initial interactive-state behavior for framework Material buttons: pointer-pressed visual state, focus visual treatment, and keyboard activation handling for `Enter/Return/Space` through `Focus` integration in `MaterialButtonCore` (`src/Flutter.Material/Buttons.cs`).
+- Added focused regression coverage for pressed-state visual transitions (`pointer down`/`pointer up`) in Material buttons (`src/Flutter.Tests/MaterialButtonsTests.cs`).
+- Added protected `State.StateWidget` helper in framework core so stateful widgets in external assemblies (for example `src/Flutter.Material`) can read their current widget instance without relying on framework-internal fields (`src/Flutter/Widgets/Framework.Widget.cs`).
+
+### Changed
+
+- Updated C# sample gallery shell controls to use Material buttons instead of sample-local `CounterTapButton` for menu entries and demo-page back action (`src/Sample/Flutter.Net/SampleGalleryScreen.cs`).
+- Updated Dart sample gallery shell controls to mirror the same Material-button shell behavior for parity (`dart_sample/lib/sample_gallery_screen.dart`).
+- Updated Material buttons demo control-strip actions (`Enabled`/`Reset`) in both C# and Dart samples to use `TextButton` instead of `CounterTapButton` (`src/Sample/Flutter.Net/MaterialButtonsDemoPage.cs`, `dart_sample/lib/material_buttons_demo_page.dart`).
+- Fixed Material button layout behavior in unbounded vertical constraints by switching internal label centering to shrink-wrapped alignment (`Align` with `widthFactor/heightFactor`), preventing button rows in `Column`/`Row` compositions from expanding to effectively infinite height (`src/Flutter.Material/Buttons.cs`).
 
 ## [2026-03-12] - Post-M3 typography and visual parity hardening
 

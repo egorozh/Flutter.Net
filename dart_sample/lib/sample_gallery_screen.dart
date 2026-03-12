@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'align_demo_page.dart';
 import 'aspect_ratio_demo_page.dart';
 import 'counter_screen.dart';
-import 'counter_widgets.dart';
 import 'container_demo_page.dart';
 import 'custom_slivers_demo_page.dart';
 import 'decorated_box_demo_page.dart';
@@ -272,13 +271,19 @@ class SampleMenuPage extends StatelessWidget {
     BuildContext context,
     SampleRouteDefinition page,
   ) {
-    return CounterTapButton(
-      label: '${page.title}  |  ${page.subtitle}',
-      onTap: () => Navigator.of(context).pushNamed(page.routeName),
-      background: const Color(0xFFDCE3ED),
-      foreground: Colors.black,
-      fontSize: 12,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+    return OutlinedButton(
+      onPressed: () => Navigator.of(context).pushNamed(page.routeName),
+      style: OutlinedButton.styleFrom(
+        backgroundColor: const Color(0xFFDCE3ED),
+        foregroundColor: Colors.black,
+        side: const BorderSide(color: Color(0xFFB8C4D4), width: 1),
+        minimumSize: const Size(0, 44),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      ),
+      child: Text(
+        '${page.title}  |  ${page.subtitle}',
+        style: const TextStyle(fontSize: 12),
+      ),
     );
   }
 }
@@ -307,14 +312,20 @@ class SampleDemoPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(title),
-        leadingWidth: 90,
-        leading: CounterTapButton(
-          label: 'Back',
-          onTap: () => Navigator.of(context).maybePop(),
-          background: Colors.blue,
-          foreground: Colors.white,
-          fontSize: 12,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        leadingWidth: 96,
+        leading: SizedBox(
+          width: 84,
+          child: ElevatedButton(
+            onPressed: () => Navigator.of(context).maybePop(),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(0, 34),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text('Back', style: TextStyle(fontSize: 12)),
+          ),
         ),
       ),
       body: Padding(

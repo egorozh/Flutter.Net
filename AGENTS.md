@@ -42,6 +42,7 @@ This file defines expectations for coding agents working in this repository.
 - Current status + global roadmap: `docs/FRAMEWORK_PLAN.md`
 - Module entry points by task: `docs/ai/MODULE_INDEX.md`
 - Non-negotiable behavior rules: `docs/ai/INVARIANTS.md`
+- Mandatory Dart-to-C# porting workflow: `docs/ai/PORTING_MODE.md`
 - Sample parity tracker: `docs/ai/PARITY_MATRIX.md`
 - Feature-to-tests map: `docs/ai/TEST_MATRIX.md`
 - Iteration planning template: `docs/ai/FEATURE_TEMPLATE.md`
@@ -98,6 +99,13 @@ dotnet build src/Sample/Flutter.Net.iOS/Flutter.Net.iOS.csproj -c Debug
 6. Keep nullability correctness (`Nullable` is enabled) and avoid introducing nullable warnings.
 7. Avoid broad dependency/framework upgrades unless explicitly requested.
 8. Any behavior/structure update in `src/Sample/Flutter.Net` must be adapted 100% in `dart_sample` in the same change (feature parity, route parity, and page/module structure parity).
+
+## Porting Workflow (Mandatory)
+
+1. For control/widget ports, treat Flutter Dart source as source of truth and follow `docs/ai/PORTING_MODE.md`.
+2. Default mode is strict `1:1` structure/behavior port, not approximation.
+3. If a required primitive is missing in C#, add/fix the primitive first, then continue the port.
+4. Any unavoidable divergence must be documented in docs/changelog in the same iteration.
 
 ## Validation Checklist
 
