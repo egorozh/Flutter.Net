@@ -208,6 +208,84 @@ public sealed class MaterialButtonsTests
     }
 
     [Fact]
+    public void TextButton_StyleFrom_AppliesForegroundAndTextStyle()
+    {
+        var owner = new BuildOwner();
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new TextButton(
+                    onPressed: () => { },
+                    style: TextButton.StyleFrom(
+                        foregroundColor: Colors.DarkCyan,
+                        textStyle: new TextStyle(
+                            FontSize: 18,
+                            FontWeight: FontWeight.Bold)),
+                    child: new Text("StyleFrom"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var paragraph = FindDescendant<RenderParagraph>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(paragraph);
+        Assert.Equal(Colors.DarkCyan, Assert.IsType<SolidColorBrush>(paragraph!.Foreground).Color);
+        Assert.Equal(18, paragraph.FontSize);
+        Assert.Equal(FontWeight.Bold, paragraph.FontWeight);
+    }
+
+    [Fact]
+    public void ElevatedButton_StyleFrom_UsesDisabledColorOverrides()
+    {
+        var owner = new BuildOwner();
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new ElevatedButton(
+                    onPressed: null,
+                    style: ElevatedButton.StyleFrom(
+                        foregroundColor: Colors.White,
+                        backgroundColor: Colors.SeaGreen,
+                        disabledForegroundColor: Colors.SlateGray,
+                        disabledBackgroundColor: Colors.SaddleBrown),
+                    child: new Text("Disabled styleFrom"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var renderRoot = RequireRenderObject<RenderObject>(root.ChildElement);
+        var decorated = FindDescendant<RenderDecoratedBox>(renderRoot);
+        var paragraph = FindDescendant<RenderParagraph>(renderRoot);
+        Assert.NotNull(decorated);
+        Assert.NotNull(paragraph);
+        Assert.Equal(Colors.SaddleBrown, decorated!.Decoration.Color);
+        Assert.Equal(Colors.SlateGray, Assert.IsType<SolidColorBrush>(paragraph!.Foreground).Color);
+    }
+
+    [Fact]
+    public void TextButton_LegacyForeground_OverridesStyleFromForeground()
+    {
+        var owner = new BuildOwner();
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new TextButton(
+                    onPressed: () => { },
+                    foregroundColor: Colors.OrangeRed,
+                    style: TextButton.StyleFrom(foregroundColor: Colors.RoyalBlue),
+                    child: new Text("Legacy wins"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var paragraph = FindDescendant<RenderParagraph>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(paragraph);
+        Assert.Equal(Colors.OrangeRed, Assert.IsType<SolidColorBrush>(paragraph!.Foreground).Color);
+    }
+
+    [Fact]
     public void ElevatedButton_DisabledStateUsesThemeOnSurfaceTones()
     {
         var owner = new BuildOwner();

@@ -76,6 +76,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   - `TextButton`/`ElevatedButton`/`OutlinedButton` now accept `style` and resolve foreground/background/overlay/splash/side/padding/shape/min-size via state-aware style resolution in `MaterialButtonCore`,
   - existing constructor color/shape/padding overrides remain supported as legacy compatibility overrides,
   - added regression coverage for style-driven foreground/min-size/side behavior in `MaterialButtonsTests` (`src/Flutter.Material/Buttons.cs`, `src/Flutter.Tests/MaterialButtonsTests.cs`).
+- Extended Material button style API with `StyleFrom(...)` builders on `TextButton`, `ElevatedButton`, and `OutlinedButton`, including disabled-state color overrides, text-style forwarding, and explicit legacy-parameter-vs-style precedence regression coverage (`src/Flutter.Material/Buttons.cs`, `src/Flutter.Tests/MaterialButtonsTests.cs`).
 - Added ink/ripple baseline for Material buttons:
   - new `RenderInkSplash` paint primitive with animated radial splash progress and pointer-origin support,
   - new widget-level wrapper `InkSplash`,

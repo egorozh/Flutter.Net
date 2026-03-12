@@ -53,6 +53,53 @@ public sealed class TextButton : StatelessWidget
 
     public ButtonStyle? Style { get; }
 
+    public static ButtonStyle StyleFrom(
+        Color? foregroundColor = null,
+        Color? backgroundColor = null,
+        Color? disabledForegroundColor = null,
+        Color? disabledBackgroundColor = null,
+        Color? overlayColor = null,
+        Color? splashColor = null,
+        BorderSide? side = null,
+        Thickness? padding = null,
+        BorderRadius? shape = null,
+        Size? minimumSize = null,
+        TextStyle? textStyle = null)
+    {
+        return new ButtonStyle(
+            ForegroundColor: foregroundColor.HasValue || disabledForegroundColor.HasValue
+                ? MaterialStateProperty<Color?>.ResolveWith(states =>
+                    states.HasFlag(MaterialState.Disabled)
+                        ? disabledForegroundColor
+                        : foregroundColor)
+                : null,
+            BackgroundColor: backgroundColor.HasValue || disabledBackgroundColor.HasValue
+                ? MaterialStateProperty<Color?>.ResolveWith(states =>
+                    states.HasFlag(MaterialState.Disabled)
+                        ? disabledBackgroundColor
+                        : backgroundColor)
+                : null,
+            OverlayColor: overlayColor.HasValue
+                ? MaterialButtonCore.CreateExplicitOverlayResolver(overlayColor.Value)
+                : null,
+            SplashColor: splashColor.HasValue
+                ? MaterialButtonCore.CreateExplicitSplashResolver(splashColor.Value)
+                : null,
+            Side: side.HasValue
+                ? MaterialStateProperty<BorderSide?>.All(side.Value)
+                : null,
+            Padding: padding.HasValue
+                ? MaterialStateProperty<Thickness?>.All(padding.Value)
+                : null,
+            Shape: shape.HasValue
+                ? MaterialStateProperty<BorderRadius?>.All(shape.Value)
+                : null,
+            MinimumSize: minimumSize.HasValue
+                ? MaterialStateProperty<Size?>.All(minimumSize.Value)
+                : null,
+            TextStyle: textStyle);
+    }
+
     public override Widget Build(BuildContext context)
     {
         var theme = Theme.Of(context);
@@ -163,6 +210,53 @@ public sealed class ElevatedButton : StatelessWidget
     public double MinHeight { get; }
 
     public ButtonStyle? Style { get; }
+
+    public static ButtonStyle StyleFrom(
+        Color? foregroundColor = null,
+        Color? backgroundColor = null,
+        Color? disabledForegroundColor = null,
+        Color? disabledBackgroundColor = null,
+        Color? overlayColor = null,
+        Color? splashColor = null,
+        BorderSide? side = null,
+        Thickness? padding = null,
+        BorderRadius? shape = null,
+        Size? minimumSize = null,
+        TextStyle? textStyle = null)
+    {
+        return new ButtonStyle(
+            ForegroundColor: foregroundColor.HasValue || disabledForegroundColor.HasValue
+                ? MaterialStateProperty<Color?>.ResolveWith(states =>
+                    states.HasFlag(MaterialState.Disabled)
+                        ? disabledForegroundColor
+                        : foregroundColor)
+                : null,
+            BackgroundColor: backgroundColor.HasValue || disabledBackgroundColor.HasValue
+                ? MaterialStateProperty<Color?>.ResolveWith(states =>
+                    states.HasFlag(MaterialState.Disabled)
+                        ? disabledBackgroundColor
+                        : backgroundColor)
+                : null,
+            OverlayColor: overlayColor.HasValue
+                ? MaterialButtonCore.CreateExplicitOverlayResolver(overlayColor.Value)
+                : null,
+            SplashColor: splashColor.HasValue
+                ? MaterialButtonCore.CreateExplicitSplashResolver(splashColor.Value)
+                : null,
+            Side: side.HasValue
+                ? MaterialStateProperty<BorderSide?>.All(side.Value)
+                : null,
+            Padding: padding.HasValue
+                ? MaterialStateProperty<Thickness?>.All(padding.Value)
+                : null,
+            Shape: shape.HasValue
+                ? MaterialStateProperty<BorderRadius?>.All(shape.Value)
+                : null,
+            MinimumSize: minimumSize.HasValue
+                ? MaterialStateProperty<Size?>.All(minimumSize.Value)
+                : null,
+            TextStyle: textStyle);
+    }
 
     public override Widget Build(BuildContext context)
     {
@@ -291,6 +385,53 @@ public sealed class OutlinedButton : StatelessWidget
 
     public ButtonStyle? Style { get; }
 
+    public static ButtonStyle StyleFrom(
+        Color? foregroundColor = null,
+        Color? backgroundColor = null,
+        Color? disabledForegroundColor = null,
+        Color? disabledBackgroundColor = null,
+        Color? overlayColor = null,
+        Color? splashColor = null,
+        BorderSide? side = null,
+        Thickness? padding = null,
+        BorderRadius? shape = null,
+        Size? minimumSize = null,
+        TextStyle? textStyle = null)
+    {
+        return new ButtonStyle(
+            ForegroundColor: foregroundColor.HasValue || disabledForegroundColor.HasValue
+                ? MaterialStateProperty<Color?>.ResolveWith(states =>
+                    states.HasFlag(MaterialState.Disabled)
+                        ? disabledForegroundColor
+                        : foregroundColor)
+                : null,
+            BackgroundColor: backgroundColor.HasValue || disabledBackgroundColor.HasValue
+                ? MaterialStateProperty<Color?>.ResolveWith(states =>
+                    states.HasFlag(MaterialState.Disabled)
+                        ? disabledBackgroundColor
+                        : backgroundColor)
+                : null,
+            OverlayColor: overlayColor.HasValue
+                ? MaterialButtonCore.CreateExplicitOverlayResolver(overlayColor.Value)
+                : null,
+            SplashColor: splashColor.HasValue
+                ? MaterialButtonCore.CreateExplicitSplashResolver(splashColor.Value)
+                : null,
+            Side: side.HasValue
+                ? MaterialStateProperty<BorderSide?>.All(side.Value)
+                : null,
+            Padding: padding.HasValue
+                ? MaterialStateProperty<Thickness?>.All(padding.Value)
+                : null,
+            Shape: shape.HasValue
+                ? MaterialStateProperty<BorderRadius?>.All(shape.Value)
+                : null,
+            MinimumSize: minimumSize.HasValue
+                ? MaterialStateProperty<Size?>.All(minimumSize.Value)
+                : null,
+            TextStyle: textStyle);
+    }
+
     public override Widget Build(BuildContext context)
     {
         var theme = Theme.Of(context);
@@ -418,6 +559,26 @@ internal sealed class MaterialButtonCore : StatefulWidget
         });
     }
 
+    internal static MaterialStateProperty<Color?> CreateExplicitOverlayResolver(Color overlayColor)
+    {
+        return MaterialStateProperty<Color?>.ResolveWith(states =>
+        {
+            if (states.HasFlag(MaterialState.Disabled))
+            {
+                return null;
+            }
+
+            if (states.HasFlag(MaterialState.Pressed)
+                || states.HasFlag(MaterialState.Focused)
+                || states.HasFlag(MaterialState.Hovered))
+            {
+                return overlayColor;
+            }
+
+            return null;
+        });
+    }
+
     internal static MaterialStateProperty<Color?> CreateDefaultSplashResolver(Color stateColor)
     {
         return MaterialStateProperty<Color?>.ResolveWith(states =>
@@ -430,6 +591,19 @@ internal sealed class MaterialButtonCore : StatefulWidget
             return states.HasFlag(MaterialState.Pressed)
                 ? ApplyOpacity(stateColor, 0.18)
                 : ApplyOpacity(stateColor, 0.14);
+        });
+    }
+
+    internal static MaterialStateProperty<Color?> CreateExplicitSplashResolver(Color splashColor)
+    {
+        return MaterialStateProperty<Color?>.ResolveWith(states =>
+        {
+            if (states.HasFlag(MaterialState.Disabled))
+            {
+                return null;
+            }
+
+            return splashColor;
         });
     }
 

@@ -104,6 +104,10 @@
   - `MaterialButtonCore` now resolves visual tokens from state-aware style properties (`foreground/background/overlay/splash/side/padding/shape/minimumSize`),
   - `TextButton`/`ElevatedButton`/`OutlinedButton` now accept `style` while keeping legacy constructor overrides compatible,
   - regression coverage added in `TextButton_ButtonStyleForegroundOverridesDefault`, `ElevatedButton_ButtonStyleMinimumSizeOverridesDefault`, and `OutlinedButton_ButtonStyleSideOverridesDefault`.
+- Extended style ergonomics with `StyleFrom(...)` builders on all three button types:
+  - added `TextButton.StyleFrom(...)`, `ElevatedButton.StyleFrom(...)`, and `OutlinedButton.StyleFrom(...)`,
+  - added explicit style resolvers for overlay/splash colors,
+  - regression coverage added in `TextButton_StyleFrom_AppliesForegroundAndTextStyle`, `ElevatedButton_StyleFrom_UsesDisabledColorOverrides`, and `TextButton_LegacyForeground_OverridesStyleFromForeground`.
 - Added framework-level `State.StateWidget` protected accessor to support stateful widgets in external assemblies (`src/Flutter.Material`).
 - Replaced sample shell `CounterTapButton` usage with Material buttons in both C# and Dart sample galleries (menu entries + back action), and switched Material-buttons-demo control-strip actions to `TextButton`.
 - Added regression coverage for pressed-state visual transitions in `MaterialButtonsTests`.
