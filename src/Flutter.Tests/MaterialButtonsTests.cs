@@ -434,6 +434,150 @@ public sealed class MaterialButtonsTests
     }
 
     [Fact]
+    public void TextButton_PressedOverlayTakesPriorityOverHoverOverlay()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            PrimaryColor = Colors.CornflowerBlue
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new TextButton(
+                    onPressed: () => { },
+                    child: new Text("Priority"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var hoverListener = FindHoverPointerListener(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(hoverListener);
+        hoverListener!.HandleEvent(
+            new PointerEnterEvent(
+                pointer: 11,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(10, 10),
+                buttons: PointerButtons.None,
+                timestampUtc: DateTime.UtcNow),
+            new BoxHitTestEntry(hoverListener, new Point(10, 10)));
+
+        owner.FlushBuild();
+
+        var hoveredDecorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(hoveredDecorated);
+        Assert.Equal(ApplyOpacity(theme.PrimaryColor, 0.08), hoveredDecorated!.Decoration.Color);
+
+        var interactiveListener = FindInteractivePointerListener(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(interactiveListener);
+        interactiveListener!.HandleEvent(
+            new PointerDownEvent(
+                pointer: 11,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(10, 10),
+                buttons: PointerButtons.Primary,
+                timestampUtc: DateTime.UtcNow),
+            new BoxHitTestEntry(interactiveListener, new Point(10, 10)));
+
+        owner.FlushBuild();
+
+        var pressedDecorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(pressedDecorated);
+        Assert.Equal(ApplyOpacity(theme.PrimaryColor, 0.10), pressedDecorated!.Decoration.Color);
+
+        interactiveListener = FindInteractivePointerListener(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(interactiveListener);
+        interactiveListener!.HandleEvent(
+            new PointerUpEvent(
+                pointer: 11,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(10, 10),
+                buttons: PointerButtons.None,
+                timestampUtc: DateTime.UtcNow),
+            new BoxHitTestEntry(interactiveListener, new Point(10, 10)));
+
+        owner.FlushBuild();
+
+        var releasedDecorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(releasedDecorated);
+        Assert.Equal(ApplyOpacity(theme.PrimaryColor, 0.08), releasedDecorated!.Decoration.Color);
+    }
+
+    [Fact]
+    public void TextButton_HoverOverlayTakesPriorityOverFocusOverlay()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            PrimaryColor = Colors.MediumSeaGreen
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new TextButton(
+                    onPressed: () => { },
+                    child: new Text("Focus hover"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var focusListener = FindFocusPointerListener(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(focusListener);
+        focusListener!.HandleEvent(
+            new PointerDownEvent(
+                pointer: 19,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(12, 9),
+                buttons: PointerButtons.Primary,
+                timestampUtc: DateTime.UtcNow),
+            new BoxHitTestEntry(focusListener, new Point(12, 9)));
+
+        owner.FlushBuild();
+
+        var focusedDecorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(focusedDecorated);
+        Assert.Equal(ApplyOpacity(theme.PrimaryColor, 0.10), focusedDecorated!.Decoration.Color);
+
+        var hoverListener = FindHoverPointerListener(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(hoverListener);
+        hoverListener!.HandleEvent(
+            new PointerEnterEvent(
+                pointer: 19,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(12, 9),
+                buttons: PointerButtons.None,
+                timestampUtc: DateTime.UtcNow),
+            new BoxHitTestEntry(hoverListener, new Point(12, 9)));
+
+        owner.FlushBuild();
+
+        var focusedHoveredDecorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(focusedHoveredDecorated);
+        Assert.Equal(ApplyOpacity(theme.PrimaryColor, 0.08), focusedHoveredDecorated!.Decoration.Color);
+
+        hoverListener = FindHoverPointerListener(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(hoverListener);
+        hoverListener!.HandleEvent(
+            new PointerExitEvent(
+                pointer: 19,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(120, 9),
+                buttons: PointerButtons.None,
+                timestampUtc: DateTime.UtcNow),
+            new BoxHitTestEntry(hoverListener, new Point(120, 9)));
+
+        owner.FlushBuild();
+
+        var focusOnlyDecorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(focusOnlyDecorated);
+        Assert.Equal(ApplyOpacity(theme.PrimaryColor, 0.10), focusOnlyDecorated!.Decoration.Color);
+    }
+
+    [Fact]
     public void TextButton_PointerDownStartsInkSplashRender()
     {
         var owner = new BuildOwner();

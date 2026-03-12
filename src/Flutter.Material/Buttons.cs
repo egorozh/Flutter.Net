@@ -545,7 +545,7 @@ internal sealed class MaterialButtonCore : StatefulWidget
                 return null;
             }
 
-            if (states.HasFlag(MaterialState.Pressed) || states.HasFlag(MaterialState.Focused))
+            if (states.HasFlag(MaterialState.Pressed))
             {
                 return ApplyOpacity(stateColor, 0.10);
             }
@@ -553,6 +553,11 @@ internal sealed class MaterialButtonCore : StatefulWidget
             if (states.HasFlag(MaterialState.Hovered))
             {
                 return ApplyOpacity(stateColor, 0.08);
+            }
+
+            if (states.HasFlag(MaterialState.Focused))
+            {
+                return ApplyOpacity(stateColor, 0.10);
             }
 
             return null;

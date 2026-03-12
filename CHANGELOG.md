@@ -77,6 +77,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   - existing constructor color/shape/padding overrides remain supported as legacy compatibility overrides,
   - added regression coverage for style-driven foreground/min-size/side behavior in `MaterialButtonsTests` (`src/Flutter.Material/Buttons.cs`, `src/Flutter.Tests/MaterialButtonsTests.cs`).
 - Extended Material button style API with `StyleFrom(...)` builders on `TextButton`, `ElevatedButton`, and `OutlinedButton`, including disabled-state color overrides, text-style forwarding, and explicit legacy-parameter-vs-style precedence regression coverage (`src/Flutter.Material/Buttons.cs`, `src/Flutter.Tests/MaterialButtonsTests.cs`).
+- Matched Flutter overlay conflict precedence for Material button state layers: `pressed` now wins over `hovered`, and `hovered` wins over `focused`; added regression coverage for combined-state conflicts (`TextButton_PressedOverlayTakesPriorityOverHoverOverlay`, `TextButton_HoverOverlayTakesPriorityOverFocusOverlay`) (`src/Flutter.Material/Buttons.cs`, `src/Flutter.Tests/MaterialButtonsTests.cs`).
 - Added ink/ripple baseline for Material buttons:
   - new `RenderInkSplash` paint primitive with animated radial splash progress and pointer-origin support,
   - new widget-level wrapper `InkSplash`,
