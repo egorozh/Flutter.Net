@@ -1526,3 +1526,142 @@ public sealed class RenderPointerListener : RenderProxyBox
         }
     }
 }
+
+public sealed class RenderInkSplash : RenderProxyBox
+{
+    private Color? _splashColor;
+    private Point _splashOrigin;
+    private double _splashProgress;
+    private bool _clipToBounds = true;
+
+    public RenderInkSplash(
+        Color? splashColor = null,
+        Point splashOrigin = default,
+        double splashProgress = 0,
+        bool clipToBounds = true,
+        RenderBox? child = null)
+    {
+        _splashColor = splashColor;
+        _splashOrigin = splashOrigin;
+        _splashProgress = NormalizeProgress(splashProgress);
+        _clipToBounds = clipToBounds;
+        Child = child;
+    }
+
+    public Color? SplashColor
+    {
+        get => _splashColor;
+        set
+        {
+            if (_splashColor == value)
+            {
+                return;
+            }
+
+            _splashColor = value;
+            MarkNeedsPaint();
+        }
+    }
+
+    public Point SplashOrigin
+    {
+        get => _splashOrigin;
+        set
+        {
+            if (_splashOrigin == value)
+            {
+                return;
+            }
+
+            _splashOrigin = value;
+            MarkNeedsPaint();
+        }
+    }
+
+    public double SplashProgress
+    {
+        get => _splashProgress;
+        set
+        {
+            var normalized = NormalizeProgress(value);
+            if (Math.Abs(_splashProgress - normalized) < 0.0001)
+            {
+                return;
+            }
+
+            _splashProgress = normalized;
+            MarkNeedsPaint();
+        }
+    }
+
+    public bool ClipToBounds
+    {
+        get => _clipToBounds;
+        set
+        {
+            if (_clipToBounds == value)
+            {
+                return;
+            }
+
+            _clipToBounds = value;
+            MarkNeedsPaint();
+        }
+    }
+
+    public override void Paint(PaintingContext ctx, Point offset)
+    {
+        if (_clipToBounds)
+        {
+            var clipRect = new Rect(offset, Size);
+            ctx.PushClipRect(clipRect, clippedContext =>
+            {
+                PaintSplash(clippedContext, offset);
+                base.Paint(clippedContext, offset);
+            });
+            return;
+        }
+
+        PaintSplash(ctx, offset);
+        base.Paint(ctx, offset);
+    }
+
+    private void PaintSplash(PaintingContext ctx, Point offset)
+    {
+        if (!_splashColor.HasValue || _splashProgress <= 0)
+        {
+            return;
+        }
+
+        var resolvedOrigin = ResolveOrigin(Size, _splashOrigin);
+        var localMaxRadius = Math.Sqrt((Size.Width * Size.Width) + (Size.Height * Size.Height));
+        var radius = localMaxRadius * _splashProgress;
+
+        var brush = new SolidColorBrush(_splashColor.Value);
+        ctx.DrawCircle(brush, pen: null, center: offset + resolvedOrigin, radius: radius);
+    }
+
+    private static double NormalizeProgress(double value)
+    {
+        if (double.IsNaN(value) || double.IsInfinity(value))
+        {
+            return 0;
+        }
+
+        return Math.Clamp(value, 0, 1);
+    }
+
+    private static Point ResolveOrigin(Size size, Point origin)
+    {
+        var center = new Point(size.Width / 2, size.Height / 2);
+
+        var x = double.IsNaN(origin.X) || double.IsInfinity(origin.X)
+            ? center.X
+            : origin.X;
+        var y = double.IsNaN(origin.Y) || double.IsInfinity(origin.Y)
+            ? center.Y
+            : origin.Y;
+
+        return new Point(x, y);
+    }
+}

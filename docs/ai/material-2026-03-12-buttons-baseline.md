@@ -81,6 +81,15 @@
   - `MaterialButtonCore` now resolves hover overlay with `0.08` opacity and clears it on exit,
   - regression coverage added in `TextButton_HoverStateAppliesOverlayUntilExit`,
   - framework transition dispatch coverage added in `GestureBinding_HoverDispatchesPointerEnterAndPointerExitTransitions`.
+- Added ink/ripple baseline:
+  - introduced `RenderInkSplash` + `InkSplash` wrapper,
+  - `MaterialButtonCore` now starts radial splash animation from pointer origin (`PointerDownEvent.LocalPosition`) and from center for keyboard activation,
+  - regression coverage added in `TextButton_PointerDownStartsInkSplashRender`.
+- Divergence log:
+  - `RenderInkSplash` currently clips to rectangular bounds (`ClipRect`) and not rounded border shape.
+  - Reason: framework has no rounded-clip render primitive yet.
+  - Expected delta: splash can draw into rounded-corner cut areas on heavily rounded buttons.
+  - Follow-up condition: add rounded clip primitive (`ClipRRect`/rounded layer clip) and wire `MaterialButtonCore` border radius into splash clipping.
 - Added framework-level `State.StateWidget` protected accessor to support stateful widgets in external assemblies (`src/Flutter.Material`).
 - Replaced sample shell `CounterTapButton` usage with Material buttons in both C# and Dart sample galleries (menu entries + back action), and switched Material-buttons-demo control-strip actions to `TextButton`.
 - Added regression coverage for pressed-state visual transitions in `MaterialButtonsTests`.

@@ -287,6 +287,50 @@ public sealed class MaterialButtonsTests
         Assert.Null(exitedDecorated!.Decoration.Color);
     }
 
+    [Fact]
+    public void TextButton_PointerDownStartsInkSplashRender()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            PrimaryColor = Colors.Teal
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new TextButton(
+                    onPressed: () => { },
+                    child: new Text("Splash"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var initialSplash = FindDescendant<RenderInkSplash>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(initialSplash);
+        Assert.Null(initialSplash!.SplashColor);
+        Assert.Equal(0, initialSplash.SplashProgress);
+
+        var pointerListener = FindInteractivePointerListener(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(pointerListener);
+        pointerListener!.HandleEvent(
+            new PointerDownEvent(
+                pointer: 13,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(16, 12),
+                buttons: PointerButtons.Primary,
+                timestampUtc: DateTime.UtcNow),
+            new BoxHitTestEntry(pointerListener, new Point(16, 12)));
+
+        owner.FlushBuild();
+
+        var activeSplash = FindDescendant<RenderInkSplash>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(activeSplash);
+        Assert.NotNull(activeSplash!.SplashColor);
+        Assert.Equal(new Point(16, 12), activeSplash.SplashOrigin);
+    }
+
     private static T RequireRenderObject<T>(Element? element) where T : RenderObject
     {
         Assert.NotNull(element);

@@ -68,6 +68,11 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   - extended `Listener`/`RenderPointerListener` with `onPointerEnter`/`onPointerExit`,
   - added hover enter/exit transition dispatch in `GestureBinding` by tracking per-pointer hover hit-test paths (`src/Flutter/UI/PointerEvents.cs`, `src/Flutter/Widgets/Gestures.cs`, `src/Flutter/Rendering/Proxy.RenderBox.cs`, `src/Flutter/Gestures/GestureBinding.cs`).
 - Material buttons now consume framework hover enter/exit events and apply Flutter-like hover state-layer opacity (`0.08`) with regression coverage (`src/Flutter.Material/Buttons.cs`, `src/Flutter.Tests/MaterialButtonsTests.cs`).
+- Added ink/ripple baseline for Material buttons:
+  - new `RenderInkSplash` paint primitive with animated radial splash progress and pointer-origin support,
+  - new widget-level wrapper `InkSplash`,
+  - `MaterialButtonCore` now starts animated splash on pointer/keyboard activation (`src/Flutter/Rendering/Proxy.RenderBox.cs`, `src/Flutter/Widgets/Basic.cs`, `src/Flutter/Rendering/Object.PaintingContext.cs`, `src/Flutter.Material/Buttons.cs`).
+- Documented parity divergence: current splash clipping is rectangular (`ClipRect`) rather than rounded-shape clip; follow-up requires rounded-clip render primitive before full Flutter `InkWell` parity.
 
 ## [2026-03-12] - Post-M3 typography and visual parity hardening
 

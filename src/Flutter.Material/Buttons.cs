@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Media;
+using Flutter;
 using Flutter.Foundation;
 using Flutter.Rendering;
 using Flutter.UI;
@@ -278,10 +279,16 @@ internal sealed class MaterialButtonCore : StatefulWidget
 
     private sealed class MaterialButtonCoreState : State
     {
+        private static readonly Point CenterSplashOrigin = new(double.NaN, double.NaN);
+
         private bool _isPressed;
         private bool _hasFocus;
         private bool _isHovered;
+        private bool _isSplashActive;
+        private double _splashProgress;
+        private Point _splashOrigin = CenterSplashOrigin;
         private FocusNode? _focusNode;
+        private AnimationController? _splashController;
 
         private MaterialButtonCore CurrentWidget => (MaterialButtonCore)StateWidget;
 
@@ -292,6 +299,13 @@ internal sealed class MaterialButtonCore : StatefulWidget
             _focusNode = new FocusNode();
             _focusNode.AddListener(HandleFocusChanged);
             _hasFocus = _focusNode.HasFocus;
+
+            _splashController = new AnimationController(TimeSpan.FromMilliseconds(225))
+            {
+                Curve = Curves.EaseOut
+            };
+            _splashController.Changed += HandleSplashTick;
+            _splashController.Completed += HandleSplashCompleted;
         }
 
         public override void DidUpdateWidget(StatefulWidget oldWidget)
@@ -304,6 +318,13 @@ internal sealed class MaterialButtonCore : StatefulWidget
             if (!Enabled && _isHovered)
             {
                 _isHovered = false;
+            }
+
+            if (!Enabled && _isSplashActive)
+            {
+                _isSplashActive = false;
+                _splashProgress = 0;
+                _splashController?.Stop();
             }
 
             if (!Enabled && _focusNode != null && _focusNode.HasFocus)
@@ -320,6 +341,14 @@ internal sealed class MaterialButtonCore : StatefulWidget
                 _focusNode.Dispose();
                 _focusNode = null;
             }
+
+            if (_splashController != null)
+            {
+                _splashController.Changed -= HandleSplashTick;
+                _splashController.Completed -= HandleSplashCompleted;
+                _splashController.Dispose();
+                _splashController = null;
+            }
         }
 
         public override Widget Build(BuildContext context)
@@ -330,6 +359,7 @@ internal sealed class MaterialButtonCore : StatefulWidget
                 ? widget.ForegroundColor
                 : widget.DisabledForegroundColor ?? ReduceAlpha(widget.ForegroundColor, 0.38);
             var background = ResolveBackgroundColor(enabled);
+            var splashColor = ResolveSplashColor();
             var border = ResolveBorder(enabled);
 
             Widget content = new DefaultTextStyle(
@@ -355,6 +385,12 @@ internal sealed class MaterialButtonCore : StatefulWidget
                     MaxHeight: double.PositiveInfinity),
                 child: content);
 
+            content = new InkSplash(
+                splashColor: splashColor,
+                splashOrigin: _splashOrigin,
+                splashProgress: _splashProgress,
+                child: content);
+
             content = new DecoratedBox(
                 decoration: new BoxDecoration(
                     Color: background,
@@ -374,9 +410,9 @@ internal sealed class MaterialButtonCore : StatefulWidget
 
             content = new Listener(
                 behavior: HitTestBehavior.Opaque,
-                onPointerDown: _ => SetPressed(true),
-                onPointerUp: _ => SetPressed(false),
-                onPointerCancel: _ => SetPressed(false),
+                onPointerDown: HandlePointerDown,
+                onPointerUp: HandlePointerUp,
+                onPointerCancel: HandlePointerCancel,
                 onPointerEnter: _ => SetHovered(true),
                 onPointerExit: _ => SetHovered(false),
                 child: content);
@@ -402,10 +438,27 @@ internal sealed class MaterialButtonCore : StatefulWidget
 
             if (@event.IsDown)
             {
+                StartSplash(CenterSplashOrigin);
                 CurrentWidget.OnPressed?.Invoke();
             }
 
             return KeyEventResult.Handled;
+        }
+
+        private void HandlePointerDown(PointerDownEvent @event)
+        {
+            SetPressed(true);
+            StartSplash(@event.LocalPosition);
+        }
+
+        private void HandlePointerUp(PointerUpEvent @event)
+        {
+            SetPressed(false);
+        }
+
+        private void HandlePointerCancel(PointerCancelEvent @event)
+        {
+            SetPressed(false);
         }
 
         private void HandleFocusChanged()
@@ -440,6 +493,23 @@ internal sealed class MaterialButtonCore : StatefulWidget
             }
 
             SetState(() => _isHovered = value);
+        }
+
+        private void StartSplash(Point origin)
+        {
+            if (!Enabled || _splashController is null)
+            {
+                return;
+            }
+
+            SetState(() =>
+            {
+                _isSplashActive = true;
+                _splashProgress = 0;
+                _splashOrigin = origin;
+            });
+
+            _splashController.Forward(0);
         }
 
         private Color? ResolveBackgroundColor(bool enabled)
@@ -500,6 +570,53 @@ internal sealed class MaterialButtonCore : StatefulWidget
             }
 
             return null;
+        }
+
+        private Color? ResolveSplashColor()
+        {
+            if (!_isSplashActive)
+            {
+                return null;
+            }
+
+            var fade = Math.Clamp(1 - _splashProgress, 0, 1);
+            var baseOpacity = _isPressed ? 0.18 : 0.14;
+            var opacity = baseOpacity * fade;
+
+            if (opacity <= 0.001)
+            {
+                return null;
+            }
+
+            return ApplyOpacity(CurrentWidget.StateColor, opacity);
+        }
+
+        private void HandleSplashTick()
+        {
+            if (!_isSplashActive || _splashController is null)
+            {
+                return;
+            }
+
+            SetState(() =>
+            {
+                _splashProgress = Math.Clamp(_splashController.Evaluate(), 0, 1);
+            });
+        }
+
+        private void HandleSplashCompleted()
+        {
+            if (!_isSplashActive)
+            {
+                return;
+            }
+
+            SetState(() =>
+            {
+                _isSplashActive = false;
+                _splashProgress = 0;
+                _splashOrigin = CenterSplashOrigin;
+            });
         }
 
         private static bool IsActivateKey(string key)

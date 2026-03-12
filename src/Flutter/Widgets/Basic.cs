@@ -322,6 +322,49 @@ public sealed class DecoratedBox : SingleChildRenderObjectWidget
     }
 }
 
+public sealed class InkSplash : SingleChildRenderObjectWidget
+{
+    public InkSplash(
+        Widget? child = null,
+        Color? splashColor = null,
+        Point splashOrigin = default,
+        double splashProgress = 0,
+        bool clipToBounds = true,
+        Key? key = null) : base(child, key)
+    {
+        SplashColor = splashColor;
+        SplashOrigin = splashOrigin;
+        SplashProgress = splashProgress;
+        ClipToBounds = clipToBounds;
+    }
+
+    public Color? SplashColor { get; }
+
+    public Point SplashOrigin { get; }
+
+    public double SplashProgress { get; }
+
+    public bool ClipToBounds { get; }
+
+    internal override RenderObject CreateRenderObject(BuildContext context)
+    {
+        return new RenderInkSplash(
+            splashColor: SplashColor,
+            splashOrigin: SplashOrigin,
+            splashProgress: SplashProgress,
+            clipToBounds: ClipToBounds);
+    }
+
+    internal override void UpdateRenderObject(BuildContext context, RenderObject renderObject)
+    {
+        var inkSplash = (RenderInkSplash)renderObject;
+        inkSplash.SplashColor = SplashColor;
+        inkSplash.SplashOrigin = SplashOrigin;
+        inkSplash.SplashProgress = SplashProgress;
+        inkSplash.ClipToBounds = ClipToBounds;
+    }
+}
+
 public sealed class Opacity : SingleChildRenderObjectWidget
 {
     public Opacity(double opacity, Widget? child = null, Key? key = null) : base(child, key)
