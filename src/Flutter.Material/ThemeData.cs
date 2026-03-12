@@ -44,12 +44,14 @@ public sealed record ThemeData
         MaterialTextTheme? textTheme = null,
         Color? scaffoldBackgroundColor = null,
         Color? canvasColor = null,
-        Color? primaryColor = null)
+        Color? primaryColor = null,
+        Color? onPrimaryColor = null)
     {
         TextTheme = textTheme ?? MaterialTextTheme.Fallback;
         ScaffoldBackgroundColor = scaffoldBackgroundColor ?? Colors.White;
         CanvasColor = canvasColor ?? Colors.White;
         PrimaryColor = primaryColor ?? Colors.Blue;
+        OnPrimaryColor = onPrimaryColor ?? Colors.White;
     }
 
     public MaterialTextTheme TextTheme { get; init; }
@@ -59,6 +61,8 @@ public sealed record ThemeData
     public Color CanvasColor { get; init; }
 
     public Color PrimaryColor { get; init; }
+
+    public Color OnPrimaryColor { get; init; }
 
     public static ThemeData Light { get; } = new();
 }

@@ -8,7 +8,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ### Planned
 
-- Continue `M4` Material library rewrite with shell/controls (`Scaffold/AppBar`, baseline Material button set) after shipping theming baseline.
+- Continue `M4` Material library rewrite with baseline Material button set (`TextButton`/`ElevatedButton`/`OutlinedButton`) and shell refinements after shipping theming + scaffold/app-bar baseline.
 - Run cross-host parity/stability validation in final `M5` phase after Material rewrite sequencing completes.
 - Improve architecture docs and migration guidance for Dart-to-C# rewrites.
 
@@ -21,6 +21,15 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Updated C# sample app bootstrap to use framework Material theming (`Theme(data: ThemeData.Light, child: ...)`) instead of sample-local `DefaultTextStyle` injection (`src/Sample/Flutter.Net/CounterApp.cs`).
 - Updated Dart sample bootstrap with explicit `MaterialApp.theme` `TextTheme.bodyMedium` baseline (`14/1.43/0.25`) to keep inherited text defaults aligned with C# sample behavior (`dart_sample/lib/counter_app.dart`).
 - Added regression coverage that verifies `ThemeData.TextTheme.BodyMedium` reaches `RenderParagraph` defaults via `Text` (`src/Flutter.Tests/TextWidgetTests.cs`).
+
+## [2026-03-12] - M4 scaffold and app-bar baseline
+
+### Added
+
+- Added Material shell primitives in `Flutter.Material`: `Scaffold` and `AppBar` with baseline slot support (`body`, `appBar`, `floatingActionButton`, `bottomNavigationBar`, `leading`, `actions`, title text/widget, toolbar sizing) and theme-driven color defaults (`scaffoldBackgroundColor`, `primaryColor`, `onPrimaryColor`) (`src/Flutter.Material/Scaffold.cs`, `src/Flutter.Material/ThemeData.cs`).
+- Updated C# sample gallery pages to use framework `Scaffold`/`AppBar` structure (menu and demo pages now render through Material shell composition instead of manual top-row title/back layout wrappers) (`src/Sample/Flutter.Net/SampleGalleryScreen.cs`).
+- Updated Dart sample gallery pages to mirror the same shell structure with Flutter `Scaffold`/`AppBar` usage, preserving route/module parity (`dart_sample/lib/sample_gallery_screen.dart`).
+- Added focused regression coverage for Material shell behavior in framework tests (`src/Flutter.Tests/MaterialScaffoldTests.cs`): scaffold background resolution, app-bar theme color resolution, and app-bar title foreground propagation.
 
 ## [2026-03-12] - Post-M3 typography and visual parity hardening
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Avalonia;
 using Avalonia.Media;
+using Flutter.Material;
 using Flutter.Rendering;
 using Flutter.Widgets;
 
@@ -80,10 +81,11 @@ internal sealed class SampleGalleryScreen : StatelessWidget
 
     public override Widget Build(BuildContext context)
     {
-        return new Navigator(
-            onGenerateRoute: BuildRoute,
-            observers: [SampleNavigationObservers.PageRoutes],
-            initialRouteName: SampleRoutes.Menu);
+        return new Scaffold(
+            body: new Navigator(
+                onGenerateRoute: BuildRoute,
+                observers: [SampleNavigationObservers.PageRoutes],
+                initialRouteName: SampleRoutes.Menu));
     }
 
     private static Route? BuildRoute(RouteSettings settings)
@@ -129,27 +131,27 @@ internal sealed class SampleMenuPage : StatelessWidget
 
     public override Widget Build(BuildContext context)
     {
-        return new Container(
-            color: Colors.White,
-            padding: new Thickness(16),
-            child: new Column(
-                crossAxisAlignment: CrossAxisAlignment.Stretch,
-                spacing: 10,
-                children:
-                [
-                    new Text("Flutter.Net widget pages", fontSize: 24, color: Colors.Black),
-                    new Text(
-                        "Route-based sample menu. Open page and return via Back button or Esc.",
-                        fontSize: 14,
-                        color: Colors.DimGray),
-                    new Expanded(
-                        child: ListView.Builder(
-                            itemCount: _pages.Count,
-                            padding: new Thickness(0, 8, 0, 8),
-                            itemExtent: 56,
-                            itemBuilder: (_, index) => BuildPageButton(context, _pages[index]),
-                            addAutomaticKeepAlives: false)),
-                ]));
+        return new Scaffold(
+            appBar: new AppBar(titleText: "Flutter.Net widget pages"),
+            body: new Container(
+                padding: new Thickness(16),
+                child: new Column(
+                    crossAxisAlignment: CrossAxisAlignment.Stretch,
+                    spacing: 10,
+                    children:
+                    [
+                        new Text(
+                            "Route-based sample menu. Open page and return via Back button or Esc.",
+                            fontSize: 14,
+                            color: Colors.DimGray),
+                        new Expanded(
+                            child: ListView.Builder(
+                                itemCount: _pages.Count,
+                                padding: new Thickness(0, 8, 0, 8),
+                                itemExtent: 56,
+                                itemBuilder: (_, index) => BuildPageButton(context, _pages[index]),
+                                addAutomaticKeepAlives: false)),
+                    ])));
     }
 
     private static Widget BuildPageButton(BuildContext context, SampleRouteDefinition page)
@@ -184,36 +186,30 @@ internal sealed class SampleDemoPage : StatelessWidget
 
     public override Widget Build(BuildContext context)
     {
-        return new Container(
-            color: Colors.White,
-            padding: new Thickness(16),
-            child: new Column(
-                crossAxisAlignment: CrossAxisAlignment.Stretch,
-                spacing: 10,
-                children:
-                [
-                    new Row(
-                        spacing: 8,
-                        children:
-                        [
-                            new SizedBox(
-                                width: 90,
-                                child: new CounterTapButton(
-                                    label: "Back",
-                                    onTap: () => Navigator.Of(context).MaybePop(),
-                                    background: Colors.SteelBlue,
-                                    foreground: Colors.White,
-                                    fontSize: 12,
-                                    padding: new Thickness(10, 8))),
-                            new Expanded(
-                                child: new Text(_title, fontSize: 22, color: Colors.Black)),
-                        ]),
-                    new Text(_subtitle, fontSize: 14, color: Colors.DimGray),
-                    new Expanded(
-                        child: new Container(
-                            color: Color.Parse("#FFF7F9FC"),
-                            padding: new Thickness(12),
-                            child: _child)),
-                ]));
+        return new Scaffold(
+            appBar: new AppBar(
+                titleText: _title,
+                leadingWidth: 90,
+                leading: new CounterTapButton(
+                    label: "Back",
+                    onTap: () => Navigator.Of(context).MaybePop(),
+                    background: Colors.SteelBlue,
+                    foreground: Colors.White,
+                    fontSize: 12,
+                    padding: new Thickness(10, 8))),
+            body: new Container(
+                padding: new Thickness(16),
+                child: new Column(
+                    crossAxisAlignment: CrossAxisAlignment.Stretch,
+                    spacing: 10,
+                    children:
+                    [
+                        new Text(_subtitle, fontSize: 14, color: Colors.DimGray),
+                        new Expanded(
+                            child: new Container(
+                                color: Color.Parse("#FFF7F9FC"),
+                                padding: new Thickness(12),
+                                child: _child)),
+                    ])));
     }
 }

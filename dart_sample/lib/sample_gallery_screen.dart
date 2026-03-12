@@ -233,32 +233,30 @@ class SampleMenuPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: 10,
-        children: <Widget>[
-          const Text(
-            'Flutter.Net widget pages',
-            style: TextStyle(fontSize: 24, color: Colors.black),
-          ),
-          const Text(
-            'Route-based sample menu. Open page and return via Back button or Esc.',
-            style: TextStyle(fontSize: 14, color: Colors.black54),
-          ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: pages.length,
-              itemExtent: 56,
-              padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
-              itemBuilder: (BuildContext itemContext, int index) {
-                return _buildPageButton(context, pages[index]);
-              },
+    return Scaffold(
+      appBar: AppBar(title: const Text('Flutter.Net widget pages')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 10,
+          children: <Widget>[
+            const Text(
+              'Route-based sample menu. Open page and return via Back button or Esc.',
+              style: TextStyle(fontSize: 14, color: Colors.black54),
             ),
-          ),
-        ],
+            Expanded(
+              child: ListView.builder(
+                itemCount: pages.length,
+                itemExtent: 56,
+                padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
+                itemBuilder: (BuildContext itemContext, int index) {
+                  return _buildPageButton(context, pages[index]);
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -299,50 +297,38 @@ class SampleDemoPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: 10,
-        children: <Widget>[
-          Row(
-            spacing: 8,
-            children: <Widget>[
-              SizedBox(
-                width: 90,
-                child: CounterTapButton(
-                  label: 'Back',
-                  onTap: () => Navigator.of(context).maybePop(),
-                  background: Colors.blue,
-                  foreground: Colors.white,
-                  fontSize: 12,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 8,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(fontSize: 22, color: Colors.black),
-                ),
-              ),
-            ],
-          ),
-          Text(
-            subtitle,
-            style: const TextStyle(fontSize: 14, color: Colors.black54),
-          ),
-          Expanded(
-            child: Container(
-              color: const Color(0xFFF7F9FC),
-              padding: const EdgeInsets.all(12),
-              child: child,
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(title),
+        leadingWidth: 90,
+        leading: CounterTapButton(
+          label: 'Back',
+          onTap: () => Navigator.of(context).maybePop(),
+          background: Colors.blue,
+          foreground: Colors.white,
+          fontSize: 12,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 10,
+          children: <Widget>[
+            Text(
+              subtitle,
+              style: const TextStyle(fontSize: 14, color: Colors.black54),
             ),
-          ),
-        ],
+            Expanded(
+              child: Container(
+                color: const Color(0xFFF7F9FC),
+                padding: const EdgeInsets.all(12),
+                child: child,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
