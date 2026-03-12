@@ -111,6 +111,10 @@
 - Closed overlay state-priority follow-up for button conflict cases:
   - default overlay resolver now matches Flutter priority order (`pressed > hovered > focused`),
   - regression coverage added in `TextButton_PressedOverlayTakesPriorityOverHoverOverlay` and `TextButton_HoverOverlayTakesPriorityOverFocusOverlay`.
+- Continued `StyleFrom(...)` parity follow-up:
+  - `foregroundColor` now derives default overlay/splash state colors when explicit `overlayColor`/`splashColor` are omitted,
+  - explicit `overlayColor` now drives splash fallback when `splashColor` is omitted, including transparent highlight/splash suppression,
+  - regression coverage added in `TextButton_StyleFrom_ForegroundColor_DerivesOverlayAndSplash` and `TextButton_StyleFrom_TransparentOverlay_DisablesVisualHighlights`.
 - Added framework-level `State.StateWidget` protected accessor to support stateful widgets in external assemblies (`src/Flutter.Material`).
 - Replaced sample shell `CounterTapButton` usage with Material buttons in both C# and Dart sample galleries (menu entries + back action), and switched Material-buttons-demo control-strip actions to `TextButton`.
 - Added regression coverage for pressed-state visual transitions in `MaterialButtonsTests`.

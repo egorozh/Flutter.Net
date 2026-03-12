@@ -79,12 +79,8 @@ public sealed class TextButton : StatelessWidget
                         ? disabledBackgroundColor
                         : backgroundColor)
                 : null,
-            OverlayColor: overlayColor.HasValue
-                ? MaterialButtonCore.CreateExplicitOverlayResolver(overlayColor.Value)
-                : null,
-            SplashColor: splashColor.HasValue
-                ? MaterialButtonCore.CreateExplicitSplashResolver(splashColor.Value)
-                : null,
+            OverlayColor: MaterialButtonCore.CreateStyleFromOverlayResolver(foregroundColor, overlayColor),
+            SplashColor: MaterialButtonCore.CreateStyleFromSplashResolver(foregroundColor, overlayColor, splashColor),
             Side: side.HasValue
                 ? MaterialStateProperty<BorderSide?>.All(side.Value)
                 : null,
@@ -237,12 +233,8 @@ public sealed class ElevatedButton : StatelessWidget
                         ? disabledBackgroundColor
                         : backgroundColor)
                 : null,
-            OverlayColor: overlayColor.HasValue
-                ? MaterialButtonCore.CreateExplicitOverlayResolver(overlayColor.Value)
-                : null,
-            SplashColor: splashColor.HasValue
-                ? MaterialButtonCore.CreateExplicitSplashResolver(splashColor.Value)
-                : null,
+            OverlayColor: MaterialButtonCore.CreateStyleFromOverlayResolver(foregroundColor, overlayColor),
+            SplashColor: MaterialButtonCore.CreateStyleFromSplashResolver(foregroundColor, overlayColor, splashColor),
             Side: side.HasValue
                 ? MaterialStateProperty<BorderSide?>.All(side.Value)
                 : null,
@@ -411,12 +403,8 @@ public sealed class OutlinedButton : StatelessWidget
                         ? disabledBackgroundColor
                         : backgroundColor)
                 : null,
-            OverlayColor: overlayColor.HasValue
-                ? MaterialButtonCore.CreateExplicitOverlayResolver(overlayColor.Value)
-                : null,
-            SplashColor: splashColor.HasValue
-                ? MaterialButtonCore.CreateExplicitSplashResolver(splashColor.Value)
-                : null,
+            OverlayColor: MaterialButtonCore.CreateStyleFromOverlayResolver(foregroundColor, overlayColor),
+            SplashColor: MaterialButtonCore.CreateStyleFromSplashResolver(foregroundColor, overlayColor, splashColor),
             Side: side.HasValue
                 ? MaterialStateProperty<BorderSide?>.All(side.Value)
                 : null,
@@ -584,6 +572,25 @@ internal sealed class MaterialButtonCore : StatefulWidget
         });
     }
 
+    internal static MaterialStateProperty<Color?>? CreateStyleFromOverlayResolver(
+        Color? foregroundColor,
+        Color? overlayColor)
+    {
+        if (overlayColor.HasValue)
+        {
+            if (overlayColor.Value.A == 0)
+            {
+                return MaterialStateProperty<Color?>.All(overlayColor.Value);
+            }
+
+            return CreateExplicitOverlayResolver(overlayColor.Value);
+        }
+
+        return foregroundColor.HasValue
+            ? CreateDefaultOverlayResolver(foregroundColor.Value)
+            : null;
+    }
+
     internal static MaterialStateProperty<Color?> CreateDefaultSplashResolver(Color stateColor)
     {
         return MaterialStateProperty<Color?>.ResolveWith(states =>
@@ -610,6 +617,26 @@ internal sealed class MaterialButtonCore : StatefulWidget
 
             return splashColor;
         });
+    }
+
+    internal static MaterialStateProperty<Color?>? CreateStyleFromSplashResolver(
+        Color? foregroundColor,
+        Color? overlayColor,
+        Color? splashColor)
+    {
+        if (splashColor.HasValue)
+        {
+            return CreateExplicitSplashResolver(splashColor.Value);
+        }
+
+        if (overlayColor.HasValue)
+        {
+            return CreateExplicitSplashResolver(overlayColor.Value);
+        }
+
+        return foregroundColor.HasValue
+            ? CreateDefaultSplashResolver(foregroundColor.Value)
+            : null;
     }
 
     private sealed class MaterialButtonCoreState : State
