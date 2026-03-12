@@ -6,6 +6,14 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## [Unreleased]
 
+### Planned
+
+- Execute `M4` Material library rewrite (`ThemeData/Theme`, `Scaffold/AppBar`, baseline Material button set) as the primary iteration focus.
+- Run cross-host parity/stability validation in final `M5` phase after Material rewrite sequencing completes.
+- Improve architecture docs and migration guidance for Dart-to-C# rewrites.
+
+## [2026-03-12] - Post-M3 typography and visual parity hardening
+
 ### Added
 
 - Post-M3 typography parity hardening: expanded `Text`/`RenderParagraph` support with `fontWeight`, `fontStyle`, `height` (line-height multiplier), and `letterSpacing`; aligned fallback text-size estimation to these options; and switched paragraph/button/editable-text layout defaults to host font family instead of hardcoded `Segoe UI` for closer Dart-sample visual parity across platforms (`src/Flutter/Widgets/Text.cs`, `src/Flutter/RenderParagraph.cs`, `src/Flutter/UI/TextLayoutFallback.cs`, `src/Flutter/RenderButton.cs`, `src/Flutter/Widgets/TextInput.cs`, `src/Flutter.Tests/TextWidgetTests.cs`).
@@ -17,11 +25,11 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Desktop host sizing parity hardening: `FlutterExtensions.Run` now interprets target startup size as physical pixels and converts to DIP using top-level scale (`RenderScaling` with `DesktopScaling` fallback), keeping C# desktop window width/height closer to Dart macOS sample on high-DPI displays (`src/Flutter/FlutterExtensions.cs`).
 - Dart macOS host sizing parity hardening: `MainFlutterWindow` now treats startup target size as physical pixels and converts to Cocoa points via `backingScaleFactor`, matching C# startup-size calculation semantics on Retina displays (`dart_sample/macos/Runner/MainFlutterWindow.swift`).
 
-### Planned
+## [2026-03-12] - Roadmap sequencing update
 
-- Continue Flutter parity hardening for controls/layout/painting with focus on visual fidelity against Dart sample behavior.
-- Expand host/runtime validation for desktop, browser, and mobile.
-- Improve architecture docs and migration guidance for Dart-to-C# rewrites.
+### Changed
+
+- Roadmap sequencing update (2026-03-12): framework planning now treats Material library rewrite as active milestone `M4` (`in_progress`) with focus on theming + Material shell/controls, while the previous cross-host parity/stability milestone is moved to the final phase as `M5` (`planned`) due current host-toolchain alignment blockers documented in `docs/FRAMEWORK_PLAN.md`; task-entry guidance in `docs/ai/MODULE_INDEX.md` now points to M4-first context.
 
 ## [2026-03-11] - M3 completion snapshot
 

@@ -16,7 +16,25 @@ Related docs:
 3. Pick one subsystem below and open only its `Read First` files.
 4. Open additional files only after a concrete blocker.
 
+Current priority (2026-03-12):
+
+- Active milestone is `M4` (Material library rewrite). Cross-host parity/stability moved to final `M5`.
+
 ## Subsystems
+
+### Material Layer (M4 Focus)
+
+- Goal: establish Flutter-like Material theming/app-shell/control primitives in framework layers.
+- Read First:
+  - `src/Flutter/Widgets/DefaultTextStyle.cs`
+  - `src/Flutter/Widgets/Text.cs`
+  - `src/Flutter/Widgets/Button.cs`
+  - `src/Flutter/Widgets/Basic.cs`
+  - `src/Sample/Flutter.Net/CounterApp.cs`
+  - `dart_sample/lib/counter_app.dart`
+- Primary Tests:
+  - `src/Flutter.Tests/TextWidgetTests.cs`
+  - `src/Flutter.Tests/ContainerTests.cs`
 
 ### Runtime and Host
 

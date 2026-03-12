@@ -8,9 +8,9 @@ Use this block as the fastest machine-readable status summary.
 
 ```yaml
 framework_plan_version: 1
-last_updated: 2026-03-11
+last_updated: 2026-03-12
 north_star: "Flutter-like widget/rendering framework in C# with Avalonia as host infrastructure."
-current_phase: "Post-M3 control parity hardening (text rendering behavior alignment) in progress."
+current_phase: "M4 material library rewrite (theme/scaffold/material controls) in progress."
 status:
   widget_element_state_lifecycle: done
   render_pipeline_layout_paint_compositing_semantics: done
@@ -19,7 +19,8 @@ status:
   navigation_stack_and_observers: done
   scroll_sliver_list_grid_pipeline: done
   desktop_widget_host_app_flow: done
-  browser_android_ios_sample_hosts: in_progress
+  material_library_rewrite: in_progress
+  browser_android_ios_sample_hosts: planned
   dart_to_csharp_control_porting_readiness: in_progress
   docs_alignment_and_tracking: in_progress
 next_milestones:
@@ -33,6 +34,9 @@ next_milestones:
     title: "Port-first widget set expansion"
     status: done
   - id: M4
+    title: "Material library rewrite"
+    status: in_progress
+  - id: M5
     title: "Cross-host sample parity and stability"
     status: planned
 ```
@@ -142,9 +146,35 @@ Exit criteria:
 - New widgets use the same architecture boundaries (`Widget -> Element -> RenderObject`) without leaking behavior into Avalonia controls.
 - Sample gallery includes representative real-world compositions beyond demos.
 
-### M4. Cross-Host Sample Parity and Stability
+### M4. Material Library Rewrite
+
+Status: `in_progress`
+
+Kickoff note (2026-03-12):
+
+- Prioritized immediately after M3 to unblock practical control rewrites and reduce sample-level styling drift by introducing a Flutter-like Material layer in framework widgets.
+
+Initial scope:
+
+- Introduce framework-level theming primitives (`ThemeData`, `Theme`, baseline color/text style propagation).
+- Introduce shell/layout primitives for Material app structure (`Scaffold`, `AppBar`, and supporting slots).
+- Introduce first Material control set (`TextButton`, `ElevatedButton`, `OutlinedButton`) on top of framework render/widget layers.
+- Keep architecture boundaries explicit: behavior in `src/Flutter`, host integration in sample hosts only.
+
+Exit criteria:
+
+- Material theming is available through inherited framework state and can drive common control defaults.
+- Material shell primitives are sufficient to host route pages without custom sample-only wrappers.
+- Initial Material control set supports core states and API shape needed for straightforward Dart-to-C# rewrites.
+- Regression coverage exists for widget-to-render wiring and theming resolution behavior.
+
+### M5. Cross-Host Sample Parity and Stability
 
 Status: `planned`
+
+Scheduling note (2026-03-12):
+
+- Moved after Material rewrite as a final stabilization milestone. Current blockers are local toolchain/environment alignment (Android API 36 SDK platform missing; iOS workload/Xcode version mismatch).
 
 Exit criteria:
 
@@ -152,7 +182,7 @@ Exit criteria:
 - Framework-driven app flow remains identical across hosts.
 - `src/Sample/Flutter.Net` and `dart_sample` stay in feature/route/module parity.
 
-## Backlog Candidates (After M1-M4)
+## Backlog Candidates (After M1-M5)
 
 - Text editing/IME primitives and richer text input workflows.
 - Overlay/portal-like primitives and advanced route transitions.
