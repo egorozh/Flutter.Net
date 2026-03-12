@@ -99,9 +99,10 @@ public sealed class TextButton : StatelessWidget
     public override Widget Build(BuildContext context)
     {
         var theme = Theme.Of(context);
-        var mergedStyle = CreateDefaultStyle(theme, MinWidth, MinHeight)
-            .Merge(Style)
-            .Merge(CreateLegacyStyleOverrides(theme));
+        var mergedStyle = MaterialButtonCore.ComposeStyles(
+            defaults: CreateDefaultStyle(theme, MinWidth, MinHeight),
+            widgetStyle: Style,
+            legacyOverrides: CreateLegacyStyleOverrides(theme));
 
         return new MaterialButtonCore(
             child: Child,
@@ -253,9 +254,10 @@ public sealed class ElevatedButton : StatelessWidget
     public override Widget Build(BuildContext context)
     {
         var theme = Theme.Of(context);
-        var mergedStyle = CreateDefaultStyle(theme, MinWidth, MinHeight)
-            .Merge(Style)
-            .Merge(CreateLegacyStyleOverrides(theme));
+        var mergedStyle = MaterialButtonCore.ComposeStyles(
+            defaults: CreateDefaultStyle(theme, MinWidth, MinHeight),
+            widgetStyle: Style,
+            legacyOverrides: CreateLegacyStyleOverrides(theme));
 
         return new MaterialButtonCore(
             child: Child,
@@ -423,9 +425,10 @@ public sealed class OutlinedButton : StatelessWidget
     public override Widget Build(BuildContext context)
     {
         var theme = Theme.Of(context);
-        var mergedStyle = CreateDefaultStyle(theme, MinWidth, MinHeight)
-            .Merge(Style)
-            .Merge(CreateLegacyStyleOverrides(theme));
+        var mergedStyle = MaterialButtonCore.ComposeStyles(
+            defaults: CreateDefaultStyle(theme, MinWidth, MinHeight),
+            widgetStyle: Style,
+            legacyOverrides: CreateLegacyStyleOverrides(theme));
 
         return new MaterialButtonCore(
             child: Child,
@@ -522,6 +525,87 @@ internal sealed class MaterialButtonCore : StatefulWidget
     public override State CreateState()
     {
         return new MaterialButtonCoreState();
+    }
+
+    internal static ButtonStyle ComposeStyles(
+        ButtonStyle? defaults,
+        ButtonStyle? widgetStyle,
+        ButtonStyle? legacyOverrides)
+    {
+        return new ButtonStyle(
+            ForegroundColor: ComposeStateProperty<Color?>(
+                legacyOverrides?.ForegroundColor,
+                widgetStyle?.ForegroundColor,
+                defaults?.ForegroundColor),
+            BackgroundColor: ComposeStateProperty<Color?>(
+                legacyOverrides?.BackgroundColor,
+                widgetStyle?.BackgroundColor,
+                defaults?.BackgroundColor),
+            OverlayColor: ComposeStateProperty<Color?>(
+                legacyOverrides?.OverlayColor,
+                widgetStyle?.OverlayColor,
+                defaults?.OverlayColor),
+            SplashColor: ComposeStateProperty<Color?>(
+                legacyOverrides?.SplashColor,
+                widgetStyle?.SplashColor,
+                defaults?.SplashColor),
+            Side: ComposeStateProperty<BorderSide?>(
+                legacyOverrides?.Side,
+                widgetStyle?.Side,
+                defaults?.Side),
+            Padding: ComposeStateProperty<Thickness?>(
+                legacyOverrides?.Padding,
+                widgetStyle?.Padding,
+                defaults?.Padding),
+            Shape: ComposeStateProperty<BorderRadius?>(
+                legacyOverrides?.Shape,
+                widgetStyle?.Shape,
+                defaults?.Shape),
+            MinimumSize: ComposeStateProperty<Size?>(
+                legacyOverrides?.MinimumSize,
+                widgetStyle?.MinimumSize,
+                defaults?.MinimumSize),
+            TextStyle: legacyOverrides?.TextStyle
+                       ?? widgetStyle?.TextStyle
+                       ?? defaults?.TextStyle);
+    }
+
+    private static MaterialStateProperty<T>? ComposeStateProperty<T>(
+        params MaterialStateProperty<T>?[] layers)
+    {
+        var hasAny = false;
+        foreach (var layer in layers)
+        {
+            if (layer is not null)
+            {
+                hasAny = true;
+                break;
+            }
+        }
+
+        if (!hasAny)
+        {
+            return null;
+        }
+
+        return MaterialStateProperty<T>.ResolveWith(states =>
+        {
+            foreach (var layer in layers)
+            {
+                if (layer is null)
+                {
+                    continue;
+                }
+
+                var resolved = layer.Resolve(states);
+                if (resolved is not null)
+                {
+                    return resolved;
+                }
+            }
+
+            return default!;
+        });
     }
 
     internal static MaterialStateProperty<Color?> CreateDefaultOverlayResolver(Color stateColor)
