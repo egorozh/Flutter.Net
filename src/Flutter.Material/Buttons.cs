@@ -101,6 +101,7 @@ public sealed class TextButton : StatelessWidget
         var theme = Theme.Of(context);
         var mergedStyle = MaterialButtonCore.ComposeStyles(
             defaults: CreateDefaultStyle(theme, MinWidth, MinHeight),
+            themeStyle: TextButtonTheme.Of(context).Style,
             widgetStyle: Style,
             legacyOverrides: CreateLegacyStyleOverrides(theme));
 
@@ -256,6 +257,7 @@ public sealed class ElevatedButton : StatelessWidget
         var theme = Theme.Of(context);
         var mergedStyle = MaterialButtonCore.ComposeStyles(
             defaults: CreateDefaultStyle(theme, MinWidth, MinHeight),
+            themeStyle: ElevatedButtonTheme.Of(context).Style,
             widgetStyle: Style,
             legacyOverrides: CreateLegacyStyleOverrides(theme));
 
@@ -427,6 +429,7 @@ public sealed class OutlinedButton : StatelessWidget
         var theme = Theme.Of(context);
         var mergedStyle = MaterialButtonCore.ComposeStyles(
             defaults: CreateDefaultStyle(theme, MinWidth, MinHeight),
+            themeStyle: OutlinedButtonTheme.Of(context).Style,
             widgetStyle: Style,
             legacyOverrides: CreateLegacyStyleOverrides(theme));
 
@@ -529,6 +532,7 @@ internal sealed class MaterialButtonCore : StatefulWidget
 
     internal static ButtonStyle ComposeStyles(
         ButtonStyle? defaults,
+        ButtonStyle? themeStyle,
         ButtonStyle? widgetStyle,
         ButtonStyle? legacyOverrides)
     {
@@ -536,37 +540,46 @@ internal sealed class MaterialButtonCore : StatefulWidget
             ForegroundColor: ComposeStateProperty<Color?>(
                 legacyOverrides?.ForegroundColor,
                 widgetStyle?.ForegroundColor,
+                themeStyle?.ForegroundColor,
                 defaults?.ForegroundColor),
             BackgroundColor: ComposeStateProperty<Color?>(
                 legacyOverrides?.BackgroundColor,
                 widgetStyle?.BackgroundColor,
+                themeStyle?.BackgroundColor,
                 defaults?.BackgroundColor),
             OverlayColor: ComposeStateProperty<Color?>(
                 legacyOverrides?.OverlayColor,
                 widgetStyle?.OverlayColor,
+                themeStyle?.OverlayColor,
                 defaults?.OverlayColor),
             SplashColor: ComposeStateProperty<Color?>(
                 legacyOverrides?.SplashColor,
                 widgetStyle?.SplashColor,
+                themeStyle?.SplashColor,
                 defaults?.SplashColor),
             Side: ComposeStateProperty<BorderSide?>(
                 legacyOverrides?.Side,
                 widgetStyle?.Side,
+                themeStyle?.Side,
                 defaults?.Side),
             Padding: ComposeStateProperty<Thickness?>(
                 legacyOverrides?.Padding,
                 widgetStyle?.Padding,
+                themeStyle?.Padding,
                 defaults?.Padding),
             Shape: ComposeStateProperty<BorderRadius?>(
                 legacyOverrides?.Shape,
                 widgetStyle?.Shape,
+                themeStyle?.Shape,
                 defaults?.Shape),
             MinimumSize: ComposeStateProperty<Size?>(
                 legacyOverrides?.MinimumSize,
                 widgetStyle?.MinimumSize,
+                themeStyle?.MinimumSize,
                 defaults?.MinimumSize),
             TextStyle: legacyOverrides?.TextStyle
                        ?? widgetStyle?.TextStyle
+                       ?? themeStyle?.TextStyle
                        ?? defaults?.TextStyle);
     }
 
@@ -907,7 +920,7 @@ internal sealed class MaterialButtonCore : StatefulWidget
 
         private KeyEventResult HandleKeyEvent(FocusNode node, KeyEvent @event)
         {
-            if (!IsActivateKey(@event.Key))
+            if (!IsActivateKey(@event))
             {
                 return KeyEventResult.Ignored;
             }
@@ -1222,8 +1235,23 @@ internal sealed class MaterialButtonCore : StatefulWidget
         {
             return string.Equals(key, "Enter", StringComparison.Ordinal)
                    || string.Equals(key, "Return", StringComparison.Ordinal)
+                   || string.Equals(key, "NumPadEnter", StringComparison.Ordinal)
+                   || string.Equals(key, "NumpadEnter", StringComparison.Ordinal)
                    || string.Equals(key, "Space", StringComparison.Ordinal)
                    || string.Equals(key, "Spacebar", StringComparison.Ordinal);
+        }
+
+        private static bool IsActivateKey(KeyEvent @event)
+        {
+            if (@event.IsShiftPressed
+                || @event.IsControlPressed
+                || @event.IsAltPressed
+                || @event.IsMetaPressed)
+            {
+                return false;
+            }
+
+            return IsActivateKey(@event.Key);
         }
     }
 

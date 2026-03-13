@@ -208,6 +208,298 @@ public sealed class MaterialButtonsTests
     }
 
     [Fact]
+    public void TextButton_ThemeStyleForegroundOverridesDefault()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            PrimaryColor = Colors.OrangeRed,
+            TextButtonStyle = new ButtonStyle(
+                ForegroundColor: MaterialStateProperty<Color?>.All(Colors.DarkCyan))
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new TextButton(
+                    onPressed: () => { },
+                    child: new Text("Theme fg"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var paragraph = FindDescendant<RenderParagraph>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(paragraph);
+        Assert.Equal(Colors.DarkCyan, Assert.IsType<SolidColorBrush>(paragraph!.Foreground).Color);
+    }
+
+    [Fact]
+    public void TextButton_WidgetStyleForegroundOverridesThemeStyle()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            TextButtonStyle = new ButtonStyle(
+                ForegroundColor: MaterialStateProperty<Color?>.All(Colors.DarkCyan))
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new TextButton(
+                    onPressed: () => { },
+                    style: new ButtonStyle(
+                        ForegroundColor: MaterialStateProperty<Color?>.All(Colors.ForestGreen)),
+                    child: new Text("Widget fg"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var paragraph = FindDescendant<RenderParagraph>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(paragraph);
+        Assert.Equal(Colors.ForestGreen, Assert.IsType<SolidColorBrush>(paragraph!.Foreground).Color);
+    }
+
+    [Fact]
+    public void TextButton_LegacyForeground_OverridesWidgetAndThemeStyle()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            TextButtonStyle = new ButtonStyle(
+                ForegroundColor: MaterialStateProperty<Color?>.All(Colors.DarkCyan))
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new TextButton(
+                    onPressed: () => { },
+                    foregroundColor: Colors.OrangeRed,
+                    style: new ButtonStyle(
+                        ForegroundColor: MaterialStateProperty<Color?>.All(Colors.ForestGreen)),
+                    child: new Text("Legacy fg"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var paragraph = FindDescendant<RenderParagraph>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(paragraph);
+        Assert.Equal(Colors.OrangeRed, Assert.IsType<SolidColorBrush>(paragraph!.Foreground).Color);
+    }
+
+    [Fact]
+    public void ElevatedButton_ThemeStyleBackgroundOverridesDefault()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            SurfaceContainerLowColor = Colors.Bisque,
+            ElevatedButtonStyle = new ButtonStyle(
+                BackgroundColor: MaterialStateProperty<Color?>.All(Colors.MediumPurple))
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new ElevatedButton(
+                    onPressed: () => { },
+                    child: new Text("Theme bg"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var decorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(decorated);
+        Assert.Equal(Colors.MediumPurple, decorated!.Decoration.Color);
+    }
+
+    [Fact]
+    public void OutlinedButton_ThemeStyleSideOverridesDefault()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            OutlineColor = Colors.CadetBlue,
+            OutlinedButtonStyle = new ButtonStyle(
+                Side: MaterialStateProperty<BorderSide?>.All(new BorderSide(Colors.Goldenrod, 3)))
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new OutlinedButton(
+                    onPressed: () => { },
+                    child: new Text("Theme side"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var decorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(decorated);
+        Assert.Equal(new BorderSide(Colors.Goldenrod, 3), decorated!.Decoration.Border);
+    }
+
+    [Fact]
+    public void TextButton_LocalThemeStyleForegroundOverridesThemeDataStyle()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            PrimaryColor = Colors.OrangeRed,
+            TextButtonStyle = new ButtonStyle(
+                ForegroundColor: MaterialStateProperty<Color?>.All(Colors.DarkCyan))
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new TextButtonTheme(
+                    data: new TextButtonThemeData(
+                        style: new ButtonStyle(
+                            ForegroundColor: MaterialStateProperty<Color?>.All(Colors.ForestGreen))),
+                    child: new TextButton(
+                        onPressed: () => { },
+                        child: new Text("Local theme fg")))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var paragraph = FindDescendant<RenderParagraph>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(paragraph);
+        Assert.Equal(Colors.ForestGreen, Assert.IsType<SolidColorBrush>(paragraph!.Foreground).Color);
+    }
+
+    [Fact]
+    public void TextButton_WidgetStyleForegroundOverridesLocalThemeStyle()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            TextButtonStyle = new ButtonStyle(
+                ForegroundColor: MaterialStateProperty<Color?>.All(Colors.DarkCyan))
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new TextButtonTheme(
+                    data: new TextButtonThemeData(
+                        style: new ButtonStyle(
+                            ForegroundColor: MaterialStateProperty<Color?>.All(Colors.ForestGreen))),
+                    child: new TextButton(
+                        onPressed: () => { },
+                        style: new ButtonStyle(
+                            ForegroundColor: MaterialStateProperty<Color?>.All(Colors.OrangeRed)),
+                        child: new Text("Widget over local")))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var paragraph = FindDescendant<RenderParagraph>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(paragraph);
+        Assert.Equal(Colors.OrangeRed, Assert.IsType<SolidColorBrush>(paragraph!.Foreground).Color);
+    }
+
+    [Fact]
+    public void TextButton_LocalThemeNullStyle_DoesNotFallbackToThemeDataStyle()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            PrimaryColor = Colors.OrangeRed,
+            TextButtonStyle = new ButtonStyle(
+                ForegroundColor: MaterialStateProperty<Color?>.All(Colors.DarkCyan))
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new TextButtonTheme(
+                    data: new TextButtonThemeData(),
+                    child: new TextButton(
+                        onPressed: () => { },
+                        child: new Text("Local clears theme")))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var paragraph = FindDescendant<RenderParagraph>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(paragraph);
+        Assert.Equal(Colors.OrangeRed, Assert.IsType<SolidColorBrush>(paragraph!.Foreground).Color);
+    }
+
+    [Fact]
+    public void ElevatedButton_LocalThemeStyleBackgroundOverridesThemeDataStyle()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            SurfaceContainerLowColor = Colors.Bisque,
+            ElevatedButtonStyle = new ButtonStyle(
+                BackgroundColor: MaterialStateProperty<Color?>.All(Colors.MediumPurple))
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new ElevatedButtonTheme(
+                    data: new ElevatedButtonThemeData(
+                        style: new ButtonStyle(
+                            BackgroundColor: MaterialStateProperty<Color?>.All(Colors.Gold))),
+                    child: new ElevatedButton(
+                        onPressed: () => { },
+                        child: new Text("Local elevated bg")))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var decorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(decorated);
+        Assert.Equal(Colors.Gold, decorated!.Decoration.Color);
+    }
+
+    [Fact]
+    public void OutlinedButton_LocalThemeStyleSideOverridesThemeDataStyle()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            OutlineColor = Colors.CadetBlue,
+            OutlinedButtonStyle = new ButtonStyle(
+                Side: MaterialStateProperty<BorderSide?>.All(new BorderSide(Colors.Goldenrod, 3)))
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new OutlinedButtonTheme(
+                    data: new OutlinedButtonThemeData(
+                        style: new ButtonStyle(
+                            Side: MaterialStateProperty<BorderSide?>.All(new BorderSide(Colors.Crimson, 4)))),
+                    child: new OutlinedButton(
+                        onPressed: () => { },
+                        child: new Text("Local outlined side")))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var decorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(decorated);
+        Assert.Equal(new BorderSide(Colors.Crimson, 4), decorated!.Decoration.Border);
+    }
+
+    [Fact]
     public void ButtonStyle_Merge_FillsNullFields_FromArgument_WithoutOverridingExisting()
     {
         var owner = new BuildOwner();
@@ -714,6 +1006,312 @@ public sealed class MaterialButtonsTests
         var paragraph = FindDescendant<RenderParagraph>(RequireRenderObject<RenderObject>(root.ChildElement));
         Assert.NotNull(paragraph);
         Assert.Equal(theme.PrimaryColor, Assert.IsType<SolidColorBrush>(paragraph!.Foreground).Color);
+    }
+
+    [Fact]
+    public void ElevatedButton_ButtonStyleForegroundResolverNullForEnabled_FallsBackToDefaultEnabledColor()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            PrimaryColor = Colors.MediumPurple
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new ElevatedButton(
+                    onPressed: () => { },
+                    style: new ButtonStyle(
+                        ForegroundColor: MaterialStateProperty<Color?>.ResolveWith(states =>
+                            states.HasFlag(MaterialState.Disabled) ? Colors.Gray : null)),
+                    child: new Text("Elevated fg fallback"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var paragraph = FindDescendant<RenderParagraph>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(paragraph);
+        Assert.Equal(theme.PrimaryColor, Assert.IsType<SolidColorBrush>(paragraph!.Foreground).Color);
+    }
+
+    [Fact]
+    public void OutlinedButton_ButtonStyleForegroundResolverNullForEnabled_FallsBackToDefaultEnabledColor()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            PrimaryColor = Colors.MediumPurple
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new OutlinedButton(
+                    onPressed: () => { },
+                    style: new ButtonStyle(
+                        ForegroundColor: MaterialStateProperty<Color?>.ResolveWith(states =>
+                            states.HasFlag(MaterialState.Disabled) ? Colors.Gray : null)),
+                    child: new Text("Outlined fg fallback"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var paragraph = FindDescendant<RenderParagraph>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(paragraph);
+        Assert.Equal(theme.PrimaryColor, Assert.IsType<SolidColorBrush>(paragraph!.Foreground).Color);
+    }
+
+    [Fact]
+    public void ElevatedButton_ButtonStyleBackgroundResolverNullForDisabled_FallsBackToDefaultDisabledBackground()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            OnSurfaceColor = Colors.DarkSlateGray
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new ElevatedButton(
+                    onPressed: null,
+                    style: new ButtonStyle(
+                        BackgroundColor: MaterialStateProperty<Color?>.ResolveWith(states =>
+                            states.HasFlag(MaterialState.Disabled) ? null : Colors.SeaGreen)),
+                    child: new Text("Background resolver fallback"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var decorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(decorated);
+        Assert.Equal(ApplyOpacity(theme.OnSurfaceColor, 0.12), decorated!.Decoration.Color);
+    }
+
+    [Fact]
+    public void OutlinedButton_ButtonStyleSideResolverNullForEnabled_FallsBackToDefaultEnabledSide()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            OutlineColor = Colors.CadetBlue
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new OutlinedButton(
+                    onPressed: () => { },
+                    style: new ButtonStyle(
+                        Side: MaterialStateProperty<BorderSide?>.ResolveWith(states =>
+                            states.HasFlag(MaterialState.Disabled)
+                                ? new BorderSide(Colors.DarkGray, 3)
+                                : null)),
+                    child: new Text("Side resolver fallback"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var decorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(decorated);
+        Assert.Equal(new BorderSide(theme.OutlineColor, 1), decorated!.Decoration.Border);
+    }
+
+    [Fact]
+    public void OutlinedButton_ButtonStyleSideResolverNullForDisabled_FallsBackToDefaultDisabledSide()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            OnSurfaceColor = Colors.DarkOliveGreen
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new OutlinedButton(
+                    onPressed: null,
+                    style: new ButtonStyle(
+                        Side: MaterialStateProperty<BorderSide?>.ResolveWith(states =>
+                            states.HasFlag(MaterialState.Disabled)
+                                ? null
+                                : new BorderSide(Colors.Goldenrod, 2))),
+                    child: new Text("Disabled side fallback"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var decorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(decorated);
+        Assert.Equal(new BorderSide(ApplyOpacity(theme.OnSurfaceColor, 0.12), 1), decorated!.Decoration.Border);
+    }
+
+    [Fact]
+    public void ElevatedButton_ButtonStyleOverlayResolverNullForHover_FallsBackToDefaultOverlay()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            PrimaryColor = Colors.OrangeRed
+        };
+
+        var pressedOverlay = Colors.YellowGreen;
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new ElevatedButton(
+                    onPressed: () => { },
+                    style: new ButtonStyle(
+                        OverlayColor: MaterialStateProperty<Color?>.ResolveWith(states =>
+                            states.HasFlag(MaterialState.Pressed) ? pressedOverlay : null)),
+                    child: new Text("Elevated overlay resolver fallback"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var hoverListener = FindHoverPointerListener(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(hoverListener);
+        hoverListener!.HandleEvent(
+            new PointerEnterEvent(
+                pointer: 44,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(10, 8),
+                buttons: PointerButtons.None,
+                timestampUtc: DateTime.UtcNow),
+            new BoxHitTestEntry(hoverListener, new Point(10, 8)));
+
+        owner.FlushBuild();
+
+        var hoveredDecorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(hoveredDecorated);
+        var expectedHoverOverlay = ApplyOpacity(theme.PrimaryColor, 0.08);
+        Assert.Equal(BlendColorOverlay(theme.SurfaceContainerLowColor, expectedHoverOverlay), hoveredDecorated!.Decoration.Color);
+
+        var interactiveListener = FindInteractivePointerListener(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(interactiveListener);
+        interactiveListener!.HandleEvent(
+            new PointerDownEvent(
+                pointer: 44,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(10, 8),
+                buttons: PointerButtons.Primary,
+                timestampUtc: DateTime.UtcNow),
+            new BoxHitTestEntry(interactiveListener, new Point(10, 8)));
+
+        owner.FlushBuild();
+
+        var pressedDecorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(pressedDecorated);
+        Assert.Equal(BlendColorOverlay(theme.SurfaceContainerLowColor, pressedOverlay), pressedDecorated!.Decoration.Color);
+    }
+
+    [Fact]
+    public void OutlinedButton_ButtonStyleOverlayResolverNullForHover_FallsBackToDefaultOverlay()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            PrimaryColor = Colors.OrangeRed
+        };
+
+        var pressedOverlay = Colors.YellowGreen;
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new OutlinedButton(
+                    onPressed: () => { },
+                    style: new ButtonStyle(
+                        OverlayColor: MaterialStateProperty<Color?>.ResolveWith(states =>
+                            states.HasFlag(MaterialState.Pressed) ? pressedOverlay : null)),
+                    child: new Text("Outlined overlay resolver fallback"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var hoverListener = FindHoverPointerListener(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(hoverListener);
+        hoverListener!.HandleEvent(
+            new PointerEnterEvent(
+                pointer: 45,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(10, 8),
+                buttons: PointerButtons.None,
+                timestampUtc: DateTime.UtcNow),
+            new BoxHitTestEntry(hoverListener, new Point(10, 8)));
+
+        owner.FlushBuild();
+
+        var hoveredDecorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(hoveredDecorated);
+        Assert.Equal(ApplyOpacity(theme.PrimaryColor, 0.08), hoveredDecorated!.Decoration.Color);
+
+        var interactiveListener = FindInteractivePointerListener(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(interactiveListener);
+        interactiveListener!.HandleEvent(
+            new PointerDownEvent(
+                pointer: 45,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(10, 8),
+                buttons: PointerButtons.Primary,
+                timestampUtc: DateTime.UtcNow),
+            new BoxHitTestEntry(interactiveListener, new Point(10, 8)));
+
+        owner.FlushBuild();
+
+        var pressedDecorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(pressedDecorated);
+        Assert.Equal(pressedOverlay, pressedDecorated!.Decoration.Color);
+    }
+
+    [Fact]
+    public void ElevatedButton_ThemeStyleOverlayResolverNullForHover_FallsBackToDefaultOverlay()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            PrimaryColor = Colors.OrangeRed,
+            SurfaceContainerLowColor = Colors.Bisque,
+            ElevatedButtonStyle = new ButtonStyle(
+                OverlayColor: MaterialStateProperty<Color?>.ResolveWith(states =>
+                    states.HasFlag(MaterialState.Pressed) ? Colors.YellowGreen : null))
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new ElevatedButton(
+                    onPressed: () => { },
+                    child: new Text("Theme overlay fallback"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var hoverListener = FindHoverPointerListener(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(hoverListener);
+        hoverListener!.HandleEvent(
+            new PointerEnterEvent(
+                pointer: 46,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(10, 8),
+                buttons: PointerButtons.None,
+                timestampUtc: DateTime.UtcNow),
+            new BoxHitTestEntry(hoverListener, new Point(10, 8)));
+
+        owner.FlushBuild();
+
+        var hoveredDecorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(hoveredDecorated);
+        var expectedHoverOverlay = ApplyOpacity(theme.PrimaryColor, 0.08);
+        Assert.Equal(BlendColorOverlay(theme.SurfaceContainerLowColor, expectedHoverOverlay), hoveredDecorated!.Decoration.Color);
     }
 
     [Fact]
@@ -1265,6 +1863,106 @@ public sealed class MaterialButtonsTests
         Assert.True(handledUp);
         owner.FlushBuild();
         Assert.Equal(1, pressedCount);
+    }
+
+    [Fact]
+    public void TextButton_KeyboardActivation_NumPadEnter_InvokesOnPressed()
+    {
+        var owner = new BuildOwner();
+        var pressedCount = 0;
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new TextButton(
+                    onPressed: () => pressedCount += 1,
+                    child: new Text("NumPad Enter"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var focusListener = FindFocusPointerListener(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(focusListener);
+        focusListener!.HandleEvent(
+            new PointerDownEvent(
+                pointer: 42,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(10, 8),
+                buttons: PointerButtons.Primary,
+                timestampUtc: DateTime.UtcNow),
+            new BoxHitTestEntry(focusListener, new Point(10, 8)));
+
+        owner.FlushBuild();
+
+        var handled = FocusManager.Instance.HandleKeyEvent(new KeyEvent(key: "NumPadEnter", isDown: true));
+        Assert.True(handled);
+        owner.FlushBuild();
+
+        Assert.Equal(1, pressedCount);
+    }
+
+    [Fact]
+    public void TextButton_KeyboardActivation_IgnoresModifiedSpaceChord()
+    {
+        var owner = new BuildOwner();
+        var focusedOverlay = Colors.SeaGreen;
+        var pressedOverlay = Colors.OrangeRed;
+        var pressedCount = 0;
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new TextButton(
+                    onPressed: () => pressedCount += 1,
+                    style: new ButtonStyle(
+                        OverlayColor: MaterialStateProperty<Color?>.ResolveWith(states =>
+                        {
+                            if (states.HasFlag(MaterialState.Pressed))
+                            {
+                                return pressedOverlay;
+                            }
+
+                            if (states.HasFlag(MaterialState.Focused))
+                            {
+                                return focusedOverlay;
+                            }
+
+                            return null;
+                        })),
+                    child: new Text("Ctrl+Space ignored"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var focusListener = FindFocusPointerListener(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(focusListener);
+        focusListener!.HandleEvent(
+            new PointerDownEvent(
+                pointer: 43,
+                kind: PointerDeviceKind.Mouse,
+                position: new Point(10, 8),
+                buttons: PointerButtons.Primary,
+                timestampUtc: DateTime.UtcNow),
+            new BoxHitTestEntry(focusListener, new Point(10, 8)));
+
+        owner.FlushBuild();
+
+        var focusedDecorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(focusedDecorated);
+        Assert.Equal(focusedOverlay, focusedDecorated!.Decoration.Color);
+
+        var handled = FocusManager.Instance.HandleKeyEvent(new KeyEvent(
+            key: "Space",
+            isDown: true,
+            isControlPressed: true));
+        Assert.False(handled);
+        owner.FlushBuild();
+
+        var stillFocusedDecorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(stillFocusedDecorated);
+        Assert.Equal(focusedOverlay, stillFocusedDecorated!.Decoration.Color);
+        Assert.NotEqual(pressedOverlay, stillFocusedDecorated.Decoration.Color);
+        Assert.Equal(0, pressedCount);
     }
 
     [Fact]

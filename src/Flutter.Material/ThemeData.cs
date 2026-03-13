@@ -48,7 +48,10 @@ public sealed record ThemeData
         Color? onPrimaryColor = null,
         Color? onSurfaceColor = null,
         Color? outlineColor = null,
-        Color? surfaceContainerLowColor = null)
+        Color? surfaceContainerLowColor = null,
+        ButtonStyle? textButtonStyle = null,
+        ButtonStyle? elevatedButtonStyle = null,
+        ButtonStyle? outlinedButtonStyle = null)
     {
         TextTheme = textTheme ?? MaterialTextTheme.Fallback;
         ScaffoldBackgroundColor = scaffoldBackgroundColor ?? Colors.White;
@@ -58,6 +61,9 @@ public sealed record ThemeData
         OnSurfaceColor = onSurfaceColor ?? Colors.Black;
         OutlineColor = outlineColor ?? Color.Parse("#FF79747E");
         SurfaceContainerLowColor = surfaceContainerLowColor ?? Color.Parse("#FFF7F2FA");
+        TextButtonStyle = textButtonStyle;
+        ElevatedButtonStyle = elevatedButtonStyle;
+        OutlinedButtonStyle = outlinedButtonStyle;
     }
 
     public MaterialTextTheme TextTheme { get; init; }
@@ -75,6 +81,12 @@ public sealed record ThemeData
     public Color OutlineColor { get; init; }
 
     public Color SurfaceContainerLowColor { get; init; }
+
+    public ButtonStyle? TextButtonStyle { get; init; }
+
+    public ButtonStyle? ElevatedButtonStyle { get; init; }
+
+    public ButtonStyle? OutlinedButtonStyle { get; init; }
 
     public static ThemeData Light { get; } = new();
 }
