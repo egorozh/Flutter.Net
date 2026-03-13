@@ -163,6 +163,83 @@ public sealed class MaterialButtonsTests
     }
 
     [Fact]
+    public void TextButton_ButtonStyleAlignmentOverridesDefaultCenter()
+    {
+        var owner = new BuildOwner();
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new TextButton(
+                    onPressed: () => { },
+                    style: new ButtonStyle(
+                        Alignment: Alignment.TopLeft),
+                    child: new Text("Aligned"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var align = FindDescendant<RenderAlign>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(align);
+        Assert.Equal(Alignment.TopLeft, align!.Alignment);
+    }
+
+    [Fact]
+    public void TextButton_ThemeStyleAlignmentOverridesDefaultCenter()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            TextButtonTheme = new TextButtonThemeData(
+                style: new ButtonStyle(
+                    Alignment: Alignment.BottomRight))
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new TextButton(
+                    onPressed: () => { },
+                    child: new Text("Theme aligned"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var align = FindDescendant<RenderAlign>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(align);
+        Assert.Equal(Alignment.BottomRight, align!.Alignment);
+    }
+
+    [Fact]
+    public void TextButton_WidgetStyleAlignmentOverridesThemeStyleAlignment()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            TextButtonTheme = new TextButtonThemeData(
+                style: new ButtonStyle(
+                    Alignment: Alignment.BottomRight))
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new TextButton(
+                    onPressed: () => { },
+                    style: TextButton.StyleFrom(alignment: Alignment.CenterLeft),
+                    child: new Text("Widget aligned"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var align = FindDescendant<RenderAlign>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(align);
+        Assert.Equal(Alignment.CenterLeft, align!.Alignment);
+    }
+
+    [Fact]
     public void ElevatedButton_ButtonStyleMinimumSizeOverridesDefault()
     {
         var owner = new BuildOwner();
@@ -183,6 +260,123 @@ public sealed class MaterialButtonsTests
         Assert.NotNull(constrainedBox);
         Assert.Equal(180, constrainedBox!.AdditionalConstraints.MinWidth);
         Assert.Equal(56, constrainedBox.AdditionalConstraints.MinHeight);
+    }
+
+    [Fact]
+    public void TextButton_ButtonStyleMinimumSize_AllowsZero()
+    {
+        var owner = new BuildOwner();
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new TextButton(
+                    onPressed: () => { },
+                    style: new ButtonStyle(
+                        MinimumSize: MaterialStateProperty<Size?>.All(new Size(0, 0))),
+                    child: new Text("Zero min size"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var constrainedBox = FindDescendant<RenderConstrainedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(constrainedBox);
+        Assert.Equal(0, constrainedBox!.AdditionalConstraints.MinWidth);
+        Assert.Equal(0, constrainedBox.AdditionalConstraints.MinHeight);
+    }
+
+    [Fact]
+    public void TextButton_ButtonStyleMinimumSize_Negative_Throws()
+    {
+        var owner = new BuildOwner();
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new TextButton(
+                    onPressed: () => { },
+                    style: new ButtonStyle(
+                        MinimumSize: MaterialStateProperty<Size?>.All(new Size(-1, 10))),
+                    child: new Text("Invalid min size"))));
+
+        root.Attach(owner);
+        Assert.Throws<ArgumentOutOfRangeException>(() => root.Mount(parent: null, newSlot: null));
+    }
+
+    [Fact]
+    public void TextButton_ButtonStyleMaximumSizeClampsDefaultInfinityMax()
+    {
+        var owner = new BuildOwner();
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new TextButton(
+                    onPressed: () => { },
+                    style: new ButtonStyle(
+                        MaximumSize: MaterialStateProperty<Size?>.All(new Size(120, 48))),
+                    child: new Text("Max size"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var constrainedBox = FindDescendant<RenderConstrainedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(constrainedBox);
+        Assert.Equal(64, constrainedBox!.AdditionalConstraints.MinWidth);
+        Assert.Equal(40, constrainedBox.AdditionalConstraints.MinHeight);
+        Assert.Equal(120, constrainedBox.AdditionalConstraints.MaxWidth);
+        Assert.Equal(48, constrainedBox.AdditionalConstraints.MaxHeight);
+    }
+
+    [Fact]
+    public void TextButton_ButtonStyleFixedSizeSetsTightConstraints_WithinMaximum()
+    {
+        var owner = new BuildOwner();
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new TextButton(
+                    onPressed: () => { },
+                    style: new ButtonStyle(
+                        MinimumSize: MaterialStateProperty<Size?>.All(new Size(64, 40)),
+                        MaximumSize: MaterialStateProperty<Size?>.All(new Size(120, 48)),
+                        FixedSize: MaterialStateProperty<Size?>.All(new Size(200, 80))),
+                    child: new Text("Fixed size"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var constrainedBox = FindDescendant<RenderConstrainedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(constrainedBox);
+        Assert.Equal(120, constrainedBox!.AdditionalConstraints.MinWidth);
+        Assert.Equal(120, constrainedBox.AdditionalConstraints.MaxWidth);
+        Assert.Equal(48, constrainedBox.AdditionalConstraints.MinHeight);
+        Assert.Equal(48, constrainedBox.AdditionalConstraints.MaxHeight);
+    }
+
+    [Fact]
+    public void TextButton_ButtonStyleFixedSizeInfiniteWidth_OnlyTightensFiniteAxis()
+    {
+        var owner = new BuildOwner();
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new TextButton(
+                    onPressed: () => { },
+                    style: new ButtonStyle(
+                        FixedSize: MaterialStateProperty<Size?>.All(new Size(double.PositiveInfinity, 44))),
+                    child: new Text("Fixed height only"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var constrainedBox = FindDescendant<RenderConstrainedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(constrainedBox);
+        Assert.Equal(64, constrainedBox!.AdditionalConstraints.MinWidth);
+        Assert.True(double.IsPositiveInfinity(constrainedBox.AdditionalConstraints.MaxWidth));
+        Assert.Equal(44, constrainedBox.AdditionalConstraints.MinHeight);
+        Assert.Equal(44, constrainedBox.AdditionalConstraints.MaxHeight);
     }
 
     [Fact]
@@ -343,6 +537,93 @@ public sealed class MaterialButtonsTests
         var decorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
         Assert.NotNull(decorated);
         Assert.Equal(new BorderSide(Colors.Goldenrod, 3), decorated!.Decoration.Border);
+    }
+
+    [Fact]
+    public void TextButton_ThemeDataButtonTheme_OverridesLegacyThemeStyleProperty()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            TextButtonStyle = new ButtonStyle(
+                ForegroundColor: MaterialStateProperty<Color?>.All(Colors.DarkCyan)),
+            TextButtonTheme = new TextButtonThemeData(
+                style: new ButtonStyle(
+                    ForegroundColor: MaterialStateProperty<Color?>.All(Colors.ForestGreen)))
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new TextButton(
+                    onPressed: () => { },
+                    child: new Text("ThemeData text button theme"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var paragraph = FindDescendant<RenderParagraph>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(paragraph);
+        Assert.Equal(Colors.ForestGreen, Assert.IsType<SolidColorBrush>(paragraph!.Foreground).Color);
+    }
+
+    [Fact]
+    public void ElevatedButton_ThemeDataButtonTheme_OverridesLegacyThemeStyleProperty()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            ElevatedButtonStyle = new ButtonStyle(
+                BackgroundColor: MaterialStateProperty<Color?>.All(Colors.MediumPurple)),
+            ElevatedButtonTheme = new ElevatedButtonThemeData(
+                style: new ButtonStyle(
+                    BackgroundColor: MaterialStateProperty<Color?>.All(Colors.Gold)))
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new ElevatedButton(
+                    onPressed: () => { },
+                    child: new Text("ThemeData elevated theme"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var decorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(decorated);
+        Assert.Equal(Colors.Gold, decorated!.Decoration.Color);
+    }
+
+    [Fact]
+    public void OutlinedButton_ThemeDataButtonTheme_OverridesLegacyThemeStyleProperty()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            OutlinedButtonStyle = new ButtonStyle(
+                Side: MaterialStateProperty<BorderSide?>.All(new BorderSide(Colors.Goldenrod, 3))),
+            OutlinedButtonTheme = new OutlinedButtonThemeData(
+                style: new ButtonStyle(
+                    Side: MaterialStateProperty<BorderSide?>.All(new BorderSide(Colors.Crimson, 4))))
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new OutlinedButton(
+                    onPressed: () => { },
+                    child: new Text("ThemeData outlined theme"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var decorated = FindDescendant<RenderDecoratedBox>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(decorated);
+        Assert.Equal(new BorderSide(Colors.Crimson, 4), decorated!.Decoration.Border);
     }
 
     [Fact]
@@ -556,6 +837,74 @@ public sealed class MaterialButtonsTests
         Assert.Equal(Colors.DarkCyan, Assert.IsType<SolidColorBrush>(paragraph!.Foreground).Color);
         Assert.Equal(18, paragraph.FontSize);
         Assert.Equal(FontWeight.Bold, paragraph.FontWeight);
+    }
+
+    [Fact]
+    public void TextButton_WidgetTextStyleStateResolver_NullDisabled_FallsBackToThemeTextStyle()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            TextButtonTheme = new TextButtonThemeData(
+                style: new ButtonStyle(
+                    TextStyle: MaterialStateProperty<TextStyle?>.All(
+                        new TextStyle(FontWeight: FontWeight.Bold))))
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new TextButton(
+                    onPressed: null,
+                    style: new ButtonStyle(
+                        TextStyle: MaterialStateProperty<TextStyle?>.ResolveWith(states =>
+                            states.HasFlag(MaterialState.Disabled)
+                                ? null
+                                : new TextStyle(FontSize: 18))),
+                    child: new Text("Disabled text-style fallback"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var paragraph = FindDescendant<RenderParagraph>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(paragraph);
+        Assert.Equal(14, paragraph!.FontSize);
+        Assert.Equal(FontWeight.Bold, paragraph.FontWeight);
+    }
+
+    [Fact]
+    public void TextButton_WidgetTextStyleStateResolver_Enabled_OverridesThemeTextStyle()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            TextButtonTheme = new TextButtonThemeData(
+                style: new ButtonStyle(
+                    TextStyle: MaterialStateProperty<TextStyle?>.All(
+                        new TextStyle(FontWeight: FontWeight.Bold))))
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new TextButton(
+                    onPressed: () => { },
+                    style: new ButtonStyle(
+                        TextStyle: MaterialStateProperty<TextStyle?>.ResolveWith(states =>
+                            states.HasFlag(MaterialState.Disabled)
+                                ? null
+                                : new TextStyle(FontSize: 18))),
+                    child: new Text("Enabled text-style"))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var paragraph = FindDescendant<RenderParagraph>(RequireRenderObject<RenderObject>(root.ChildElement));
+        Assert.NotNull(paragraph);
+        Assert.Equal(18, paragraph!.FontSize);
+        Assert.Equal(FontWeight.Medium, paragraph.FontWeight);
     }
 
     [Fact]

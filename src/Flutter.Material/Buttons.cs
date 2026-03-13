@@ -64,6 +64,9 @@ public sealed class TextButton : StatelessWidget
         Thickness? padding = null,
         BorderRadius? shape = null,
         Size? minimumSize = null,
+        Size? fixedSize = null,
+        Size? maximumSize = null,
+        Alignment? alignment = null,
         TextStyle? textStyle = null)
     {
         return new ButtonStyle(
@@ -93,7 +96,14 @@ public sealed class TextButton : StatelessWidget
             MinimumSize: minimumSize.HasValue
                 ? MaterialStateProperty<Size?>.All(minimumSize.Value)
                 : null,
-            TextStyle: textStyle);
+            FixedSize: fixedSize.HasValue
+                ? MaterialStateProperty<Size?>.All(fixedSize.Value)
+                : null,
+            MaximumSize: maximumSize.HasValue
+                ? MaterialStateProperty<Size?>.All(maximumSize.Value)
+                : null,
+            Alignment: alignment,
+            TextStyle: textStyle is null ? null : MaterialStateProperty<TextStyle?>.All(textStyle));
     }
 
     public override Widget Build(BuildContext context)
@@ -220,6 +230,9 @@ public sealed class ElevatedButton : StatelessWidget
         Thickness? padding = null,
         BorderRadius? shape = null,
         Size? minimumSize = null,
+        Size? fixedSize = null,
+        Size? maximumSize = null,
+        Alignment? alignment = null,
         TextStyle? textStyle = null)
     {
         return new ButtonStyle(
@@ -249,7 +262,14 @@ public sealed class ElevatedButton : StatelessWidget
             MinimumSize: minimumSize.HasValue
                 ? MaterialStateProperty<Size?>.All(minimumSize.Value)
                 : null,
-            TextStyle: textStyle);
+            FixedSize: fixedSize.HasValue
+                ? MaterialStateProperty<Size?>.All(fixedSize.Value)
+                : null,
+            MaximumSize: maximumSize.HasValue
+                ? MaterialStateProperty<Size?>.All(maximumSize.Value)
+                : null,
+            Alignment: alignment,
+            TextStyle: textStyle is null ? null : MaterialStateProperty<TextStyle?>.All(textStyle));
     }
 
     public override Widget Build(BuildContext context)
@@ -392,6 +412,9 @@ public sealed class OutlinedButton : StatelessWidget
         Thickness? padding = null,
         BorderRadius? shape = null,
         Size? minimumSize = null,
+        Size? fixedSize = null,
+        Size? maximumSize = null,
+        Alignment? alignment = null,
         TextStyle? textStyle = null)
     {
         return new ButtonStyle(
@@ -421,7 +444,14 @@ public sealed class OutlinedButton : StatelessWidget
             MinimumSize: minimumSize.HasValue
                 ? MaterialStateProperty<Size?>.All(minimumSize.Value)
                 : null,
-            TextStyle: textStyle);
+            FixedSize: fixedSize.HasValue
+                ? MaterialStateProperty<Size?>.All(fixedSize.Value)
+                : null,
+            MaximumSize: maximumSize.HasValue
+                ? MaterialStateProperty<Size?>.All(maximumSize.Value)
+                : null,
+            Alignment: alignment,
+            TextStyle: textStyle is null ? null : MaterialStateProperty<TextStyle?>.All(textStyle));
     }
 
     public override Widget Build(BuildContext context)
@@ -577,10 +607,25 @@ internal sealed class MaterialButtonCore : StatefulWidget
                 widgetStyle?.MinimumSize,
                 themeStyle?.MinimumSize,
                 defaults?.MinimumSize),
-            TextStyle: legacyOverrides?.TextStyle
-                       ?? widgetStyle?.TextStyle
-                       ?? themeStyle?.TextStyle
-                       ?? defaults?.TextStyle);
+            FixedSize: ComposeStateProperty<Size?>(
+                legacyOverrides?.FixedSize,
+                widgetStyle?.FixedSize,
+                themeStyle?.FixedSize,
+                defaults?.FixedSize),
+            MaximumSize: ComposeStateProperty<Size?>(
+                legacyOverrides?.MaximumSize,
+                widgetStyle?.MaximumSize,
+                themeStyle?.MaximumSize,
+                defaults?.MaximumSize),
+            Alignment: legacyOverrides?.Alignment
+                       ?? widgetStyle?.Alignment
+                       ?? themeStyle?.Alignment
+                       ?? defaults?.Alignment,
+            TextStyle: ComposeStateProperty<TextStyle?>(
+                legacyOverrides?.TextStyle,
+                widgetStyle?.TextStyle,
+                themeStyle?.TextStyle,
+                defaults?.TextStyle));
     }
 
     private static MaterialStateProperty<T>? ComposeStateProperty<T>(
@@ -847,17 +892,24 @@ internal sealed class MaterialButtonCore : StatefulWidget
             var borderRadius = style.ResolveShape(baseStates) ?? Flutter.Rendering.BorderRadius.Zero;
             var minimumSize = style.ResolveMinimumSize(baseStates) ?? new Size(64, 40);
             ValidateMinimumSize(minimumSize);
+            var maximumSize = style.ResolveMaximumSize(baseStates) ?? new Size(double.PositiveInfinity, double.PositiveInfinity);
+            ValidateMaximumSize(maximumSize);
+            var fixedSize = style.ResolveFixedSize(baseStates);
+            ValidateFixedSize(fixedSize);
+            var effectiveConstraints = CreateEffectiveConstraints(minimumSize, maximumSize, fixedSize);
+            var alignment = style.Alignment ?? Alignment.Center;
+            var resolvedTextStyle = style.ResolveTextStyle(baseStates);
             var textStyle = MergeTextStyle(
                 new TextStyle(
                     Color: foreground,
                     FontSize: 14,
                     FontWeight: FontWeight.Medium),
-                style.TextStyle);
+                resolvedTextStyle);
 
             Widget content = new DefaultTextStyle(
                 style: textStyle,
                 child: new Align(
-                    alignment: Alignment.Center,
+                    alignment: alignment,
                     widthFactor: 1,
                     heightFactor: 1,
                     child: widget.Child));
@@ -867,11 +919,7 @@ internal sealed class MaterialButtonCore : StatefulWidget
                 child: content);
 
             content = new ConstrainedBox(
-                constraints: new BoxConstraints(
-                    MinWidth: minimumSize.Width,
-                    MaxWidth: double.PositiveInfinity,
-                    MinHeight: minimumSize.Height,
-                    MaxHeight: double.PositiveInfinity),
+                constraints: effectiveConstraints,
                 child: content);
 
             content = new InkSplash(
@@ -1151,15 +1199,92 @@ internal sealed class MaterialButtonCore : StatefulWidget
 
         private static void ValidateMinimumSize(Size minimumSize)
         {
-            if (double.IsNaN(minimumSize.Width) || double.IsInfinity(minimumSize.Width) || minimumSize.Width <= 0)
+            if (double.IsNaN(minimumSize.Width) || double.IsInfinity(minimumSize.Width) || minimumSize.Width < 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(minimumSize), "Minimum width must be positive and finite.");
+                throw new ArgumentOutOfRangeException(nameof(minimumSize), "Minimum width must be non-negative and finite.");
             }
 
-            if (double.IsNaN(minimumSize.Height) || double.IsInfinity(minimumSize.Height) || minimumSize.Height <= 0)
+            if (double.IsNaN(minimumSize.Height) || double.IsInfinity(minimumSize.Height) || minimumSize.Height < 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(minimumSize), "Minimum height must be positive and finite.");
+                throw new ArgumentOutOfRangeException(nameof(minimumSize), "Minimum height must be non-negative and finite.");
             }
+        }
+
+        private static void ValidateMaximumSize(Size maximumSize)
+        {
+            if (double.IsNaN(maximumSize.Width) || maximumSize.Width < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(maximumSize), "Maximum width must be non-negative and not NaN.");
+            }
+
+            if (double.IsNaN(maximumSize.Height) || maximumSize.Height < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(maximumSize), "Maximum height must be non-negative and not NaN.");
+            }
+        }
+
+        private static void ValidateFixedSize(Size? fixedSize)
+        {
+            if (!fixedSize.HasValue)
+            {
+                return;
+            }
+
+            var value = fixedSize.Value;
+            if (double.IsNaN(value.Width) || value.Width < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(fixedSize), "Fixed width must be non-negative and not NaN.");
+            }
+
+            if (double.IsNaN(value.Height) || value.Height < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(fixedSize), "Fixed height must be non-negative and not NaN.");
+            }
+        }
+
+        private static BoxConstraints CreateEffectiveConstraints(
+            Size minimumSize,
+            Size maximumSize,
+            Size? fixedSize)
+        {
+            var normalizedMaxWidth = double.IsPositiveInfinity(maximumSize.Width)
+                ? double.PositiveInfinity
+                : Math.Max(maximumSize.Width, minimumSize.Width);
+            var normalizedMaxHeight = double.IsPositiveInfinity(maximumSize.Height)
+                ? double.PositiveInfinity
+                : Math.Max(maximumSize.Height, minimumSize.Height);
+
+            var effectiveConstraints = new BoxConstraints(
+                MinWidth: minimumSize.Width,
+                MaxWidth: normalizedMaxWidth,
+                MinHeight: minimumSize.Height,
+                MaxHeight: normalizedMaxHeight);
+
+            if (!fixedSize.HasValue)
+            {
+                return effectiveConstraints;
+            }
+
+            var constrainedFixedSize = effectiveConstraints.Constrain(fixedSize.Value);
+            if (double.IsFinite(constrainedFixedSize.Width))
+            {
+                effectiveConstraints = effectiveConstraints with
+                {
+                    MinWidth = constrainedFixedSize.Width,
+                    MaxWidth = constrainedFixedSize.Width
+                };
+            }
+
+            if (double.IsFinite(constrainedFixedSize.Height))
+            {
+                effectiveConstraints = effectiveConstraints with
+                {
+                    MinHeight = constrainedFixedSize.Height,
+                    MaxHeight = constrainedFixedSize.Height
+                };
+            }
+
+            return effectiveConstraints;
         }
 
         private static TextStyle MergeTextStyle(TextStyle baseStyle, TextStyle? style)

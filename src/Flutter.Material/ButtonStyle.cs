@@ -76,7 +76,10 @@ public sealed record ButtonStyle(
     MaterialStateProperty<Thickness?>? Padding = null,
     MaterialStateProperty<BorderRadius?>? Shape = null,
     MaterialStateProperty<Size?>? MinimumSize = null,
-    TextStyle? TextStyle = null)
+    MaterialStateProperty<Size?>? FixedSize = null,
+    MaterialStateProperty<Size?>? MaximumSize = null,
+    Alignment? Alignment = null,
+    MaterialStateProperty<TextStyle?>? TextStyle = null)
 {
     public ButtonStyle Merge(ButtonStyle? style)
     {
@@ -95,6 +98,9 @@ public sealed record ButtonStyle(
             Padding = Padding ?? style.Padding,
             Shape = Shape ?? style.Shape,
             MinimumSize = MinimumSize ?? style.MinimumSize,
+            FixedSize = FixedSize ?? style.FixedSize,
+            MaximumSize = MaximumSize ?? style.MaximumSize,
+            Alignment = Alignment ?? style.Alignment,
             TextStyle = TextStyle ?? style.TextStyle
         };
     }
@@ -137,5 +143,20 @@ public sealed record ButtonStyle(
     internal Size? ResolveMinimumSize(MaterialState states)
     {
         return MinimumSize?.Resolve(states);
+    }
+
+    internal Size? ResolveFixedSize(MaterialState states)
+    {
+        return FixedSize?.Resolve(states);
+    }
+
+    internal Size? ResolveMaximumSize(MaterialState states)
+    {
+        return MaximumSize?.Resolve(states);
+    }
+
+    internal TextStyle? ResolveTextStyle(MaterialState states)
+    {
+        return TextStyle?.Resolve(states);
     }
 }

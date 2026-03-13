@@ -113,6 +113,12 @@
   - regression coverage added in `TextButton_PressedOverlayTakesPriorityOverHoverOverlay`, `TextButton_PressedOverlayTakesPriorityOverFocusOverlay`, and `TextButton_HoverOverlayTakesPriorityOverFocusOverlay`.
 - Continued `StyleFrom(...)` parity follow-up:
   - `ThemeData` now includes button-style overrides (`textButtonStyle`, `elevatedButtonStyle`, `outlinedButtonStyle`) and button style composition order is now `default -> theme -> widget -> legacy` (highest priority),
+  - `ThemeData` now also exposes Flutter-like button-theme data objects (`TextButtonTheme`, `ElevatedButtonTheme`, `OutlinedButtonTheme`) and `*ButtonTheme.Of(context)` now resolves inherited fallback through those properties while keeping legacy `*ButtonStyle` compatibility,
+  - when both legacy `*ButtonStyle` and new `*ButtonTheme` are set in `ThemeData`, explicit `*ButtonTheme` takes precedence,
+  - `ButtonStyle` now supports Flutter-like size-constraint fields `fixedSize` and `maximumSize`, `StyleFrom(...)` builders accept both parameters, and `MaterialButtonCore` computes effective constraints in Flutter order (`minimumSize` + `maximumSize`, then finite-axis tightening from `fixedSize`),
+  - `minimumSize` validation now allows `0` values for width/height (matching Flutter constraint semantics) while still rejecting negative/NaN/infinite values,
+  - `ButtonStyle` now supports `alignment` and `StyleFrom(...)` builders accept `alignment`; button child `Align` now resolves from composed style layers instead of always using center alignment,
+  - `ButtonStyle.textStyle` is now state-aware (`MaterialStateProperty<TextStyle?>`) and resolved through style-layer composition per state (matching Flutter `WidgetStateProperty` semantics for text style),
   - added local inherited button themes (`TextButtonTheme`, `ElevatedButtonTheme`, `OutlinedButtonTheme`) with `*ThemeData` and switched button theme-style lookup to subtree-aware `*ButtonTheme.Of(context).Style` (matching Flutter local-over-global precedence and local null-style clearing semantics),
   - `foregroundColor` now derives default overlay/splash state colors when explicit `overlayColor`/`splashColor` are omitted,
   - explicit `overlayColor` now follows Flutter-like state opacities (`pressed/focused: 0.10`, `hovered: 0.08`) and drives splash fallback when `splashColor` is omitted, including transparent highlight/splash suppression,
@@ -143,6 +149,23 @@
     - `TextButton_LocalThemeNullStyle_DoesNotFallbackToThemeDataStyle`,
     - `ElevatedButton_LocalThemeStyleBackgroundOverridesThemeDataStyle`,
     - `OutlinedButton_LocalThemeStyleSideOverridesThemeDataStyle`,
+  - added `ThemeData` button-theme precedence coverage:
+    - `TextButton_ThemeDataButtonTheme_OverridesLegacyThemeStyleProperty`,
+    - `ElevatedButton_ThemeDataButtonTheme_OverridesLegacyThemeStyleProperty`,
+    - `OutlinedButton_ThemeDataButtonTheme_OverridesLegacyThemeStyleProperty`,
+  - added size-constraint coverage:
+    - `TextButton_ButtonStyleMaximumSizeClampsDefaultInfinityMax`,
+    - `TextButton_ButtonStyleFixedSizeSetsTightConstraints_WithinMaximum`,
+    - `TextButton_ButtonStyleFixedSizeInfiniteWidth_OnlyTightensFiniteAxis`,
+    - `TextButton_ButtonStyleMinimumSize_AllowsZero`,
+    - `TextButton_ButtonStyleMinimumSize_Negative_Throws`,
+  - added alignment coverage:
+    - `TextButton_ButtonStyleAlignmentOverridesDefaultCenter`,
+    - `TextButton_ThemeStyleAlignmentOverridesDefaultCenter`,
+    - `TextButton_WidgetStyleAlignmentOverridesThemeStyleAlignment`,
+  - added state-aware text-style coverage:
+    - `TextButton_WidgetTextStyleStateResolver_NullDisabled_FallsBackToThemeTextStyle`,
+    - `TextButton_WidgetTextStyleStateResolver_Enabled_OverridesThemeTextStyle`,
   - regression coverage added in `ButtonStyle_Merge_FillsNullFields_FromArgument_WithoutOverridingExisting`, `TextButton_ThemeStyleForegroundOverridesDefault`, `TextButton_WidgetStyleForegroundOverridesThemeStyle`, `TextButton_LegacyForeground_OverridesWidgetAndThemeStyle`, `ElevatedButton_ThemeStyleBackgroundOverridesDefault`, `OutlinedButton_ThemeStyleSideOverridesDefault`, `ElevatedButton_ThemeStyleOverlayResolverNullForHover_FallsBackToDefaultOverlay`, `TextButton_StyleFrom_ForegroundColor_DerivesOverlayAndSplash`, `TextButton_StyleFrom_TransparentOverlay_DisablesVisualHighlights`, `TextButton_StyleFrom_OverlayColor_UsesStateOpacitiesAndSplashFallback`, `TextButton_ButtonStyleOverlayAll_DoesNotTintAtRest_ButAppliesOnHover`, `TextButton_SplashColor_RemainsActivationTint_AfterPointerUp`, `TextButton_StyleFrom_ForegroundOnly_DisabledFallsBackToThemeDisabledForeground`, `ElevatedButton_StyleFrom_BackgroundOnly_DisabledFallsBackToThemeDisabledBackground`, `TextButton_StyleFrom_DisabledForegroundOnly_PreservesEnabledThemeForeground`, `ElevatedButton_StyleFrom_DisabledBackgroundOnly_PreservesEnabledThemeBackground`, `TextButton_ButtonStyleForegroundResolverNullForEnabled_FallsBackToDefaultEnabledColor`, `ElevatedButton_ButtonStyleForegroundResolverNullForEnabled_FallsBackToDefaultEnabledColor`, `OutlinedButton_ButtonStyleForegroundResolverNullForEnabled_FallsBackToDefaultEnabledColor`, `ElevatedButton_ButtonStyleBackgroundResolverNullForDisabled_FallsBackToDefaultDisabledBackground`, `OutlinedButton_ButtonStyleSideResolverNullForEnabled_FallsBackToDefaultEnabledSide`, `OutlinedButton_ButtonStyleSideResolverNullForDisabled_FallsBackToDefaultDisabledSide`, `TextButton_ButtonStyleOverlayResolverNullForHover_FallsBackToDefaultOverlay`, `ElevatedButton_ButtonStyleOverlayResolverNullForHover_FallsBackToDefaultOverlay`, `OutlinedButton_ButtonStyleOverlayResolverNullForHover_FallsBackToDefaultOverlay`, `TextButton_ButtonStyleOverlayWithoutSplash_UsesOverlayForSplash`, `ElevatedButton_ButtonStyleOverlayWithoutSplash_UsesOverlayForSplash`, `OutlinedButton_ButtonStyleOverlayWithoutSplash_UsesOverlayForSplash`, `TextButton_KeyboardActivation_UsesPressedOverlay_AndInvokesOnPressedOnKeyDownOnly`, `TextButton_KeyboardActivation_NumPadEnter_InvokesOnPressed`, `TextButton_KeyboardActivation_IgnoresModifiedSpaceChord`, `FlutterHost_KeyDownAndKeyUp_AreDispatchedToPrimaryFocusNode`, `ElevatedButton_StyleFrom_OverlayColor_UsesHoverOpacityAndPressedPriority`, and `OutlinedButton_StyleFrom_TransparentOverlay_HasNoIdleTint_AndNoSplash`.
 - Added framework-level `State.StateWidget` protected accessor to support stateful widgets in external assemblies (`src/Flutter.Material`).
 - Replaced sample shell `CounterTapButton` usage with Material buttons in both C# and Dart sample galleries (menu entries + back action), and switched Material-buttons-demo control-strip actions to `TextButton`.

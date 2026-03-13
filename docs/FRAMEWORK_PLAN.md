@@ -8,7 +8,7 @@ Use this block as the fastest machine-readable status summary.
 
 ```yaml
 framework_plan_version: 1
-last_updated: 2026-03-12
+last_updated: 2026-03-13
 north_star: "Flutter-like widget/rendering framework in C# with Avalonia as host infrastructure."
 current_phase: "M4 material library rewrite (theme/scaffold/material controls) in progress."
 status:
@@ -154,7 +154,7 @@ Kickoff note (2026-03-12):
 
 - Prioritized immediately after M3 to unblock practical control rewrites and reduce sample-level styling drift by introducing a Flutter-like Material layer in framework widgets.
 
-Progress update (2026-03-12):
+Progress update (2026-03-13):
 
 - Added dedicated framework Material assembly: `src/Flutter.Material/Flutter.Material.csproj`.
 - Introduced initial theming primitives: `ThemeData`, `MaterialTextTheme`, and inherited `Theme`.
@@ -164,6 +164,17 @@ Progress update (2026-03-12):
 - Added Material shell primitives: `Scaffold` and `AppBar` in `src/Flutter.Material` with baseline slot wiring (`body`, `appBar`, `floatingActionButton`, `bottomNavigationBar`, title/leading/actions).
 - C# sample gallery pages now use framework `Scaffold`/`AppBar` composition for menu/demo shells; Dart sample gallery mirrors the same structural shell usage.
 - Added regression coverage for scaffold/app-bar theme resolution and widget composition behavior in `src/Flutter.Tests/MaterialScaffoldTests.cs`.
+- Extended `AppBar` title-layout parity with Flutter-like controls: `centerTitle` and `titleSpacing` (default `16`) with non-negative finite spacing validation, plus title insets driven by `titleSpacing`.
+- Updated centered-title composition: when `leading` exists and `actions` are absent, a symmetric trailing slot now matches effective leading width to keep title centering stable.
+- Added focused `MaterialScaffoldTests` coverage for centered-title alignment wiring, `titleSpacing` horizontal padding, and negative-spacing argument guard.
+- Added `ThemeData.Platform` and `ThemeData.AppBarTheme` (`AppBarThemeData.CenterTitle`) for app-bar default policy wiring in `Flutter.Material`.
+- Switched `AppBar` center-title default resolution to Flutter-like precedence (`widget centerTitle` -> `theme appBarTheme.centerTitle` -> platform fallback) with macOS/iOS fallback rule (`actions.Count < 2` centers title).
+- Expanded `MaterialScaffoldTests` with deterministic center-title default/precedence coverage for theme override and platform fallback behavior.
+- Expanded app-bar theme parity in `Flutter.Material` with `AppBarThemeData` fields `titleSpacing`, `toolbarTextStyle`, and `titleTextStyle`.
+- `AppBar` now resolves `titleSpacing` by Flutter-like precedence (`widget` -> `theme appBarTheme` -> `16`) and applies title/toolbar text styles by precedence (`widget` -> `theme appBarTheme` -> framework defaults using app-bar foreground color).
+- Added `MaterialTextTheme.TitleLarge` and switched default app-bar title fallback from hardcoded style constants to token-based `titleLarge` resolution with foreground-color override.
+- `AppBar` toolbar and title composition now uses nested `DefaultTextStyle` wrappers so custom title/action widgets inherit app-bar text defaults rather than relying only on hardcoded title text parameters.
+- Expanded `MaterialScaffoldTests` with precedence coverage for `titleSpacing`, `titleTextStyle`, and `toolbarTextStyle` (theme defaults and widget override behavior).
 - Added first Material control set: `TextButton`, `ElevatedButton`, and `OutlinedButton` in `src/Flutter.Material` with inherited-theme defaults and disabled-state styling behavior.
 - Added Material buttons demo route/page in both C# and Dart sample galleries for parity/runtime validation.
 - Added regression coverage for Material button default color resolution and disabled visuals in `src/Flutter.Tests/MaterialButtonsTests.cs`.
@@ -183,6 +194,11 @@ Progress update (2026-03-12):
 - Expanded resolver-null parity coverage for `ButtonStyle` on non-text buttons: `ElevatedButton` foreground/background and `OutlinedButton` foreground/side now have explicit regression checks that per-state `null` from high-priority resolvers falls back to default enabled/disabled tokens.
 - Added theme-level button style overrides in `ThemeData` (`textButtonStyle`, `elevatedButtonStyle`, `outlinedButtonStyle`) and wired style composition order to `default -> theme -> widget -> legacy`, with regression coverage for precedence and theme-level state fallback.
 - Added local inherited button-theme wrappers (`TextButtonTheme`/`ElevatedButtonTheme`/`OutlinedButtonTheme`) with `*ThemeData` and switched button theme-style lookup to subtree-aware `*ButtonTheme.Of(context).Style`, matching Flutter per-subtree theme override semantics (including local null-style clearing of global `ThemeData` button styles).
+- Aligned `ThemeData` with Flutter button-theme shape by adding top-level `TextButtonTheme`/`ElevatedButtonTheme`/`OutlinedButtonTheme` (`*ThemeData`) and routing inherited fallback through these properties; explicit theme-data objects now override legacy `*ButtonStyle` fields when both are set, while legacy style-only configuration remains supported for backward compatibility.
+- Expanded Material button size-constraint parity: `ButtonStyle` now includes `fixedSize` and `maximumSize` state properties, `StyleFrom(...)` builders accept these values, and `MaterialButtonCore` now computes effective constraints using Flutter-like ordering (`minimumSize` + `maximumSize`, then finite-axis tightening from `fixedSize`).
+- Aligned Material button `minimumSize` validation with Flutter constraint semantics: zero width/height is now accepted (negative values remain rejected), enabling style-level min-size reset scenarios.
+- Added `ButtonStyle` alignment parity for Material buttons: `ButtonStyle.Alignment` is now supported (including `StyleFrom(...)` and style-layer composition), and button child alignment now resolves from style instead of always being hardcoded to center.
+- Aligned `ButtonStyle.textStyle` with Flutter state-property semantics: text style is now resolved as a state-aware property with per-state layer fallback (`default/theme/widget/legacy`) instead of a single static style value.
 - Refined keyboard-activation parity for Material buttons: keyboard-triggered tap now sets a transient pressed state layer (`~100ms`) before returning to focus-only visual state, matching Flutter `InkWell.activateOnIntent` pressed-highlight behavior instead of focus-only tint during activation.
 - Refined keyboard shortcut filtering for Material buttons: activation now includes `NumPadEnter` and ignores modified activation chords (`Ctrl/Alt/Meta/Shift + Space/Enter`) to align with Flutter `SingleActivator` semantics.
 - Added host keyboard release dispatch baseline: `FlutterHost` now forwards `OnKeyUp` into framework `FocusManager` so focused widgets receive both key-down and key-up events (required for complete keyboard interaction parity on Material controls and editable widgets).

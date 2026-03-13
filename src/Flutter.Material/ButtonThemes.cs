@@ -68,7 +68,7 @@ public sealed class TextButtonTheme : InheritedWidget
             return localTheme.Data;
         }
 
-        return new TextButtonThemeData(style: Theme.Of(context).TextButtonStyle);
+        return Theme.Of(context).TextButtonTheme;
     }
 }
 
@@ -105,7 +105,7 @@ public sealed class ElevatedButtonTheme : InheritedWidget
             return localTheme.Data;
         }
 
-        return new ElevatedButtonThemeData(style: Theme.Of(context).ElevatedButtonStyle);
+        return Theme.Of(context).ElevatedButtonTheme;
     }
 }
 
@@ -142,6 +142,6 @@ public sealed class OutlinedButtonTheme : InheritedWidget
             return localTheme.Data;
         }
 
-        return new OutlinedButtonThemeData(style: Theme.Of(context).OutlinedButtonStyle);
+        return Theme.Of(context).OutlinedButtonTheme;
     }
 }

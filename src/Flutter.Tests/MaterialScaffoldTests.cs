@@ -109,6 +109,398 @@ public sealed class MaterialScaffoldTests
         Assert.Equal(Colors.Bisque, Assert.IsType<SolidColorBrush>(paragraph!.Foreground).Color);
     }
 
+    [Fact]
+    public void AppBar_CenterTitleTrue_WrapsTitleInCenterAlign()
+    {
+        var owner = new BuildOwner();
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new AppBar(
+                    titleText: "Centered",
+                    centerTitle: true)));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var align = FindDescendant<RenderAlign>(appBarBackground);
+        Assert.NotNull(align);
+        Assert.Equal(Alignment.Center, align!.Alignment);
+    }
+
+    [Fact]
+    public void AppBar_CenterTitle_DefaultsFromThemeAppBarTheme()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            Platform = TargetPlatform.Android,
+            AppBarTheme = new AppBarThemeData(CenterTitle: true),
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(titleText: "Centered by theme")));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var align = FindDescendant<RenderAlign>(appBarBackground);
+        Assert.NotNull(align);
+        Assert.Equal(Alignment.Center, align!.Alignment);
+    }
+
+    [Fact]
+    public void AppBar_CenterTitle_ExplicitValue_OverridesThemeAppBarTheme()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            Platform = TargetPlatform.MacOS,
+            AppBarTheme = new AppBarThemeData(CenterTitle: true),
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(
+                    titleText: "Not centered",
+                    centerTitle: false)));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var align = FindDescendant<RenderAlign>(appBarBackground);
+        Assert.Null(align);
+    }
+
+    [Fact]
+    public void AppBar_CenterTitle_DefaultsFromPlatform_MacOS_WhenActionsCountLessThanTwo()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            Platform = TargetPlatform.MacOS,
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(
+                    titleText: "Centered by platform",
+                    actions:
+                    [
+                        new SizedBox(width: 8, height: 8),
+                    ])));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var align = FindDescendant<RenderAlign>(appBarBackground);
+        Assert.NotNull(align);
+        Assert.Equal(Alignment.Center, align!.Alignment);
+    }
+
+    [Fact]
+    public void AppBar_CenterTitle_DefaultsFromPlatform_MacOS_WithTwoActions_IsNotCentered()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            Platform = TargetPlatform.MacOS,
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(
+                    titleText: "Not centered by platform",
+                    actions:
+                    [
+                        new SizedBox(width: 8, height: 8),
+                        new SizedBox(width: 8, height: 8),
+                    ])));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var align = FindDescendant<RenderAlign>(appBarBackground);
+        Assert.Null(align);
+    }
+
+    [Fact]
+    public void AppBar_TitleSpacing_AppliesHorizontalPaddingToTitle()
+    {
+        var owner = new BuildOwner();
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new AppBar(
+                    title: new SizedBox(width: 40, height: 12),
+                    titleSpacing: 24)));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var titlePadding = FindPadding(appBarBackground, padding =>
+            Math.Abs(padding.Left - 24) < 0.001
+            && Math.Abs(padding.Right - 24) < 0.001
+            && Math.Abs(padding.Top) < 0.001
+            && Math.Abs(padding.Bottom) < 0.001);
+
+        Assert.NotNull(titlePadding);
+    }
+
+    [Fact]
+    public void AppBar_TitleSpacing_DefaultsFromThemeAppBarTheme()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            AppBarTheme = new AppBarThemeData(TitleSpacing: 22),
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(title: new SizedBox(width: 40, height: 12))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var titlePadding = FindPadding(appBarBackground, padding =>
+            Math.Abs(padding.Left - 22) < 0.001
+            && Math.Abs(padding.Right - 22) < 0.001
+            && Math.Abs(padding.Top) < 0.001
+            && Math.Abs(padding.Bottom) < 0.001);
+
+        Assert.NotNull(titlePadding);
+    }
+
+    [Fact]
+    public void AppBar_TitleSpacing_WidgetValue_OverridesThemeAppBarTheme()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            AppBarTheme = new AppBarThemeData(TitleSpacing: 22),
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(
+                    title: new SizedBox(width: 40, height: 12),
+                    titleSpacing: 30)));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var titlePadding = FindPadding(appBarBackground, padding =>
+            Math.Abs(padding.Left - 30) < 0.001
+            && Math.Abs(padding.Right - 30) < 0.001
+            && Math.Abs(padding.Top) < 0.001
+            && Math.Abs(padding.Bottom) < 0.001);
+
+        Assert.NotNull(titlePadding);
+    }
+
+    [Fact]
+    public void AppBar_TitleTextStyle_DefaultsFromTextThemeTitleLarge()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            PrimaryColor = Colors.DarkSlateBlue,
+            OnPrimaryColor = Colors.Bisque,
+            TextTheme = new MaterialTextTheme(
+                titleLarge: new TextStyle(
+                    FontSize: 29,
+                    Color: Colors.Crimson,
+                    FontWeight: FontWeight.Bold)),
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(titleText: "Title")));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var titleParagraph = FindParagraphByText(appBarBackground, "Title");
+        Assert.NotNull(titleParagraph);
+        Assert.Equal(29, titleParagraph!.FontSize);
+        Assert.Equal(FontWeight.Bold, titleParagraph.FontWeight);
+        Assert.Equal(Colors.Bisque, Assert.IsType<SolidColorBrush>(titleParagraph.Foreground).Color);
+    }
+
+    [Fact]
+    public void AppBar_TitleTextStyle_DefaultsFromThemeAppBarTheme()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            AppBarTheme = new AppBarThemeData(
+                TitleTextStyle: new TextStyle(
+                    FontSize: 26,
+                    Color: Colors.Crimson,
+                    FontWeight: FontWeight.Bold)),
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(titleText: "Title")));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var titleParagraph = FindParagraphByText(appBarBackground, "Title");
+        Assert.NotNull(titleParagraph);
+        Assert.Equal(26, titleParagraph!.FontSize);
+        Assert.Equal(FontWeight.Bold, titleParagraph.FontWeight);
+        Assert.Equal(Colors.Crimson, Assert.IsType<SolidColorBrush>(titleParagraph.Foreground).Color);
+    }
+
+    [Fact]
+    public void AppBar_TitleTextStyle_WidgetValue_OverridesThemeAppBarTheme()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            AppBarTheme = new AppBarThemeData(
+                TitleTextStyle: new TextStyle(
+                    FontSize: 26,
+                    Color: Colors.Crimson,
+                    FontWeight: FontWeight.Bold)),
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(
+                    titleText: "Title",
+                    titleTextStyle: new TextStyle(
+                        FontSize: 18,
+                        Color: Colors.LimeGreen,
+                        FontWeight: FontWeight.Normal))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var titleParagraph = FindParagraphByText(appBarBackground, "Title");
+        Assert.NotNull(titleParagraph);
+        Assert.Equal(18, titleParagraph!.FontSize);
+        Assert.Equal(FontWeight.Normal, titleParagraph.FontWeight);
+        Assert.Equal(Colors.LimeGreen, Assert.IsType<SolidColorBrush>(titleParagraph.Foreground).Color);
+    }
+
+    [Fact]
+    public void AppBar_ToolbarTextStyle_DefaultsFromThemeAppBarTheme_ForActionsText()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            AppBarTheme = new AppBarThemeData(
+                ToolbarTextStyle: new TextStyle(
+                    FontSize: 17,
+                    Color: Colors.Goldenrod,
+                    FontWeight: FontWeight.Bold)),
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(
+                    titleText: "Title",
+                    actions:
+                    [
+                        new Text("Action"),
+                    ])));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var actionParagraph = FindParagraphByText(appBarBackground, "Action");
+        Assert.NotNull(actionParagraph);
+        Assert.Equal(17, actionParagraph!.FontSize);
+        Assert.Equal(FontWeight.Bold, actionParagraph.FontWeight);
+        Assert.Equal(Colors.Goldenrod, Assert.IsType<SolidColorBrush>(actionParagraph.Foreground).Color);
+    }
+
+    [Fact]
+    public void AppBar_ToolbarTextStyle_WidgetValue_OverridesThemeAppBarTheme_ForActionsText()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            AppBarTheme = new AppBarThemeData(
+                ToolbarTextStyle: new TextStyle(
+                    FontSize: 17,
+                    Color: Colors.Goldenrod,
+                    FontWeight: FontWeight.Bold)),
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(
+                    titleText: "Title",
+                    toolbarTextStyle: new TextStyle(
+                        FontSize: 15,
+                        Color: Colors.CadetBlue,
+                        FontWeight: FontWeight.Normal),
+                    actions:
+                    [
+                        new Text("Action"),
+                    ])));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var actionParagraph = FindParagraphByText(appBarBackground, "Action");
+        Assert.NotNull(actionParagraph);
+        Assert.Equal(15, actionParagraph!.FontSize);
+        Assert.Equal(FontWeight.Normal, actionParagraph.FontWeight);
+        Assert.Equal(Colors.CadetBlue, Assert.IsType<SolidColorBrush>(actionParagraph.Foreground).Color);
+    }
+
+    [Fact]
+    public void AppBar_NegativeTitleSpacing_Throws()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new AppBar(
+            titleText: "Invalid",
+            titleSpacing: -1));
+    }
+
     private static T RequireRenderObject<T>(Element? element) where T : RenderObject
     {
         Assert.NotNull(element);
@@ -137,6 +529,58 @@ public sealed class MaterialScaffoldTests
             }
 
             result = FindDescendant<T>(child);
+        });
+
+        return result;
+    }
+
+    private static RenderParagraph? FindParagraphByText(RenderObject? root, string text)
+    {
+        if (root is null)
+        {
+            return null;
+        }
+
+        if (root is RenderParagraph paragraph && string.Equals(paragraph.Text, text, StringComparison.Ordinal))
+        {
+            return paragraph;
+        }
+
+        RenderParagraph? result = null;
+        root.VisitChildren(child =>
+        {
+            if (result is not null)
+            {
+                return;
+            }
+
+            result = FindParagraphByText(child, text);
+        });
+
+        return result;
+    }
+
+    private static RenderPadding? FindPadding(RenderObject? root, Predicate<Thickness> predicate)
+    {
+        if (root is null)
+        {
+            return null;
+        }
+
+        if (root is RenderPadding padding && predicate(padding.Padding))
+        {
+            return padding;
+        }
+
+        RenderPadding? result = null;
+        root.VisitChildren(child =>
+        {
+            if (result is not null)
+            {
+                return;
+            }
+
+            result = FindPadding(child, predicate);
         });
 
         return result;
