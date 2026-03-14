@@ -22,6 +22,8 @@ class SampleRoutes {
   static const String scrollbar = '/scrollbar';
   static const String editableText = '/editable-text';
   static const String materialButtons = '/material-buttons';
+  static const String appBarLeadingWidth = '/appbar-leading-width';
+  static const String appBarActionsPadding = '/appbar-actions-padding';
   static const String proxyWidgets = '/proxy-widgets';
   static const String align = '/align';
   static const String stack = '/stack';

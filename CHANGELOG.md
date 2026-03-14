@@ -31,6 +31,13 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   - `iconTheme`: `widget -> theme appBarTheme -> foreground fallback`,
   - `actionsIconTheme`: `widget -> theme appBarTheme -> iconTheme -> foreground fallback`
   (`src/Flutter/Widgets/IconTheme.cs`, `src/Flutter.Material/ThemeData.cs`, `src/Flutter.Material/Scaffold.cs`).
+- Hardened app-bar icon/theme regression coverage with fallback-chain and mixed-context tests:
+  - actions fall back to widget `iconTheme` when `actionsIconTheme` is missing,
+  - leading/actions icon themes fall back to `foregroundColor` when icon theme color is unset,
+  - actions subtree receives both `toolbarTextStyle` and `actionsIconTheme` inheritance simultaneously
+  (`src/Flutter.Tests/MaterialScaffoldTests.cs`).
+- Added parity runtime demo route/page for app-bar leading-width precedence in both samples (`AppBar leadingWidth theme`), including controls for theme `LeadingWidth` and widget-level `leadingWidth` override plus themed/default preview comparison (`src/Sample/Flutter.Net/AppBarLeadingWidthDemoPage.cs`, `dart_sample/lib/app_bar_leading_width_demo_page.dart`, `src/Sample/Flutter.Net/SampleGalleryScreen.cs`, `dart_sample/lib/sample_gallery_screen.dart`, `dart_sample/lib/sample_routes.dart`, `docs/ai/PARITY_MATRIX.md`).
+- Added parity runtime demo route/page for app-bar actions-padding precedence in both samples (`AppBar actionsPadding theme`), including controls for theme `ActionsPadding` and widget-level `actionsPadding` override plus themed/default preview comparison (`src/Sample/Flutter.Net/AppBarActionsPaddingDemoPage.cs`, `dart_sample/lib/app_bar_actions_padding_demo_page.dart`, `src/Sample/Flutter.Net/SampleGalleryScreen.cs`, `dart_sample/lib/sample_gallery_screen.dart`, `dart_sample/lib/sample_routes.dart`, `docs/ai/PARITY_MATRIX.md`).
 - Added resolved-toolbar-height validation guard in `AppBar` so non-finite/non-positive themed `toolbarHeight` fails fast with `ArgumentOutOfRangeException` instead of producing invalid layout behavior (`src/Flutter.Material/Scaffold.cs`).
 - Expanded `MaterialScaffoldTests` with focused precedence coverage for app-bar background/foreground colors, icon theme resolution for leading/actions slots, toolbar-height precedence (`theme` and widget override), leading-width precedence (`theme` and widget override), actions-padding precedence (`theme` and widget override), and non-positive themed width/height guards (`src/Flutter.Tests/MaterialScaffoldTests.cs`).
 

@@ -4,7 +4,7 @@ Scope: structural parity of sample routes/modules between C# and Dart samples.
 
 Policy note: sample parity updates must follow `docs/ai/PORTING_MODE.md` (Dart source of truth, strict `1:1` default, documented divergences).
 
-Last checked: 2026-03-12
+Last checked: 2026-03-14
 
 Status legend:
 
@@ -29,6 +29,8 @@ Status legend:
 | Scrollbar demo | `src/Sample/Flutter.Net/ScrollbarDemoPage.cs` | `dart_sample/lib/scrollbar_demo_page.dart` | verify-runtime | |
 | Editable text demo | `src/Sample/Flutter.Net/EditableTextDemoPage.cs` | `dart_sample/lib/editable_text_demo_page.dart` | verify-runtime | Includes baseline input flow plus multiline Notes demo (`Enter` newline, Up/Down caret travel), seed action, and escaped live value summary. |
 | Material buttons demo | `src/Sample/Flutter.Net/MaterialButtonsDemoPage.cs` | `dart_sample/lib/material_buttons_demo_page.dart` | verify-runtime | Demonstrates first Material control set (`TextButton`, `ElevatedButton`, `OutlinedButton`) with enabled/disabled toggles, tap counters, and custom color overrides; control-strip actions now also use Material `TextButton`. |
+| AppBar leadingWidth theme demo | `src/Sample/Flutter.Net/AppBarLeadingWidthDemoPage.cs` | `dart_sample/lib/app_bar_leading_width_demo_page.dart` | verify-runtime | Runtime probe for `AppBar` leading-width precedence (`widget` override vs `ThemeData.AppBarTheme.LeadingWidth` fallback) with side-by-side themed/default previews. |
+| AppBar actionsPadding theme demo | `src/Sample/Flutter.Net/AppBarActionsPaddingDemoPage.cs` | `dart_sample/lib/app_bar_actions_padding_demo_page.dart` | verify-runtime | Runtime probe for `AppBar` actions-row padding precedence (`widget` override vs `ThemeData.AppBarTheme.ActionsPadding` fallback) with side-by-side themed/default previews. |
 | Proxy widgets demo | `src/Sample/Flutter.Net/ProxyWidgetsDemoPage.cs` | `dart_sample/lib/proxy_widgets_demo_page.dart` | verify-runtime | Demonstrates widget-level `Opacity`, `Transform`, and `ClipRect` composition with interactive controls. |
 | Align demo | `src/Sample/Flutter.Net/AlignDemoPage.cs` | `dart_sample/lib/align_demo_page.dart` | verify-runtime | Demonstrates widget-level `Align` and `Center` with alignment positions and shrink-wrap factors. |
 | Stack demo | `src/Sample/Flutter.Net/StackDemoPage.cs` | `dart_sample/lib/stack_demo_page.dart` | verify-runtime | Demonstrates widget-level `Stack` and `Positioned` overlay behavior with movable/pinned badge positioning. |

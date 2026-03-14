@@ -523,6 +523,29 @@ public sealed class MaterialScaffoldTests
     }
 
     [Fact]
+    public void AppBar_IconTheme_WithNullColor_FallsBackToForeground_ForLeading()
+    {
+        IconThemeData? capturedTheme = null;
+        var owner = new BuildOwner();
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new AppBar(
+                    titleText: "Title",
+                    foregroundColor: Colors.DarkRed,
+                    iconTheme: new IconThemeData(Size: 22),
+                    leading: new CaptureIconThemeWidget(themeData => capturedTheme = themeData))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.NotNull(capturedTheme);
+        Assert.Equal(Colors.DarkRed, capturedTheme!.Color);
+        Assert.Equal(22, capturedTheme.Size);
+    }
+
+    [Fact]
     public void AppBar_ActionsIconTheme_DefaultsFromThemeAppBarTheme_ForActions()
     {
         IconThemeData? capturedTheme = null;
@@ -619,6 +642,94 @@ public sealed class MaterialScaffoldTests
         Assert.NotNull(capturedTheme);
         Assert.Equal(Colors.DarkCyan, capturedTheme!.Color);
         Assert.Equal(14, capturedTheme.Size);
+    }
+
+    [Fact]
+    public void AppBar_ActionsIconTheme_FallsBackToWidgetIconTheme_WhenActionsThemeMissing()
+    {
+        IconThemeData? capturedTheme = null;
+        var owner = new BuildOwner();
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new AppBar(
+                    titleText: "Title",
+                    iconTheme: new IconThemeData(
+                        Color: Colors.DarkOrange,
+                        Size: 11),
+                    actions:
+                    [
+                        new CaptureIconThemeWidget(themeData => capturedTheme = themeData),
+                    ])));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.NotNull(capturedTheme);
+        Assert.Equal(Colors.DarkOrange, capturedTheme!.Color);
+        Assert.Equal(11, capturedTheme.Size);
+    }
+
+    [Fact]
+    public void AppBar_ActionsIconTheme_WithNullColor_FallsBackToForeground_ForActions()
+    {
+        IconThemeData? capturedTheme = null;
+        var owner = new BuildOwner();
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new AppBar(
+                    titleText: "Title",
+                    foregroundColor: Colors.LimeGreen,
+                    actionsIconTheme: new IconThemeData(Size: 24),
+                    actions:
+                    [
+                        new CaptureIconThemeWidget(themeData => capturedTheme = themeData),
+                    ])));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.NotNull(capturedTheme);
+        Assert.Equal(Colors.LimeGreen, capturedTheme!.Color);
+        Assert.Equal(24, capturedTheme.Size);
+    }
+
+    [Fact]
+    public void AppBar_Actions_ReceiveToolbarTextStyle_AndActionsIconTheme()
+    {
+        ActionContextSnapshot? snapshot = null;
+        var owner = new BuildOwner();
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new AppBar(
+                    titleText: "Title",
+                    toolbarTextStyle: new TextStyle(
+                        FontSize: 18,
+                        Color: Colors.CadetBlue,
+                        FontWeight: FontWeight.Bold),
+                    actionsIconTheme: new IconThemeData(
+                        Color: Colors.Goldenrod,
+                        Size: 20),
+                    actions:
+                    [
+                        new CaptureActionContextWidget(data => snapshot = data),
+                    ])));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.NotNull(snapshot);
+        Assert.NotNull(snapshot!.TextStyle.Color);
+        Assert.Equal(18, snapshot.TextStyle.FontSize);
+        Assert.Equal(Colors.CadetBlue, snapshot.TextStyle.Color!.Value);
+        Assert.Equal(FontWeight.Bold, snapshot.TextStyle.FontWeight);
+        Assert.Equal(Colors.Goldenrod, snapshot.IconThemeData.Color);
+        Assert.Equal(20, snapshot.IconThemeData.Size);
     }
 
     [Fact]
@@ -1102,6 +1213,26 @@ public sealed class MaterialScaffoldTests
         public override Widget Build(BuildContext context)
         {
             _capture(IconTheme.Of(context));
+            return new SizedBox(width: 8, height: 8);
+        }
+    }
+
+    private sealed record ActionContextSnapshot(TextStyle TextStyle, IconThemeData IconThemeData);
+
+    private sealed class CaptureActionContextWidget : StatelessWidget
+    {
+        private readonly Action<ActionContextSnapshot> _capture;
+
+        public CaptureActionContextWidget(Action<ActionContextSnapshot> capture)
+        {
+            _capture = capture;
+        }
+
+        public override Widget Build(BuildContext context)
+        {
+            _capture(new ActionContextSnapshot(
+                TextStyle: DefaultTextStyle.Of(context),
+                IconThemeData: IconTheme.Of(context)));
             return new SizedBox(width: 8, height: 8);
         }
     }
