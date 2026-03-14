@@ -8,7 +8,7 @@ Use this block as the fastest machine-readable status summary.
 
 ```yaml
 framework_plan_version: 1
-last_updated: 2026-03-13
+last_updated: 2026-03-14
 north_star: "Flutter-like widget/rendering framework in C# with Avalonia as host infrastructure."
 current_phase: "M4 material library rewrite (theme/scaffold/material controls) in progress."
 status:
@@ -154,7 +154,7 @@ Kickoff note (2026-03-12):
 
 - Prioritized immediately after M3 to unblock practical control rewrites and reduce sample-level styling drift by introducing a Flutter-like Material layer in framework widgets.
 
-Progress update (2026-03-13):
+Progress update (2026-03-14):
 
 - Added dedicated framework Material assembly: `src/Flutter.Material/Flutter.Material.csproj`.
 - Introduced initial theming primitives: `ThemeData`, `MaterialTextTheme`, and inherited `Theme`.
@@ -175,6 +175,8 @@ Progress update (2026-03-13):
 - Added `MaterialTextTheme.TitleLarge` and switched default app-bar title fallback from hardcoded style constants to token-based `titleLarge` resolution with foreground-color override.
 - `AppBar` toolbar and title composition now uses nested `DefaultTextStyle` wrappers so custom title/action widgets inherit app-bar text defaults rather than relying only on hardcoded title text parameters.
 - Expanded `MaterialScaffoldTests` with precedence coverage for `titleSpacing`, `titleTextStyle`, and `toolbarTextStyle` (theme defaults and widget override behavior).
+- Expanded `AppBarThemeData` with `backgroundColor`, `foregroundColor`, and `toolbarHeight`, and aligned `AppBar` fallback precedence for these fields to Flutter-like order (`widget -> theme appBarTheme -> theme/default`) with an argument guard for non-finite/non-positive themed toolbar heights.
+- Expanded `MaterialScaffoldTests` with focused precedence coverage for app-bar background/foreground color resolution and toolbar-height fallback/override behavior, plus regression coverage for non-positive themed toolbar-height failure.
 - Added first Material control set: `TextButton`, `ElevatedButton`, and `OutlinedButton` in `src/Flutter.Material` with inherited-theme defaults and disabled-state styling behavior.
 - Added Material buttons demo route/page in both C# and Dart sample galleries for parity/runtime validation.
 - Added regression coverage for Material button default color resolution and disabled visuals in `src/Flutter.Tests/MaterialButtonsTests.cs`.

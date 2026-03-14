@@ -16,8 +16,11 @@ public enum TargetPlatform
 }
 
 public sealed record AppBarThemeData(
+    Color? BackgroundColor = null,
+    Color? ForegroundColor = null,
     bool? CenterTitle = null,
     double? TitleSpacing = null,
+    double? ToolbarHeight = null,
     TextStyle? ToolbarTextStyle = null,
     TextStyle? TitleTextStyle = null);
 

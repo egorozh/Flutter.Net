@@ -16,6 +16,18 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 - Documentation policy update: Dart-to-C# control/widget work now uses mandatory parity-first porting mode (`docs/ai/PORTING_MODE.md`) with strict `1:1` default behavior, required divergence logging, and explicit parity-validation workflow references in `AGENTS.md`, `docs/FRAMEWORK_PLAN.md`, `docs/ai/INVARIANTS.md`, `docs/ai/MODULE_INDEX.md`, `docs/ai/FEATURE_TEMPLATE.md`, `docs/ai/TEST_MATRIX.md`, and `docs/ai/PARITY_MATRIX.md`.
 
+## [2026-03-14] - M4 app-bar theme colors and toolbar-height precedence
+
+### Changed
+
+- Extended `AppBarThemeData` with Flutter-like app-bar fallback fields: `backgroundColor`, `foregroundColor`, and `toolbarHeight` in `Flutter.Material` (`src/Flutter.Material/ThemeData.cs`).
+- Updated framework `AppBar` value resolution to Flutter-like precedence:
+  - `backgroundColor`: `widget -> theme appBarTheme -> theme primary`,
+  - `foregroundColor`: `widget -> theme appBarTheme -> theme onPrimary`,
+  - `toolbarHeight`: `widget -> theme appBarTheme -> default 56` (`src/Flutter.Material/Scaffold.cs`).
+- Added resolved-toolbar-height validation guard in `AppBar` so non-finite/non-positive themed `toolbarHeight` fails fast with `ArgumentOutOfRangeException` instead of producing invalid layout behavior (`src/Flutter.Material/Scaffold.cs`).
+- Expanded `MaterialScaffoldTests` with focused precedence coverage for app-bar background/foreground colors, toolbar-height precedence (`theme` and widget override), and non-positive themed toolbar-height guard (`src/Flutter.Tests/MaterialScaffoldTests.cs`).
+
 ## [2026-03-13] - M4 app-bar title layout parity
 
 ### Changed

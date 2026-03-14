@@ -110,6 +110,104 @@ public sealed class MaterialScaffoldTests
     }
 
     [Fact]
+    public void AppBar_BackgroundColor_DefaultsFromThemeAppBarTheme()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            PrimaryColor = Colors.DarkSlateBlue,
+            AppBarTheme = new AppBarThemeData(BackgroundColor: Colors.Crimson),
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(titleText: "Demo")));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        Assert.Equal(Colors.Crimson, appBarBackground.Color);
+    }
+
+    [Fact]
+    public void AppBar_BackgroundColor_WidgetValue_OverridesThemeAppBarTheme()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            AppBarTheme = new AppBarThemeData(BackgroundColor: Colors.Crimson),
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(
+                    titleText: "Demo",
+                    backgroundColor: Colors.DarkOliveGreen)));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        Assert.Equal(Colors.DarkOliveGreen, appBarBackground.Color);
+    }
+
+    [Fact]
+    public void AppBar_ForegroundColor_DefaultsFromThemeAppBarTheme()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            OnPrimaryColor = Colors.Bisque,
+            AppBarTheme = new AppBarThemeData(ForegroundColor: Colors.Goldenrod),
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(titleText: "Demo")));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var paragraph = FindParagraphByText(appBarBackground, "Demo");
+        Assert.NotNull(paragraph);
+        Assert.Equal(Colors.Goldenrod, Assert.IsType<SolidColorBrush>(paragraph!.Foreground).Color);
+    }
+
+    [Fact]
+    public void AppBar_ForegroundColor_WidgetValue_OverridesThemeAppBarTheme()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            AppBarTheme = new AppBarThemeData(ForegroundColor: Colors.Goldenrod),
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(
+                    titleText: "Demo",
+                    foregroundColor: Colors.CadetBlue)));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var paragraph = FindParagraphByText(appBarBackground, "Demo");
+        Assert.NotNull(paragraph);
+        Assert.Equal(Colors.CadetBlue, Assert.IsType<SolidColorBrush>(paragraph!.Foreground).Color);
+    }
+
+    [Fact]
     public void AppBar_CenterTitleTrue_WrapsTitleInCenterAlign()
     {
         var owner = new BuildOwner();
@@ -323,6 +421,60 @@ public sealed class MaterialScaffoldTests
     }
 
     [Fact]
+    public void AppBar_ToolbarHeight_DefaultsFromThemeAppBarTheme()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            AppBarTheme = new AppBarThemeData(ToolbarHeight: 72),
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(titleText: "Title")));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var toolbarBox = FindConstrainedBox(appBarBackground, constraints =>
+            Math.Abs(constraints.MinHeight - 72) < 0.001
+            && Math.Abs(constraints.MaxHeight - 72) < 0.001);
+
+        Assert.NotNull(toolbarBox);
+    }
+
+    [Fact]
+    public void AppBar_ToolbarHeight_WidgetValue_OverridesThemeAppBarTheme()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            AppBarTheme = new AppBarThemeData(ToolbarHeight: 72),
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(
+                    titleText: "Title",
+                    toolbarHeight: 64)));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var toolbarBox = FindConstrainedBox(appBarBackground, constraints =>
+            Math.Abs(constraints.MinHeight - 64) < 0.001
+            && Math.Abs(constraints.MaxHeight - 64) < 0.001);
+
+        Assert.NotNull(toolbarBox);
+    }
+
+    [Fact]
     public void AppBar_TitleTextStyle_DefaultsFromTextThemeTitleLarge()
     {
         var owner = new BuildOwner();
@@ -501,6 +653,26 @@ public sealed class MaterialScaffoldTests
             titleSpacing: -1));
     }
 
+    [Fact]
+    public void AppBar_NonPositiveThemeToolbarHeight_Throws()
+    {
+        var owner = new BuildOwner();
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light with
+                {
+                    AppBarTheme = new AppBarThemeData(ToolbarHeight: 0),
+                },
+                child: new AppBar(titleText: "Invalid")));
+
+        root.Attach(owner);
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+        {
+            root.Mount(parent: null, newSlot: null);
+            owner.FlushBuild();
+        });
+    }
+
     private static T RequireRenderObject<T>(Element? element) where T : RenderObject
     {
         Assert.NotNull(element);
@@ -581,6 +753,32 @@ public sealed class MaterialScaffoldTests
             }
 
             result = FindPadding(child, predicate);
+        });
+
+        return result;
+    }
+
+    private static RenderConstrainedBox? FindConstrainedBox(RenderObject? root, Predicate<BoxConstraints> predicate)
+    {
+        if (root is null)
+        {
+            return null;
+        }
+
+        if (root is RenderConstrainedBox constrainedBox && predicate(constrainedBox.AdditionalConstraints))
+        {
+            return constrainedBox;
+        }
+
+        RenderConstrainedBox? result = null;
+        root.VisitChildren(child =>
+        {
+            if (result is not null)
+            {
+                return;
+            }
+
+            result = FindConstrainedBox(child, predicate);
         });
 
         return result;

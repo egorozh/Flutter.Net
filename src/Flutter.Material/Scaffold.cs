@@ -89,13 +89,13 @@ public sealed class AppBar : StatelessWidget
         double? titleSpacing = null,
         TextStyle? toolbarTextStyle = null,
         TextStyle? titleTextStyle = null,
-        double toolbarHeight = 56,
+        double? toolbarHeight = null,
         Thickness? padding = null,
         Color? backgroundColor = null,
         Color? foregroundColor = null,
         Key? key = null) : base(key)
     {
-        if (double.IsNaN(toolbarHeight) || double.IsInfinity(toolbarHeight) || toolbarHeight <= 0)
+        if (toolbarHeight.HasValue && (double.IsNaN(toolbarHeight.Value) || double.IsInfinity(toolbarHeight.Value) || toolbarHeight.Value <= 0))
         {
             throw new ArgumentOutOfRangeException(nameof(toolbarHeight), "Toolbar height must be positive and finite.");
         }
@@ -143,7 +143,7 @@ public sealed class AppBar : StatelessWidget
 
     public TextStyle? TitleTextStyle { get; }
 
-    public double ToolbarHeight { get; }
+    public double? ToolbarHeight { get; }
 
     public Thickness? Padding { get; }
 
@@ -154,10 +154,11 @@ public sealed class AppBar : StatelessWidget
     public override Widget Build(BuildContext context)
     {
         var theme = Theme.Of(context);
-        var effectiveBackground = BackgroundColor ?? theme.PrimaryColor;
-        var effectiveForeground = ForegroundColor ?? theme.OnPrimaryColor;
+        var effectiveBackground = BackgroundColor ?? theme.AppBarTheme.BackgroundColor ?? theme.PrimaryColor;
+        var effectiveForeground = ForegroundColor ?? theme.AppBarTheme.ForegroundColor ?? theme.OnPrimaryColor;
         var effectiveCenterTitle = ResolveEffectiveCenterTitle(theme);
         var effectiveTitleSpacing = TitleSpacing ?? theme.AppBarTheme.TitleSpacing ?? 16;
+        var effectiveToolbarHeight = ResolveEffectiveToolbarHeight(theme);
         var effectiveToolbarTextStyle = ResolveToolbarTextStyle(theme, effectiveForeground);
         var effectiveTitleTextStyle = ResolveTitleTextStyle(theme, effectiveForeground);
 
@@ -198,7 +199,7 @@ public sealed class AppBar : StatelessWidget
             color: effectiveBackground,
             padding: Padding ?? new Thickness(16, 0, 16, 0),
             child: new SizedBox(
-                height: ToolbarHeight,
+                height: effectiveToolbarHeight,
                 child: new DefaultTextStyle(
                     style: effectiveToolbarTextStyle,
                     child: new Row(
@@ -220,6 +221,21 @@ public sealed class AppBar : StatelessWidget
         }
 
         return ResolvePlatformDefaultCenterTitle(theme.Platform);
+    }
+
+    private double ResolveEffectiveToolbarHeight(ThemeData theme)
+    {
+        var effectiveToolbarHeight = ToolbarHeight ?? theme.AppBarTheme.ToolbarHeight ?? 56;
+        if (double.IsNaN(effectiveToolbarHeight)
+            || double.IsInfinity(effectiveToolbarHeight)
+            || effectiveToolbarHeight <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(AppBarThemeData.ToolbarHeight),
+                "Toolbar height must be positive and finite.");
+        }
+
+        return effectiveToolbarHeight;
     }
 
     private bool ResolvePlatformDefaultCenterTitle(TargetPlatform platform)
