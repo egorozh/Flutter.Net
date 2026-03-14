@@ -338,6 +338,63 @@ public sealed class MaterialScaffoldTests
     }
 
     [Fact]
+    public void AppBar_LeadingWidth_DefaultsFromThemeAppBarTheme()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            AppBarTheme = new AppBarThemeData(LeadingWidth: 80),
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(
+                    titleText: "Title",
+                    leading: new SizedBox(width: 12, height: 12))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var leadingBox = FindConstrainedBox(appBarBackground, constraints =>
+            Math.Abs(constraints.MinWidth - 80) < 0.001
+            && Math.Abs(constraints.MaxWidth - 80) < 0.001);
+
+        Assert.NotNull(leadingBox);
+    }
+
+    [Fact]
+    public void AppBar_LeadingWidth_WidgetValue_OverridesThemeAppBarTheme()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            AppBarTheme = new AppBarThemeData(LeadingWidth: 80),
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(
+                    titleText: "Title",
+                    leading: new SizedBox(width: 12, height: 12),
+                    leadingWidth: 64)));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var leadingBox = FindConstrainedBox(appBarBackground, constraints =>
+            Math.Abs(constraints.MinWidth - 64) < 0.001
+            && Math.Abs(constraints.MaxWidth - 64) < 0.001);
+
+        Assert.NotNull(leadingBox);
+    }
+
+    [Fact]
     public void AppBar_TitleSpacing_AppliesHorizontalPaddingToTitle()
     {
         var owner = new BuildOwner();
@@ -664,6 +721,28 @@ public sealed class MaterialScaffoldTests
                     AppBarTheme = new AppBarThemeData(ToolbarHeight: 0),
                 },
                 child: new AppBar(titleText: "Invalid")));
+
+        root.Attach(owner);
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+        {
+            root.Mount(parent: null, newSlot: null);
+            owner.FlushBuild();
+        });
+    }
+
+    [Fact]
+    public void AppBar_NonPositiveThemeLeadingWidth_Throws()
+    {
+        var owner = new BuildOwner();
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light with
+                {
+                    AppBarTheme = new AppBarThemeData(LeadingWidth: 0),
+                },
+                child: new AppBar(
+                    titleText: "Invalid",
+                    leading: new SizedBox(width: 8, height: 8))));
 
         root.Attach(owner);
         Assert.Throws<ArgumentOutOfRangeException>(() =>

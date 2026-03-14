@@ -25,8 +25,9 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   - `backgroundColor`: `widget -> theme appBarTheme -> theme primary`,
   - `foregroundColor`: `widget -> theme appBarTheme -> theme onPrimary`,
   - `toolbarHeight`: `widget -> theme appBarTheme -> default 56` (`src/Flutter.Material/Scaffold.cs`).
+- Extended framework `AppBar` leading slot width resolution to Flutter-like precedence (`leadingWidth`: `widget -> theme appBarTheme -> default 56`) via new `AppBarThemeData.LeadingWidth`, and added a resolved-value guard for non-finite/non-positive themed leading width (`src/Flutter.Material/ThemeData.cs`, `src/Flutter.Material/Scaffold.cs`).
 - Added resolved-toolbar-height validation guard in `AppBar` so non-finite/non-positive themed `toolbarHeight` fails fast with `ArgumentOutOfRangeException` instead of producing invalid layout behavior (`src/Flutter.Material/Scaffold.cs`).
-- Expanded `MaterialScaffoldTests` with focused precedence coverage for app-bar background/foreground colors, toolbar-height precedence (`theme` and widget override), and non-positive themed toolbar-height guard (`src/Flutter.Tests/MaterialScaffoldTests.cs`).
+- Expanded `MaterialScaffoldTests` with focused precedence coverage for app-bar background/foreground colors, toolbar-height precedence (`theme` and widget override), leading-width precedence (`theme` and widget override), and non-positive themed width/height guards (`src/Flutter.Tests/MaterialScaffoldTests.cs`).
 
 ## [2026-03-13] - M4 app-bar title layout parity
 

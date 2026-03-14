@@ -20,6 +20,7 @@ public sealed record AppBarThemeData(
     Color? ForegroundColor = null,
     bool? CenterTitle = null,
     double? TitleSpacing = null,
+    double? LeadingWidth = null,
     double? ToolbarHeight = null,
     TextStyle? ToolbarTextStyle = null,
     TextStyle? TitleTextStyle = null);

@@ -158,6 +158,7 @@ public sealed class AppBar : StatelessWidget
         var effectiveForeground = ForegroundColor ?? theme.AppBarTheme.ForegroundColor ?? theme.OnPrimaryColor;
         var effectiveCenterTitle = ResolveEffectiveCenterTitle(theme);
         var effectiveTitleSpacing = TitleSpacing ?? theme.AppBarTheme.TitleSpacing ?? 16;
+        var effectiveLeadingWidth = ResolveEffectiveLeadingWidth(theme);
         var effectiveToolbarHeight = ResolveEffectiveToolbarHeight(theme);
         var effectiveToolbarTextStyle = ResolveToolbarTextStyle(theme, effectiveForeground);
         var effectiveTitleTextStyle = ResolveTitleTextStyle(theme, effectiveForeground);
@@ -172,7 +173,6 @@ public sealed class AppBar : StatelessWidget
                 : titleWidget);
 
         var rowChildren = new List<Widget>();
-        var effectiveLeadingWidth = LeadingWidth ?? 56;
         if (Leading != null)
         {
             rowChildren.Add(
@@ -221,6 +221,21 @@ public sealed class AppBar : StatelessWidget
         }
 
         return ResolvePlatformDefaultCenterTitle(theme.Platform);
+    }
+
+    private double ResolveEffectiveLeadingWidth(ThemeData theme)
+    {
+        var effectiveLeadingWidth = LeadingWidth ?? theme.AppBarTheme.LeadingWidth ?? 56;
+        if (double.IsNaN(effectiveLeadingWidth)
+            || double.IsInfinity(effectiveLeadingWidth)
+            || effectiveLeadingWidth <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(AppBarThemeData.LeadingWidth),
+                "Leading width must be positive and finite.");
+        }
+
+        return effectiveLeadingWidth;
     }
 
     private double ResolveEffectiveToolbarHeight(ThemeData theme)
