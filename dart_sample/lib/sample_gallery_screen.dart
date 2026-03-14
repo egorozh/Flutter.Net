@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'align_demo_page.dart';
 import 'app_bar_actions_padding_demo_page.dart';
+import 'app_bar_icon_theme_demo_page.dart';
 import 'app_bar_leading_width_demo_page.dart';
+import 'app_bar_text_styles_demo_page.dart';
 import 'aspect_ratio_demo_page.dart';
 import 'counter_screen.dart';
 import 'container_demo_page.dart';
@@ -101,6 +103,18 @@ class SampleGalleryScreen extends StatelessWidget {
       title: 'AppBar actionsPadding theme',
       subtitle: 'theme fallback + widget override runtime probe',
       builder: () => const AppBarActionsPaddingDemoPage(),
+    ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.appBarIconTheme,
+      title: 'AppBar icon themes',
+      subtitle: 'iconTheme/actionsIconTheme precedence runtime probe',
+      builder: () => const AppBarIconThemeDemoPage(),
+    ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.appBarTextStyles,
+      title: 'AppBar text styles',
+      subtitle: 'title/toolbar text style precedence runtime probe',
+      builder: () => const AppBarTextStylesDemoPage(),
     ),
     SampleRouteDefinition(
       routeName: SampleRoutes.proxyWidgets,
