@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Media;
 using Flutter.Widgets;
 
@@ -18,12 +19,15 @@ public enum TargetPlatform
 public sealed record AppBarThemeData(
     Color? BackgroundColor = null,
     Color? ForegroundColor = null,
+    IconThemeData? IconTheme = null,
+    IconThemeData? ActionsIconTheme = null,
     bool? CenterTitle = null,
     double? TitleSpacing = null,
     double? LeadingWidth = null,
     double? ToolbarHeight = null,
     TextStyle? ToolbarTextStyle = null,
-    TextStyle? TitleTextStyle = null);
+    TextStyle? TitleTextStyle = null,
+    Thickness? ActionsPadding = null);
 
 public sealed record MaterialTextTheme
 {

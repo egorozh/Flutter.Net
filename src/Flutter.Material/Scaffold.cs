@@ -87,8 +87,11 @@ public sealed class AppBar : StatelessWidget
         IReadOnlyList<Widget>? actions = null,
         bool? centerTitle = null,
         double? titleSpacing = null,
+        IconThemeData? iconTheme = null,
+        IconThemeData? actionsIconTheme = null,
         TextStyle? toolbarTextStyle = null,
         TextStyle? titleTextStyle = null,
+        Thickness? actionsPadding = null,
         double? toolbarHeight = null,
         Thickness? padding = null,
         Color? backgroundColor = null,
@@ -117,8 +120,11 @@ public sealed class AppBar : StatelessWidget
         Actions = actions ?? Array.Empty<Widget>();
         CenterTitle = centerTitle;
         TitleSpacing = titleSpacing;
+        IconTheme = iconTheme;
+        ActionsIconTheme = actionsIconTheme;
         ToolbarTextStyle = toolbarTextStyle;
         TitleTextStyle = titleTextStyle;
+        ActionsPadding = actionsPadding;
         ToolbarHeight = toolbarHeight;
         Padding = padding;
         BackgroundColor = backgroundColor;
@@ -139,9 +145,15 @@ public sealed class AppBar : StatelessWidget
 
     public double? TitleSpacing { get; }
 
+    public IconThemeData? IconTheme { get; }
+
+    public IconThemeData? ActionsIconTheme { get; }
+
     public TextStyle? ToolbarTextStyle { get; }
 
     public TextStyle? TitleTextStyle { get; }
+
+    public Thickness? ActionsPadding { get; }
 
     public double? ToolbarHeight { get; }
 
@@ -158,7 +170,10 @@ public sealed class AppBar : StatelessWidget
         var effectiveForeground = ForegroundColor ?? theme.AppBarTheme.ForegroundColor ?? theme.OnPrimaryColor;
         var effectiveCenterTitle = ResolveEffectiveCenterTitle(theme);
         var effectiveTitleSpacing = TitleSpacing ?? theme.AppBarTheme.TitleSpacing ?? 16;
+        var effectiveIconTheme = ResolveEffectiveIconTheme(theme, effectiveForeground);
+        var effectiveActionsIconTheme = ResolveEffectiveActionsIconTheme(theme, effectiveForeground, effectiveIconTheme);
         var effectiveLeadingWidth = ResolveEffectiveLeadingWidth(theme);
+        var effectiveActionsPadding = ActionsPadding ?? theme.AppBarTheme.ActionsPadding ?? new Thickness();
         var effectiveToolbarHeight = ResolveEffectiveToolbarHeight(theme);
         var effectiveToolbarTextStyle = ResolveToolbarTextStyle(theme, effectiveForeground);
         var effectiveTitleTextStyle = ResolveTitleTextStyle(theme, effectiveForeground);
@@ -178,16 +193,23 @@ public sealed class AppBar : StatelessWidget
             rowChildren.Add(
                 new SizedBox(
                     width: effectiveLeadingWidth,
-                    child: new Center(child: Leading)));
+                    child: new Center(
+                        child: new Flutter.Widgets.IconTheme(
+                            data: effectiveIconTheme,
+                            child: Leading))));
         }
 
         rowChildren.Add(new Expanded(child: middle));
 
         if (Actions.Count > 0)
         {
-            rowChildren.Add(new Row(
-                spacing: 8,
-                children: Actions));
+            rowChildren.Add(new Padding(
+                insets: effectiveActionsPadding,
+                child: new Flutter.Widgets.IconTheme(
+                    data: effectiveActionsIconTheme,
+                    child: new Row(
+                        spacing: 8,
+                        children: Actions))));
         }
         else if (effectiveCenterTitle && Leading != null)
         {
@@ -236,6 +258,32 @@ public sealed class AppBar : StatelessWidget
         }
 
         return effectiveLeadingWidth;
+    }
+
+    private IconThemeData ResolveEffectiveIconTheme(ThemeData theme, Color effectiveForeground)
+    {
+        var baseTheme = IconTheme ?? theme.AppBarTheme.IconTheme ?? new IconThemeData();
+        return baseTheme with
+        {
+            Color = baseTheme.Color ?? effectiveForeground,
+        };
+    }
+
+    private IconThemeData ResolveEffectiveActionsIconTheme(
+        ThemeData theme,
+        Color effectiveForeground,
+        IconThemeData effectiveIconTheme)
+    {
+        var baseTheme = ActionsIconTheme
+                        ?? theme.AppBarTheme.ActionsIconTheme
+                        ?? IconTheme
+                        ?? theme.AppBarTheme.IconTheme
+                        ?? effectiveIconTheme;
+
+        return baseTheme with
+        {
+            Color = baseTheme.Color ?? effectiveForeground,
+        };
     }
 
     private double ResolveEffectiveToolbarHeight(ThemeData theme)

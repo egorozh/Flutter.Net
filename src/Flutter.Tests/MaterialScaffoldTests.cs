@@ -395,6 +395,233 @@ public sealed class MaterialScaffoldTests
     }
 
     [Fact]
+    public void AppBar_ActionsPadding_DefaultsFromThemeAppBarTheme()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            AppBarTheme = new AppBarThemeData(ActionsPadding: new Thickness(13, 5, 19, 7)),
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(
+                    titleText: "Title",
+                    actions:
+                    [
+                        new Text("Action"),
+                    ])));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var actionsPadding = FindPadding(appBarBackground, padding =>
+            Math.Abs(padding.Left - 13) < 0.001
+            && Math.Abs(padding.Top - 5) < 0.001
+            && Math.Abs(padding.Right - 19) < 0.001
+            && Math.Abs(padding.Bottom - 7) < 0.001);
+
+        Assert.NotNull(actionsPadding);
+    }
+
+    [Fact]
+    public void AppBar_ActionsPadding_WidgetValue_OverridesThemeAppBarTheme()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            AppBarTheme = new AppBarThemeData(ActionsPadding: new Thickness(13, 5, 19, 7)),
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(
+                    titleText: "Title",
+                    actionsPadding: new Thickness(4, 6, 8, 10),
+                    actions:
+                    [
+                        new Text("Action"),
+                    ])));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var actionsPadding = FindPadding(appBarBackground, padding =>
+            Math.Abs(padding.Left - 4) < 0.001
+            && Math.Abs(padding.Top - 6) < 0.001
+            && Math.Abs(padding.Right - 8) < 0.001
+            && Math.Abs(padding.Bottom - 10) < 0.001);
+
+        Assert.NotNull(actionsPadding);
+    }
+
+    [Fact]
+    public void AppBar_IconTheme_DefaultsFromThemeAppBarTheme_ForLeading()
+    {
+        IconThemeData? capturedTheme = null;
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            AppBarTheme = new AppBarThemeData(
+                IconTheme: new IconThemeData(
+                    Color: Colors.Crimson,
+                    Size: 19)),
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(
+                    titleText: "Title",
+                    leading: new CaptureIconThemeWidget(themeData => capturedTheme = themeData))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.NotNull(capturedTheme);
+        Assert.Equal(Colors.Crimson, capturedTheme!.Color);
+        Assert.Equal(19, capturedTheme.Size);
+    }
+
+    [Fact]
+    public void AppBar_IconTheme_WidgetValue_OverridesThemeAppBarTheme_ForLeading()
+    {
+        IconThemeData? capturedTheme = null;
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            AppBarTheme = new AppBarThemeData(
+                IconTheme: new IconThemeData(
+                    Color: Colors.Crimson,
+                    Size: 19)),
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(
+                    titleText: "Title",
+                    iconTheme: new IconThemeData(
+                        Color: Colors.CadetBlue,
+                        Size: 21),
+                    leading: new CaptureIconThemeWidget(themeData => capturedTheme = themeData))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.NotNull(capturedTheme);
+        Assert.Equal(Colors.CadetBlue, capturedTheme!.Color);
+        Assert.Equal(21, capturedTheme.Size);
+    }
+
+    [Fact]
+    public void AppBar_ActionsIconTheme_DefaultsFromThemeAppBarTheme_ForActions()
+    {
+        IconThemeData? capturedTheme = null;
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            AppBarTheme = new AppBarThemeData(
+                ActionsIconTheme: new IconThemeData(
+                    Color: Colors.Goldenrod,
+                    Size: 17)),
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(
+                    titleText: "Title",
+                    actions:
+                    [
+                        new CaptureIconThemeWidget(themeData => capturedTheme = themeData),
+                    ])));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.NotNull(capturedTheme);
+        Assert.Equal(Colors.Goldenrod, capturedTheme!.Color);
+        Assert.Equal(17, capturedTheme.Size);
+    }
+
+    [Fact]
+    public void AppBar_ActionsIconTheme_WidgetValue_OverridesThemeAppBarTheme_ForActions()
+    {
+        IconThemeData? capturedTheme = null;
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            AppBarTheme = new AppBarThemeData(
+                ActionsIconTheme: new IconThemeData(
+                    Color: Colors.Goldenrod,
+                    Size: 17)),
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(
+                    titleText: "Title",
+                    actionsIconTheme: new IconThemeData(
+                        Color: Colors.LimeGreen,
+                        Size: 23),
+                    actions:
+                    [
+                        new CaptureIconThemeWidget(themeData => capturedTheme = themeData),
+                    ])));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.NotNull(capturedTheme);
+        Assert.Equal(Colors.LimeGreen, capturedTheme!.Color);
+        Assert.Equal(23, capturedTheme.Size);
+    }
+
+    [Fact]
+    public void AppBar_ActionsIconTheme_FallsBackToAppBarIconTheme_WhenActionsThemeMissing()
+    {
+        IconThemeData? capturedTheme = null;
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            AppBarTheme = new AppBarThemeData(
+                IconTheme: new IconThemeData(
+                    Color: Colors.DarkCyan,
+                    Size: 14)),
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(
+                    titleText: "Title",
+                    actions:
+                    [
+                        new CaptureIconThemeWidget(themeData => capturedTheme = themeData),
+                    ])));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.NotNull(capturedTheme);
+        Assert.Equal(Colors.DarkCyan, capturedTheme!.Color);
+        Assert.Equal(14, capturedTheme.Size);
+    }
+
+    [Fact]
     public void AppBar_TitleSpacing_AppliesHorizontalPaddingToTitle()
     {
         var owner = new BuildOwner();
@@ -861,6 +1088,22 @@ public sealed class MaterialScaffoldTests
         });
 
         return result;
+    }
+
+    private sealed class CaptureIconThemeWidget : StatelessWidget
+    {
+        private readonly Action<IconThemeData> _capture;
+
+        public CaptureIconThemeWidget(Action<IconThemeData> capture)
+        {
+            _capture = capture;
+        }
+
+        public override Widget Build(BuildContext context)
+        {
+            _capture(IconTheme.Of(context));
+            return new SizedBox(width: 8, height: 8);
+        }
     }
 
     private sealed class TestRootElement : Element, IRenderObjectHost
