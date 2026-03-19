@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Media;
 using Flutter.Material;
 using Flutter.Rendering;
+using Flutter.UI;
 using Flutter.Widgets;
 using Xunit;
 
@@ -107,6 +108,28 @@ public sealed class MaterialScaffoldTests
         var paragraph = FindDescendant<RenderParagraph>(appBarBackground);
         Assert.NotNull(paragraph);
         Assert.Equal(Colors.Bisque, Assert.IsType<SolidColorBrush>(paragraph!.Foreground).Color);
+    }
+
+    [Fact]
+    public void AppBar_DefaultTitle_UsesSingleLineEllipsisDefaults()
+    {
+        var owner = new BuildOwner();
+        const string title = "Very long default app bar title";
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new AppBar(titleText: title)));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var paragraph = FindParagraphByText(appBarBackground, title);
+        Assert.NotNull(paragraph);
+        Assert.False(paragraph!.SoftWrap);
+        Assert.Equal(1, paragraph.MaxLines);
+        Assert.Equal(TextOverflow.Ellipsis, paragraph.Overflow);
     }
 
     [Fact]

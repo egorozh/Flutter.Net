@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Media;
 using Flutter.Foundation;
 using Flutter.Rendering;
+using Flutter.UI;
 using Flutter.Widgets;
 
 namespace Flutter.Material;
@@ -359,6 +360,10 @@ public sealed class AppBar : StatelessWidget
             return new SizedBox();
         }
 
-        return new Text(TitleText);
+        return new Text(
+            TitleText,
+            softWrap: false,
+            maxLines: 1,
+            overflow: TextOverflow.Ellipsis);
     }
 }
