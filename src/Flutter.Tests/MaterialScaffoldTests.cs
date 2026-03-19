@@ -1044,6 +1044,52 @@ public sealed class MaterialScaffoldTests
     }
 
     [Fact]
+    public void AppBar_ToolbarHeight_DefaultsTo64_WhenUseMaterial3IsEnabled()
+    {
+        var owner = new BuildOwner();
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new AppBar(titleText: "Title")));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var toolbarBox = FindConstrainedBox(appBarBackground, constraints =>
+            Math.Abs(constraints.MinHeight - 64) < 0.001
+            && Math.Abs(constraints.MaxHeight - 64) < 0.001);
+
+        Assert.NotNull(toolbarBox);
+    }
+
+    [Fact]
+    public void AppBar_ToolbarHeight_DefaultsTo56_WhenUseMaterial3IsDisabled()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            UseMaterial3 = false
+        };
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(titleText: "Title")));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var toolbarBox = FindConstrainedBox(appBarBackground, constraints =>
+            Math.Abs(constraints.MinHeight - 56) < 0.001
+            && Math.Abs(constraints.MaxHeight - 56) < 0.001);
+
+        Assert.NotNull(toolbarBox);
+    }
+
+    [Fact]
     public void AppBar_TitleTextStyle_DefaultsFromTextThemeTitleLarge()
     {
         var owner = new BuildOwner();
