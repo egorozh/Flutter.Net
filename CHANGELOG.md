@@ -27,14 +27,16 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Added widget-level `mainAxisSize` property wiring for `Flex`/`Row`/`Column` and applied `MainAxisSize.Min` for `AppBar` actions row to match Flutter-style shrink-wrapped toolbar actions layout (`src/Flutter/Widgets/Basic.cs`, `src/Flutter.Material/Scaffold.cs`).
 - Aligned `AppBar` leading-slot sizing with Flutter toolbar geometry by constraining leading slot with both effective `leadingWidth` and effective `toolbarHeight` (`src/Flutter.Material/Scaffold.cs`).
 - Aligned empty-string `AppBar.titleText` parity with Flutter: `titleText: ""` now renders as a default title `Text("")` rather than being treated as absent title (`src/Flutter.Material/Scaffold.cs`).
-- Aligned `AppBar` actions-row cross-axis layout path by setting actions row `CrossAxisAlignment.Stretch` in framework toolbar composition (`src/Flutter.Material/Scaffold.cs`).
+- Added `ThemeData.UseMaterial3` (default `true`) in `Flutter.Material` to mirror Flutter theme mode switch semantics (`src/Flutter.Material/ThemeData.cs`).
+- Aligned `AppBar` actions-row cross-axis layout with Flutter Material mode behavior: actions row now uses `CrossAxisAlignment.Center` when `ThemeData.UseMaterial3` is `true` and `CrossAxisAlignment.Stretch` when `false` (`src/Flutter.Material/Scaffold.cs`).
 - Added focused regression coverage in `MaterialScaffoldTests` for the updated app-bar geometry behavior:
   - default zero outer toolbar padding,
   - no extra hardcoded spacing in actions row (`src/Flutter.Tests/MaterialScaffoldTests.cs`).
 - Added focused regression coverage for default app-bar title overflow behavior (`AppBar_DefaultTitle_UsesSingleLineEllipsisDefaults`) in `src/Flutter.Tests/MaterialScaffoldTests.cs`.
 - Added focused regression coverage for tight leading-slot geometry (`AppBar_LeadingSlot_IsConstrainedByLeadingWidthAndToolbarHeight`) in `src/Flutter.Tests/MaterialScaffoldTests.cs`.
 - Added focused regression coverage for empty-string title rendering parity (`AppBar_DefaultTitle_EmptyString_IsRenderedAsText`) in `src/Flutter.Tests/MaterialScaffoldTests.cs`.
-- Added task notes and tracking updates for this parity-hardening iteration (`docs/ai/material-2026-03-19-appbar-toolbar-edge-parity.md`, `docs/ai/material-2026-03-19-appbar-default-title-ellipsis.md`, `docs/ai/material-2026-03-19-flex-main-axis-size-widget-wiring.md`, `docs/ai/material-2026-03-19-appbar-leading-slot-height-parity.md`, `docs/ai/material-2026-03-19-appbar-empty-titletext-parity.md`, `docs/ai/material-2026-03-19-appbar-actions-cross-axis-stretch-parity.md`, `docs/FRAMEWORK_PLAN.md`, `docs/ai/TEST_MATRIX.md`).
+- Added focused regression coverage for `ThemeData.UseMaterial3` default value and Material-mode-dependent app-bar actions-row alignment behavior in `src/Flutter.Tests/MaterialScaffoldTests.cs`.
+- Added task notes and tracking updates for this parity-hardening iteration (`docs/ai/material-2026-03-19-appbar-toolbar-edge-parity.md`, `docs/ai/material-2026-03-19-appbar-default-title-ellipsis.md`, `docs/ai/material-2026-03-19-flex-main-axis-size-widget-wiring.md`, `docs/ai/material-2026-03-19-appbar-leading-slot-height-parity.md`, `docs/ai/material-2026-03-19-appbar-empty-titletext-parity.md`, `docs/ai/material-2026-03-19-appbar-actions-cross-axis-stretch-parity.md`, `docs/ai/material-2026-03-19-appbar-actions-cross-axis-material3-parity.md`, `docs/FRAMEWORK_PLAN.md`, `docs/ai/TEST_MATRIX.md`).
 
 ## [2026-03-14] - M4 app-bar theme colors and toolbar-height precedence
 

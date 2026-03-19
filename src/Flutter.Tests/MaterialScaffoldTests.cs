@@ -56,6 +56,12 @@ public sealed class MaterialScaffoldTests
     }
 
     [Fact]
+    public void ThemeData_DefaultsUseMaterial3ToTrue()
+    {
+        Assert.True(ThemeData.Light.UseMaterial3);
+    }
+
+    [Fact]
     public void Scaffold_WithAppBar_UsesThemePrimaryColorForAppBarBackground()
     {
         var owner = new BuildOwner();
@@ -587,6 +593,44 @@ public sealed class MaterialScaffoldTests
         Assert.NotNull(actionsRow);
         Assert.Equal(Axis.Horizontal, actionsRow!.Direction);
         Assert.Equal(MainAxisSize.Min, actionsRow.MainAxisSize);
+        Assert.Equal(CrossAxisAlignment.Center, actionsRow.CrossAxisAlignment);
+        Assert.Equal(0, actionsRow.Spacing);
+    }
+
+    [Fact]
+    public void AppBar_ActionsRow_UsesStretchCrossAxisAlignment_WhenUseMaterial3IsDisabled()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            UseMaterial3 = false
+        };
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(
+                    titleText: "Title",
+                    actionsPadding: new Thickness(7, 8, 9, 10),
+                    actions:
+                    [
+                        new Text("One"),
+                    ])));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var actionsPadding = FindPadding(appBarBackground, padding =>
+            Math.Abs(padding.Left - 7) < 0.001
+            && Math.Abs(padding.Top - 8) < 0.001
+            && Math.Abs(padding.Right - 9) < 0.001
+            && Math.Abs(padding.Bottom - 10) < 0.001);
+        Assert.NotNull(actionsPadding);
+
+        var actionsRow = FindDescendant<RenderFlex>(actionsPadding);
+        Assert.NotNull(actionsRow);
+        Assert.Equal(MainAxisSize.Min, actionsRow!.MainAxisSize);
         Assert.Equal(CrossAxisAlignment.Stretch, actionsRow.CrossAxisAlignment);
         Assert.Equal(0, actionsRow.Spacing);
     }

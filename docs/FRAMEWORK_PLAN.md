@@ -216,7 +216,7 @@ Progress update (2026-03-19):
 - Added widget-level `mainAxisSize` wiring for `Flex`/`Row`/`Column` and aligned `AppBar` actions-row layout to Flutter-style shrink wrapping (`mainAxisSize: min`) with focused `MaterialScaffoldTests` assertion coverage.
 - Aligned app-bar leading-slot geometry with Flutter toolbar layout: leading slot is now constrained by both resolved `leadingWidth` and resolved `toolbarHeight`, with focused `MaterialScaffoldTests` width+height constraint coverage.
 - Aligned empty-string app-bar title parity: `titleText: ""` now renders as `Text("")` (instead of collapsing as missing title), while `titleText: null` still maps to an absent default title; covered by focused `MaterialScaffoldTests`.
-- Aligned app-bar actions-row cross-axis alignment to Flutter toolbar path by setting actions row to `CrossAxisAlignment.Stretch`, with focused `MaterialScaffoldTests` assertion coverage.
+- Added `ThemeData.UseMaterial3` (default `true`) to `Flutter.Material` and wired app-bar actions-row cross-axis behavior to Flutter Material mode semantics (`useMaterial3: true` -> `CrossAxisAlignment.Center`, `useMaterial3: false` -> `CrossAxisAlignment.Stretch`) with focused `MaterialScaffoldTests` coverage for both paths.
 
 Initial scope:
 

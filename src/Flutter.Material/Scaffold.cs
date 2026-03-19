@@ -211,7 +211,9 @@ public sealed class AppBar : StatelessWidget
                     data: effectiveActionsIconTheme,
                     child: new Row(
                         mainAxisSize: MainAxisSize.Min,
-                        crossAxisAlignment: CrossAxisAlignment.Stretch,
+                        crossAxisAlignment: theme.UseMaterial3
+                            ? CrossAxisAlignment.Center
+                            : CrossAxisAlignment.Stretch,
                         spacing: 0,
                         children: Actions))));
         }

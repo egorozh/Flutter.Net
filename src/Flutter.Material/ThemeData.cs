@@ -90,6 +90,7 @@ public sealed record ThemeData
         Color? canvasColor = null,
         Color? primaryColor = null,
         Color? onPrimaryColor = null,
+        bool? useMaterial3 = null,
         AppBarThemeData? appBarTheme = null,
         Color? onSurfaceColor = null,
         Color? outlineColor = null,
@@ -107,6 +108,7 @@ public sealed record ThemeData
         CanvasColor = canvasColor ?? Colors.White;
         PrimaryColor = primaryColor ?? Colors.Blue;
         OnPrimaryColor = onPrimaryColor ?? Colors.White;
+        UseMaterial3 = useMaterial3 ?? true;
         _appBarTheme = appBarTheme;
         OnSurfaceColor = onSurfaceColor ?? Colors.Black;
         OutlineColor = outlineColor ?? Color.Parse("#FF79747E");
@@ -130,6 +132,8 @@ public sealed record ThemeData
     public Color PrimaryColor { get; init; }
 
     public Color OnPrimaryColor { get; init; }
+
+    public bool UseMaterial3 { get; init; }
 
     public AppBarThemeData AppBarTheme
     {
