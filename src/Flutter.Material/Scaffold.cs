@@ -297,7 +297,7 @@ public sealed class AppBar : StatelessWidget
     {
         var effectiveToolbarHeight = ToolbarHeight
                                      ?? theme.AppBarTheme.ToolbarHeight
-                                     ?? ResolveDefaultToolbarHeight(theme);
+                                     ?? ResolveDefaultToolbarHeight();
         if (double.IsNaN(effectiveToolbarHeight)
             || double.IsInfinity(effectiveToolbarHeight)
             || effectiveToolbarHeight <= 0)
@@ -310,9 +310,9 @@ public sealed class AppBar : StatelessWidget
         return effectiveToolbarHeight;
     }
 
-    private static double ResolveDefaultToolbarHeight(ThemeData theme)
+    private static double ResolveDefaultToolbarHeight()
     {
-        return theme.UseMaterial3 ? 64 : 56;
+        return 56;
     }
 
     private static Color ResolveDefaultBackgroundColor(ThemeData theme)

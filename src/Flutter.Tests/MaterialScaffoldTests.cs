@@ -1166,7 +1166,7 @@ public sealed class MaterialScaffoldTests
     }
 
     [Fact]
-    public void AppBar_ToolbarHeight_DefaultsTo64_WhenUseMaterial3IsEnabled()
+    public void AppBar_ToolbarHeight_DefaultsTo56_WhenUseMaterial3IsEnabled()
     {
         var owner = new BuildOwner();
         var root = new TestRootElement(
@@ -1180,8 +1180,8 @@ public sealed class MaterialScaffoldTests
 
         var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
         var toolbarBox = FindConstrainedBox(appBarBackground, constraints =>
-            Math.Abs(constraints.MinHeight - 64) < 0.001
-            && Math.Abs(constraints.MaxHeight - 64) < 0.001);
+            Math.Abs(constraints.MinHeight - 56) < 0.001
+            && Math.Abs(constraints.MaxHeight - 56) < 0.001);
 
         Assert.NotNull(toolbarBox);
     }
