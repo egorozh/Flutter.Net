@@ -319,12 +319,26 @@ public sealed class AppBar : StatelessWidget
 
     private static Color ResolveDefaultBackgroundColor(ThemeData theme)
     {
-        return theme.UseMaterial3 ? theme.CanvasColor : theme.PrimaryColor;
+        if (theme.UseMaterial3)
+        {
+            return theme.CanvasColor;
+        }
+
+        return theme.Brightness == Brightness.Dark
+            ? theme.CanvasColor
+            : theme.PrimaryColor;
     }
 
     private static Color ResolveDefaultForegroundColor(ThemeData theme)
     {
-        return theme.UseMaterial3 ? theme.OnSurfaceColor : theme.OnPrimaryColor;
+        if (theme.UseMaterial3)
+        {
+            return theme.OnSurfaceColor;
+        }
+
+        return theme.Brightness == Brightness.Dark
+            ? theme.OnSurfaceColor
+            : theme.OnPrimaryColor;
     }
 
     private static IconThemeData ResolveDefaultIconTheme(ThemeData theme, Color effectiveForeground)

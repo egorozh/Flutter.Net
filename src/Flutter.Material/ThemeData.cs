@@ -16,6 +16,12 @@ public enum TargetPlatform
     Windows,
 }
 
+public enum Brightness
+{
+    Light,
+    Dark,
+}
+
 public sealed record AppBarThemeData(
     Color? BackgroundColor = null,
     Color? ForegroundColor = null,
@@ -85,6 +91,7 @@ public sealed record ThemeData
 
     public ThemeData(
         TargetPlatform? platform = null,
+        Brightness? brightness = null,
         MaterialTextTheme? textTheme = null,
         Color? scaffoldBackgroundColor = null,
         Color? canvasColor = null,
@@ -104,6 +111,7 @@ public sealed record ThemeData
         OutlinedButtonThemeData? outlinedButtonTheme = null)
     {
         Platform = platform ?? ResolveDefaultPlatform();
+        Brightness = brightness ?? Brightness.Light;
         TextTheme = textTheme ?? MaterialTextTheme.Fallback;
         ScaffoldBackgroundColor = scaffoldBackgroundColor ?? Colors.White;
         CanvasColor = canvasColor ?? Colors.White;
@@ -124,6 +132,8 @@ public sealed record ThemeData
     }
 
     public TargetPlatform Platform { get; init; }
+
+    public Brightness Brightness { get; init; }
 
     public MaterialTextTheme TextTheme { get; init; }
 
