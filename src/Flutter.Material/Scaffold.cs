@@ -280,15 +280,16 @@ public sealed class AppBar : StatelessWidget
         Color effectiveForeground,
         IconThemeData effectiveIconTheme)
     {
+        var actionForeground = ForegroundColor ?? theme.AppBarTheme.ForegroundColor;
         var baseTheme = ActionsIconTheme
                         ?? theme.AppBarTheme.ActionsIconTheme
                         ?? IconTheme
                         ?? theme.AppBarTheme.IconTheme
-                        ?? effectiveIconTheme;
+                        ?? ResolveDefaultActionsIconTheme(theme, actionForeground, effectiveIconTheme);
 
         return baseTheme with
         {
-            Color = baseTheme.Color ?? effectiveForeground,
+            Color = baseTheme.Color ?? actionForeground ?? effectiveForeground,
         };
     }
 
@@ -322,6 +323,21 @@ public sealed class AppBar : StatelessWidget
     private static Color ResolveDefaultForegroundColor(ThemeData theme)
     {
         return theme.UseMaterial3 ? theme.OnSurfaceColor : theme.OnPrimaryColor;
+    }
+
+    private static IconThemeData ResolveDefaultActionsIconTheme(
+        ThemeData theme,
+        Color? actionForeground,
+        IconThemeData effectiveIconTheme)
+    {
+        if (!theme.UseMaterial3)
+        {
+            return effectiveIconTheme;
+        }
+
+        return new IconThemeData(
+            Color: actionForeground ?? theme.OnSurfaceVariantColor,
+            Size: effectiveIconTheme.Size ?? 24);
     }
 
     private bool ResolvePlatformDefaultCenterTitle(TargetPlatform platform)

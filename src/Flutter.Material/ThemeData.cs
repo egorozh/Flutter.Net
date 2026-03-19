@@ -93,6 +93,7 @@ public sealed record ThemeData
         bool? useMaterial3 = null,
         AppBarThemeData? appBarTheme = null,
         Color? onSurfaceColor = null,
+        Color? onSurfaceVariantColor = null,
         Color? outlineColor = null,
         Color? surfaceContainerLowColor = null,
         ButtonStyle? textButtonStyle = null,
@@ -111,6 +112,7 @@ public sealed record ThemeData
         UseMaterial3 = useMaterial3 ?? true;
         _appBarTheme = appBarTheme;
         OnSurfaceColor = onSurfaceColor ?? Colors.Black;
+        OnSurfaceVariantColor = onSurfaceVariantColor ?? Color.Parse("#FF49454F");
         OutlineColor = outlineColor ?? Color.Parse("#FF79747E");
         SurfaceContainerLowColor = surfaceContainerLowColor ?? Color.Parse("#FFF7F2FA");
         TextButtonStyle = textButtonStyle;
@@ -142,6 +144,8 @@ public sealed record ThemeData
     }
 
     public Color OnSurfaceColor { get; init; }
+
+    public Color OnSurfaceVariantColor { get; init; }
 
     public Color OutlineColor { get; init; }
 

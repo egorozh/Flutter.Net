@@ -219,6 +219,7 @@ Progress update (2026-03-19):
 - Added `ThemeData.UseMaterial3` (default `true`) to `Flutter.Material` and wired app-bar actions-row cross-axis behavior to Flutter Material mode semantics (`useMaterial3: true` -> `CrossAxisAlignment.Center`, `useMaterial3: false` -> `CrossAxisAlignment.Stretch`) with focused `MaterialScaffoldTests` coverage for both paths.
 - Aligned app-bar default toolbar-height resolution with Flutter Material mode defaults: unresolved toolbar height now resolves to `64` for M3 (`useMaterial3: true`) and `56` for M2 (`useMaterial3: false`), with focused `MaterialScaffoldTests` coverage for both defaults.
 - Aligned app-bar default background/foreground fallback to Flutter Material mode semantics: unresolved colors now resolve to `CanvasColor`/`OnSurfaceColor` in M3 and `PrimaryColor`/`OnPrimaryColor` in M2, with focused `MaterialScaffoldTests` coverage for both mode paths.
+- Added `ThemeData.OnSurfaceVariantColor` and aligned app-bar actions icon default fallback to Flutter Material mode semantics: unresolved actions icon color now resolves to `OnSurfaceVariantColor` in M3 (with size fallback `24`) and keeps existing foreground fallback path in M2, while explicit `actionsIconTheme`/`iconTheme` overrides retain precedence.
 
 Initial scope:
 

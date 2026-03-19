@@ -813,6 +813,67 @@ public sealed class MaterialScaffoldTests
     }
 
     [Fact]
+    public void AppBar_ActionsIconTheme_DefaultsToOnSurfaceVariant_WhenUseMaterial3IsEnabled()
+    {
+        IconThemeData? capturedTheme = null;
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            OnSurfaceColor = Colors.CadetBlue,
+            OnSurfaceVariantColor = Colors.Goldenrod,
+            OnPrimaryColor = Colors.Crimson
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(
+                    titleText: "Title",
+                    actions:
+                    [
+                        new CaptureIconThemeWidget(themeData => capturedTheme = themeData),
+                    ])));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.NotNull(capturedTheme);
+        Assert.Equal(Colors.Goldenrod, capturedTheme!.Color);
+        Assert.Equal(24, capturedTheme.Size);
+    }
+
+    [Fact]
+    public void AppBar_ActionsIconTheme_DefaultsToOnPrimary_WhenUseMaterial3IsDisabled()
+    {
+        IconThemeData? capturedTheme = null;
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            UseMaterial3 = false,
+            OnSurfaceVariantColor = Colors.Goldenrod,
+            OnPrimaryColor = Colors.CadetBlue
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(
+                    titleText: "Title",
+                    actions:
+                    [
+                        new CaptureIconThemeWidget(themeData => capturedTheme = themeData),
+                    ])));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.NotNull(capturedTheme);
+        Assert.Equal(Colors.CadetBlue, capturedTheme!.Color);
+    }
+
+    [Fact]
     public void AppBar_ActionsIconTheme_WidgetValue_OverridesThemeAppBarTheme_ForActions()
     {
         IconThemeData? capturedTheme = null;
