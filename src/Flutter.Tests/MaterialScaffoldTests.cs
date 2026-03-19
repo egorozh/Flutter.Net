@@ -726,6 +726,61 @@ public sealed class MaterialScaffoldTests
     }
 
     [Fact]
+    public void AppBar_IconTheme_DefaultsToOnSurfaceAndSize24_ForLeading_WhenUseMaterial3IsEnabled()
+    {
+        IconThemeData? capturedTheme = null;
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            OnSurfaceColor = Colors.CadetBlue,
+            OnPrimaryColor = Colors.Crimson
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(
+                    titleText: "Title",
+                    leading: new CaptureIconThemeWidget(themeData => capturedTheme = themeData))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.NotNull(capturedTheme);
+        Assert.Equal(Colors.CadetBlue, capturedTheme!.Color);
+        Assert.Equal(24, capturedTheme.Size);
+    }
+
+    [Fact]
+    public void AppBar_IconTheme_DefaultsToOnPrimary_ForLeading_WhenUseMaterial3IsDisabled()
+    {
+        IconThemeData? capturedTheme = null;
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            UseMaterial3 = false,
+            OnSurfaceColor = Colors.Crimson,
+            OnPrimaryColor = Colors.CadetBlue
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(
+                    titleText: "Title",
+                    leading: new CaptureIconThemeWidget(themeData => capturedTheme = themeData))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        Assert.NotNull(capturedTheme);
+        Assert.Equal(Colors.CadetBlue, capturedTheme!.Color);
+        Assert.Null(capturedTheme.Size);
+    }
+
+    [Fact]
     public void AppBar_IconTheme_WidgetValue_OverridesThemeAppBarTheme_ForLeading()
     {
         IconThemeData? capturedTheme = null;

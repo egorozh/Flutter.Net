@@ -268,7 +268,9 @@ public sealed class AppBar : StatelessWidget
 
     private IconThemeData ResolveEffectiveIconTheme(ThemeData theme, Color effectiveForeground)
     {
-        var baseTheme = IconTheme ?? theme.AppBarTheme.IconTheme ?? new IconThemeData();
+        var baseTheme = IconTheme
+                        ?? theme.AppBarTheme.IconTheme
+                        ?? ResolveDefaultIconTheme(theme, effectiveForeground);
         return baseTheme with
         {
             Color = baseTheme.Color ?? effectiveForeground,
@@ -323,6 +325,13 @@ public sealed class AppBar : StatelessWidget
     private static Color ResolveDefaultForegroundColor(ThemeData theme)
     {
         return theme.UseMaterial3 ? theme.OnSurfaceColor : theme.OnPrimaryColor;
+    }
+
+    private static IconThemeData ResolveDefaultIconTheme(ThemeData theme, Color effectiveForeground)
+    {
+        return theme.UseMaterial3
+            ? new IconThemeData(Color: effectiveForeground, Size: 24)
+            : new IconThemeData(Color: effectiveForeground);
     }
 
     private static IconThemeData ResolveDefaultActionsIconTheme(

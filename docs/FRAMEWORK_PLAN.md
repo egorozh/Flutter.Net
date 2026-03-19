@@ -220,6 +220,7 @@ Progress update (2026-03-19):
 - Aligned app-bar default toolbar-height resolution with Flutter `AppBar` precedence: unresolved toolbar height now remains `56` (`kToolbarHeight`) for both M3 and M2 unless overridden by widget/theme appBarTheme, with focused `MaterialScaffoldTests` coverage.
 - Aligned app-bar default background/foreground fallback to Flutter Material mode semantics: unresolved colors now resolve to `CanvasColor`/`OnSurfaceColor` in M3 and `PrimaryColor`/`OnPrimaryColor` in M2, with focused `MaterialScaffoldTests` coverage for both mode paths.
 - Added `ThemeData.OnSurfaceVariantColor` and aligned app-bar actions icon default fallback to Flutter Material mode semantics: unresolved actions icon color now resolves to `OnSurfaceVariantColor` in M3 (with size fallback `24`) and keeps existing foreground fallback path in M2, while explicit `actionsIconTheme`/`iconTheme` overrides retain precedence.
+- Aligned app-bar leading `iconTheme` default fallback to Flutter Material mode semantics: when no explicit leading icon theme is provided, M3 now defaults to foreground + `size: 24`, while M2 keeps foreground fallback without forcing size.
 
 Initial scope:
 
