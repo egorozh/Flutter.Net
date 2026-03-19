@@ -8,7 +8,7 @@ Use this block as the fastest machine-readable status summary.
 
 ```yaml
 framework_plan_version: 1
-last_updated: 2026-03-14
+last_updated: 2026-03-19
 north_star: "Flutter-like widget/rendering framework in C# with Avalonia as host infrastructure."
 current_phase: "M4 material library rewrite (theme/scaffold/material controls) in progress."
 status:
@@ -154,7 +154,7 @@ Kickoff note (2026-03-12):
 
 - Prioritized immediately after M3 to unblock practical control rewrites and reduce sample-level styling drift by introducing a Flutter-like Material layer in framework widgets.
 
-Progress update (2026-03-14):
+Progress update (2026-03-19):
 
 - Added dedicated framework Material assembly: `src/Flutter.Material/Flutter.Material.csproj`.
 - Introduced initial theming primitives: `ThemeData`, `MaterialTextTheme`, and inherited `Theme`.
@@ -210,6 +210,8 @@ Progress update (2026-03-14):
 - Refined keyboard shortcut filtering for Material buttons: activation now includes `NumPadEnter` and ignores modified activation chords (`Ctrl/Alt/Meta/Shift + Space/Enter`) to align with Flutter `SingleActivator` semantics.
 - Added host keyboard release dispatch baseline: `FlutterHost` now forwards `OnKeyUp` into framework `FocusManager` so focused widgets receive both key-down and key-up events (required for complete keyboard interaction parity on Material controls and editable widgets).
 - Added ink/ripple baseline for Material buttons with rounded clipping parity: framework now includes animated radial splash paint support (`RenderInkSplash` + `InkSplash`), rounded clip primitives (`ClipRRect` widget/render/layer + `PaintingContext.PushClipRRect`), and `MaterialButtonCore` triggers splash animation from pointer origin (keyboard fallback: center origin) while clipping splash by button border radius.
+- Aligned framework `AppBar` toolbar-edge geometry with Flutter defaults: removed implicit outer horizontal toolbar padding (`0` default instead of framework-only `16`) and removed hardcoded actions-row inter-item spacing so actions rely on their own widget-level sizing/padding.
+- Added focused `MaterialScaffoldTests` regression coverage for app-bar geometry parity: default zero outer toolbar padding and zero extra actions-row spacing.
 
 Initial scope:
 

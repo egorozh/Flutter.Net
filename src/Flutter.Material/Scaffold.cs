@@ -208,7 +208,7 @@ public sealed class AppBar : StatelessWidget
                 child: new Flutter.Widgets.IconTheme(
                     data: effectiveActionsIconTheme,
                     child: new Row(
-                        spacing: 8,
+                        spacing: 0,
                         children: Actions))));
         }
         else if (effectiveCenterTitle && Leading != null)
@@ -219,7 +219,7 @@ public sealed class AppBar : StatelessWidget
 
         return new Container(
             color: effectiveBackground,
-            padding: Padding ?? new Thickness(16, 0, 16, 0),
+            padding: Padding ?? new Thickness(),
             child: new SizedBox(
                 height: effectiveToolbarHeight,
                 child: new DefaultTextStyle(

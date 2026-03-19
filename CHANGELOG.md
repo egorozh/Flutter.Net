@@ -16,6 +16,18 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 - Documentation policy update: Dart-to-C# control/widget work now uses mandatory parity-first porting mode (`docs/ai/PORTING_MODE.md`) with strict `1:1` default behavior, required divergence logging, and explicit parity-validation workflow references in `AGENTS.md`, `docs/FRAMEWORK_PLAN.md`, `docs/ai/INVARIANTS.md`, `docs/ai/MODULE_INDEX.md`, `docs/ai/FEATURE_TEMPLATE.md`, `docs/ai/TEST_MATRIX.md`, and `docs/ai/PARITY_MATRIX.md`.
 
+## [2026-03-19] - M4 app-bar toolbar-edge geometry parity
+
+### Changed
+
+- Hardened `AppBar` toolbar geometry defaults in `Flutter.Material` to align closer with Flutter `AppBar`/`NavigationToolbar` behavior:
+  - removed framework-only default outer toolbar padding (`0` default instead of implicit horizontal `16`),
+  - removed hardcoded actions-row inter-item spacing so actions use their own widget-level sizing/padding (`src/Flutter.Material/Scaffold.cs`).
+- Added focused regression coverage in `MaterialScaffoldTests` for the updated app-bar geometry behavior:
+  - default zero outer toolbar padding,
+  - no extra hardcoded spacing in actions row (`src/Flutter.Tests/MaterialScaffoldTests.cs`).
+- Added task note and tracking updates for this parity-hardening iteration (`docs/ai/material-2026-03-19-appbar-toolbar-edge-parity.md`, `docs/FRAMEWORK_PLAN.md`, `docs/ai/TEST_MATRIX.md`).
+
 ## [2026-03-14] - M4 app-bar theme colors and toolbar-height precedence
 
 ### Changed

@@ -462,6 +462,63 @@ public sealed class MaterialScaffoldTests
     }
 
     [Fact]
+    public void AppBar_DefaultOuterPadding_IsZero()
+    {
+        var owner = new BuildOwner();
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new AppBar(titleText: "Title")));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var outerPadding = FindPadding(appBarBackground, padding =>
+            Math.Abs(padding.Left) < 0.001
+            && Math.Abs(padding.Top) < 0.001
+            && Math.Abs(padding.Right) < 0.001
+            && Math.Abs(padding.Bottom) < 0.001);
+
+        Assert.NotNull(outerPadding);
+    }
+
+    [Fact]
+    public void AppBar_ActionsRow_DoesNotApplyExtraSpacing()
+    {
+        var owner = new BuildOwner();
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new AppBar(
+                    titleText: "Title",
+                    actionsPadding: new Thickness(3, 4, 5, 6),
+                    actions:
+                    [
+                        new Text("One"),
+                        new Text("Two"),
+                    ])));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var actionsPadding = FindPadding(appBarBackground, padding =>
+            Math.Abs(padding.Left - 3) < 0.001
+            && Math.Abs(padding.Top - 4) < 0.001
+            && Math.Abs(padding.Right - 5) < 0.001
+            && Math.Abs(padding.Bottom - 6) < 0.001);
+        Assert.NotNull(actionsPadding);
+
+        var actionsRow = FindDescendant<RenderFlex>(actionsPadding);
+        Assert.NotNull(actionsRow);
+        Assert.Equal(Axis.Horizontal, actionsRow!.Direction);
+        Assert.Equal(0, actionsRow.Spacing);
+    }
+
+    [Fact]
     public void AppBar_IconTheme_DefaultsFromThemeAppBarTheme_ForLeading()
     {
         IconThemeData? capturedTheme = null;
