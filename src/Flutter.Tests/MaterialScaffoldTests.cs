@@ -62,11 +62,42 @@ public sealed class MaterialScaffoldTests
     }
 
     [Fact]
-    public void Scaffold_WithAppBar_UsesThemePrimaryColorForAppBarBackground()
+    public void Scaffold_WithAppBar_UsesThemeCanvasColorForAppBarBackground_WhenUseMaterial3IsEnabled()
     {
         var owner = new BuildOwner();
         var theme = ThemeData.Light with
         {
+            CanvasColor = Colors.DarkSlateBlue,
+            PrimaryColor = Colors.Crimson
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new Scaffold(
+                    appBar: new AppBar(titleText: "Demo"),
+                    body: new SizedBox(width: 24, height: 12))));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var scaffoldBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var contentColumn = Assert.IsType<RenderFlex>(scaffoldBackground.Child);
+        var appBarBackground = Assert.IsType<RenderColoredBox>(contentColumn.FirstChild);
+
+        Assert.Equal(Colors.DarkSlateBlue, appBarBackground.Color);
+        Assert.NotNull(contentColumn.ChildAfter(appBarBackground));
+    }
+
+    [Fact]
+    public void Scaffold_WithAppBar_UsesThemePrimaryColorForAppBarBackground_WhenUseMaterial3IsDisabled()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            UseMaterial3 = false,
+            CanvasColor = Colors.Goldenrod,
             PrimaryColor = Colors.DarkSlateBlue
         };
 
@@ -90,12 +121,42 @@ public sealed class MaterialScaffoldTests
     }
 
     [Fact]
-    public void AppBar_DefaultTitle_UsesThemeOnPrimaryColor()
+    public void AppBar_DefaultTitle_UsesThemeOnSurfaceColor_WhenUseMaterial3IsEnabled()
     {
         var owner = new BuildOwner();
         var theme = ThemeData.Light with
         {
+            CanvasColor = Colors.DarkSlateBlue,
+            OnSurfaceColor = Colors.Bisque,
+            OnPrimaryColor = Colors.Crimson
+        };
+
+        var root = new TestRootElement(
+            new Theme(
+                data: theme,
+                child: new AppBar(titleText: "Demo")));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        Assert.Equal(Colors.DarkSlateBlue, appBarBackground.Color);
+
+        var paragraph = FindDescendant<RenderParagraph>(appBarBackground);
+        Assert.NotNull(paragraph);
+        Assert.Equal(Colors.Bisque, Assert.IsType<SolidColorBrush>(paragraph!.Foreground).Color);
+    }
+
+    [Fact]
+    public void AppBar_DefaultTitle_UsesThemeOnPrimaryColor_WhenUseMaterial3IsDisabled()
+    {
+        var owner = new BuildOwner();
+        var theme = ThemeData.Light with
+        {
+            UseMaterial3 = false,
             PrimaryColor = Colors.DarkSlateBlue,
+            OnSurfaceColor = Colors.Crimson,
             OnPrimaryColor = Colors.Bisque
         };
 
@@ -1090,13 +1151,13 @@ public sealed class MaterialScaffoldTests
     }
 
     [Fact]
-    public void AppBar_TitleTextStyle_DefaultsFromTextThemeTitleLarge()
+    public void AppBar_TitleTextStyle_DefaultsFromTextThemeTitleLarge_WithThemeForegroundFallback()
     {
         var owner = new BuildOwner();
         var theme = ThemeData.Light with
         {
-            PrimaryColor = Colors.DarkSlateBlue,
-            OnPrimaryColor = Colors.Bisque,
+            OnSurfaceColor = Colors.Bisque,
+            OnPrimaryColor = Colors.Crimson,
             TextTheme = new MaterialTextTheme(
                 titleLarge: new TextStyle(
                     FontSize: 29,

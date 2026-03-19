@@ -218,6 +218,7 @@ Progress update (2026-03-19):
 - Aligned empty-string app-bar title parity: `titleText: ""` now renders as `Text("")` (instead of collapsing as missing title), while `titleText: null` still maps to an absent default title; covered by focused `MaterialScaffoldTests`.
 - Added `ThemeData.UseMaterial3` (default `true`) to `Flutter.Material` and wired app-bar actions-row cross-axis behavior to Flutter Material mode semantics (`useMaterial3: true` -> `CrossAxisAlignment.Center`, `useMaterial3: false` -> `CrossAxisAlignment.Stretch`) with focused `MaterialScaffoldTests` coverage for both paths.
 - Aligned app-bar default toolbar-height resolution with Flutter Material mode defaults: unresolved toolbar height now resolves to `64` for M3 (`useMaterial3: true`) and `56` for M2 (`useMaterial3: false`), with focused `MaterialScaffoldTests` coverage for both defaults.
+- Aligned app-bar default background/foreground fallback to Flutter Material mode semantics: unresolved colors now resolve to `CanvasColor`/`OnSurfaceColor` in M3 and `PrimaryColor`/`OnPrimaryColor` in M2, with focused `MaterialScaffoldTests` coverage for both mode paths.
 
 Initial scope:
 

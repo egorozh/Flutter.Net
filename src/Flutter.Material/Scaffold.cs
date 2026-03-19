@@ -167,8 +167,8 @@ public sealed class AppBar : StatelessWidget
     public override Widget Build(BuildContext context)
     {
         var theme = Theme.Of(context);
-        var effectiveBackground = BackgroundColor ?? theme.AppBarTheme.BackgroundColor ?? theme.PrimaryColor;
-        var effectiveForeground = ForegroundColor ?? theme.AppBarTheme.ForegroundColor ?? theme.OnPrimaryColor;
+        var effectiveBackground = BackgroundColor ?? theme.AppBarTheme.BackgroundColor ?? ResolveDefaultBackgroundColor(theme);
+        var effectiveForeground = ForegroundColor ?? theme.AppBarTheme.ForegroundColor ?? ResolveDefaultForegroundColor(theme);
         var effectiveCenterTitle = ResolveEffectiveCenterTitle(theme);
         var effectiveTitleSpacing = TitleSpacing ?? theme.AppBarTheme.TitleSpacing ?? 16;
         var effectiveIconTheme = ResolveEffectiveIconTheme(theme, effectiveForeground);
@@ -312,6 +312,16 @@ public sealed class AppBar : StatelessWidget
     private static double ResolveDefaultToolbarHeight(ThemeData theme)
     {
         return theme.UseMaterial3 ? 64 : 56;
+    }
+
+    private static Color ResolveDefaultBackgroundColor(ThemeData theme)
+    {
+        return theme.UseMaterial3 ? theme.CanvasColor : theme.PrimaryColor;
+    }
+
+    private static Color ResolveDefaultForegroundColor(ThemeData theme)
+    {
+        return theme.UseMaterial3 ? theme.OnSurfaceColor : theme.OnPrimaryColor;
     }
 
     private bool ResolvePlatformDefaultCenterTitle(TargetPlatform platform)
