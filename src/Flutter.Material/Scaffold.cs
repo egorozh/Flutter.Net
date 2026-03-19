@@ -209,6 +209,7 @@ public sealed class AppBar : StatelessWidget
                 child: new Flutter.Widgets.IconTheme(
                     data: effectiveActionsIconTheme,
                     child: new Row(
+                        mainAxisSize: MainAxisSize.Min,
                         spacing: 0,
                         children: Actions))));
         }

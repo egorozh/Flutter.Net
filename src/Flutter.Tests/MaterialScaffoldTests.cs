@@ -538,6 +538,7 @@ public sealed class MaterialScaffoldTests
         var actionsRow = FindDescendant<RenderFlex>(actionsPadding);
         Assert.NotNull(actionsRow);
         Assert.Equal(Axis.Horizontal, actionsRow!.Direction);
+        Assert.Equal(MainAxisSize.Min, actionsRow.MainAxisSize);
         Assert.Equal(0, actionsRow.Spacing);
     }
 

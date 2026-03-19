@@ -24,11 +24,12 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   - removed framework-only default outer toolbar padding (`0` default instead of implicit horizontal `16`),
   - removed hardcoded actions-row inter-item spacing so actions use their own widget-level sizing/padding (`src/Flutter.Material/Scaffold.cs`).
 - Aligned `AppBar` default string-title behavior with Flutter defaults: `titleText` now maps to single-line non-wrapping text with ellipsis trimming (`softWrap: false`, `maxLines: 1`, `overflow: ellipsis`) in framework `Scaffold/AppBar` composition (`src/Flutter.Material/Scaffold.cs`).
+- Added widget-level `mainAxisSize` property wiring for `Flex`/`Row`/`Column` and applied `MainAxisSize.Min` for `AppBar` actions row to match Flutter-style shrink-wrapped toolbar actions layout (`src/Flutter/Widgets/Basic.cs`, `src/Flutter.Material/Scaffold.cs`).
 - Added focused regression coverage in `MaterialScaffoldTests` for the updated app-bar geometry behavior:
   - default zero outer toolbar padding,
   - no extra hardcoded spacing in actions row (`src/Flutter.Tests/MaterialScaffoldTests.cs`).
 - Added focused regression coverage for default app-bar title overflow behavior (`AppBar_DefaultTitle_UsesSingleLineEllipsisDefaults`) in `src/Flutter.Tests/MaterialScaffoldTests.cs`.
-- Added task notes and tracking updates for this parity-hardening iteration (`docs/ai/material-2026-03-19-appbar-toolbar-edge-parity.md`, `docs/ai/material-2026-03-19-appbar-default-title-ellipsis.md`, `docs/FRAMEWORK_PLAN.md`, `docs/ai/TEST_MATRIX.md`).
+- Added task notes and tracking updates for this parity-hardening iteration (`docs/ai/material-2026-03-19-appbar-toolbar-edge-parity.md`, `docs/ai/material-2026-03-19-appbar-default-title-ellipsis.md`, `docs/ai/material-2026-03-19-flex-main-axis-size-widget-wiring.md`, `docs/FRAMEWORK_PLAN.md`, `docs/ai/TEST_MATRIX.md`).
 
 ## [2026-03-14] - M4 app-bar theme colors and toolbar-height precedence
 

@@ -721,18 +721,22 @@ public class Flex : MultiChildRenderObjectWidget
     public Flex(
         Axis direction,
         IReadOnlyList<Widget>? children = null,
+        MainAxisSize mainAxisSize = MainAxisSize.Max,
         MainAxisAlignment mainAxisAlignment = MainAxisAlignment.Start,
         CrossAxisAlignment crossAxisAlignment = CrossAxisAlignment.Center,
         double spacing = 0,
         Key? key = null) : base(children, key)
     {
         Direction = direction;
+        MainAxisSize = mainAxisSize;
         MainAxisAlignment = mainAxisAlignment;
         CrossAxisAlignment = crossAxisAlignment;
         Spacing = spacing;
     }
 
     public Axis Direction { get; }
+
+    public MainAxisSize MainAxisSize { get; }
 
     public MainAxisAlignment MainAxisAlignment { get; }
 
@@ -745,6 +749,7 @@ public class Flex : MultiChildRenderObjectWidget
         return new RenderFlex(
             children: null,
             direction: Direction,
+            mainAxisSize: MainAxisSize,
             mainAxisAlignment: MainAxisAlignment,
             crossAxisAlignment: CrossAxisAlignment,
             spacing: Spacing);
@@ -754,6 +759,7 @@ public class Flex : MultiChildRenderObjectWidget
     {
         var flex = (RenderFlex)renderObject;
         flex.Direction = Direction;
+        flex.MainAxisSize = MainAxisSize;
         flex.MainAxisAlignment = MainAxisAlignment;
         flex.CrossAxisAlignment = CrossAxisAlignment;
         flex.Spacing = Spacing;
@@ -839,12 +845,14 @@ public sealed class Row : Flex
 {
     public Row(
         IReadOnlyList<Widget>? children = null,
+        MainAxisSize mainAxisSize = MainAxisSize.Max,
         MainAxisAlignment mainAxisAlignment = MainAxisAlignment.Start,
         CrossAxisAlignment crossAxisAlignment = CrossAxisAlignment.Center,
         double spacing = 0,
         Key? key = null) : base(
         direction: Axis.Horizontal,
         children: children,
+        mainAxisSize: mainAxisSize,
         mainAxisAlignment: mainAxisAlignment,
         crossAxisAlignment: crossAxisAlignment,
         spacing: spacing,
@@ -857,12 +865,14 @@ public sealed class Column : Flex
 {
     public Column(
         IReadOnlyList<Widget>? children = null,
+        MainAxisSize mainAxisSize = MainAxisSize.Max,
         MainAxisAlignment mainAxisAlignment = MainAxisAlignment.Start,
         CrossAxisAlignment crossAxisAlignment = CrossAxisAlignment.Center,
         double spacing = 0,
         Key? key = null) : base(
         direction: Axis.Vertical,
         children: children,
+        mainAxisSize: mainAxisSize,
         mainAxisAlignment: mainAxisAlignment,
         crossAxisAlignment: crossAxisAlignment,
         spacing: spacing,
