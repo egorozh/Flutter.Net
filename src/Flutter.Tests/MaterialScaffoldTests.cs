@@ -133,6 +133,27 @@ public sealed class MaterialScaffoldTests
     }
 
     [Fact]
+    public void AppBar_DefaultTitle_EmptyString_IsRenderedAsText()
+    {
+        var owner = new BuildOwner();
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new AppBar(titleText: string.Empty)));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var paragraph = FindParagraphByText(appBarBackground, string.Empty);
+        Assert.NotNull(paragraph);
+        Assert.False(paragraph!.SoftWrap);
+        Assert.Equal(1, paragraph.MaxLines);
+        Assert.Equal(TextOverflow.Ellipsis, paragraph.Overflow);
+    }
+
+    [Fact]
     public void AppBar_BackgroundColor_DefaultsFromThemeAppBarTheme()
     {
         var owner = new BuildOwner();
@@ -566,6 +587,7 @@ public sealed class MaterialScaffoldTests
         Assert.NotNull(actionsRow);
         Assert.Equal(Axis.Horizontal, actionsRow!.Direction);
         Assert.Equal(MainAxisSize.Min, actionsRow.MainAxisSize);
+        Assert.Equal(CrossAxisAlignment.Stretch, actionsRow.CrossAxisAlignment);
         Assert.Equal(0, actionsRow.Spacing);
     }
 

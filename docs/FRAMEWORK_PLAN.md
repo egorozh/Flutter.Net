@@ -215,6 +215,8 @@ Progress update (2026-03-19):
 - Aligned framework `AppBar` default string-title behavior with Flutter: `titleText` now renders as single-line, non-wrapping text with ellipsis overflow (`softWrap: false`, `maxLines: 1`, `overflow: ellipsis`), with focused `MaterialScaffoldTests` coverage.
 - Added widget-level `mainAxisSize` wiring for `Flex`/`Row`/`Column` and aligned `AppBar` actions-row layout to Flutter-style shrink wrapping (`mainAxisSize: min`) with focused `MaterialScaffoldTests` assertion coverage.
 - Aligned app-bar leading-slot geometry with Flutter toolbar layout: leading slot is now constrained by both resolved `leadingWidth` and resolved `toolbarHeight`, with focused `MaterialScaffoldTests` width+height constraint coverage.
+- Aligned empty-string app-bar title parity: `titleText: ""` now renders as `Text("")` (instead of collapsing as missing title), while `titleText: null` still maps to an absent default title; covered by focused `MaterialScaffoldTests`.
+- Aligned app-bar actions-row cross-axis alignment to Flutter toolbar path by setting actions row to `CrossAxisAlignment.Stretch`, with focused `MaterialScaffoldTests` assertion coverage.
 
 Initial scope:
 

@@ -211,6 +211,7 @@ public sealed class AppBar : StatelessWidget
                     data: effectiveActionsIconTheme,
                     child: new Row(
                         mainAxisSize: MainAxisSize.Min,
+                        crossAxisAlignment: CrossAxisAlignment.Stretch,
                         spacing: 0,
                         children: Actions))));
         }
@@ -357,7 +358,7 @@ public sealed class AppBar : StatelessWidget
 
     private Widget BuildDefaultTitle()
     {
-        if (string.IsNullOrEmpty(TitleText))
+        if (TitleText is null)
         {
             return new SizedBox();
         }
