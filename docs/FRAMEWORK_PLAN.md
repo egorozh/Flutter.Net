@@ -214,6 +214,7 @@ Progress update (2026-03-19):
 - Added focused `MaterialScaffoldTests` regression coverage for app-bar geometry parity: default zero outer toolbar padding and zero extra actions-row spacing.
 - Aligned framework `AppBar` default string-title behavior with Flutter: `titleText` now renders as single-line, non-wrapping text with ellipsis overflow (`softWrap: false`, `maxLines: 1`, `overflow: ellipsis`), with focused `MaterialScaffoldTests` coverage.
 - Added widget-level `mainAxisSize` wiring for `Flex`/`Row`/`Column` and aligned `AppBar` actions-row layout to Flutter-style shrink wrapping (`mainAxisSize: min`) with focused `MaterialScaffoldTests` assertion coverage.
+- Aligned app-bar leading-slot geometry with Flutter toolbar layout: leading slot is now constrained by both resolved `leadingWidth` and resolved `toolbarHeight`, with focused `MaterialScaffoldTests` width+height constraint coverage.
 
 Initial scope:
 

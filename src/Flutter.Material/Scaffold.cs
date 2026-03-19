@@ -194,6 +194,7 @@ public sealed class AppBar : StatelessWidget
             rowChildren.Add(
                 new SizedBox(
                     width: effectiveLeadingWidth,
+                    height: effectiveToolbarHeight,
                     child: new Center(
                         child: new Flutter.Widgets.IconTheme(
                             data: effectiveIconTheme,

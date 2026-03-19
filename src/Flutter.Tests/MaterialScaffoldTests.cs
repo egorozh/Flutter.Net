@@ -418,6 +418,33 @@ public sealed class MaterialScaffoldTests
     }
 
     [Fact]
+    public void AppBar_LeadingSlot_IsConstrainedByLeadingWidthAndToolbarHeight()
+    {
+        var owner = new BuildOwner();
+        var root = new TestRootElement(
+            new Theme(
+                data: ThemeData.Light,
+                child: new AppBar(
+                    titleText: "Title",
+                    leading: new SizedBox(width: 12, height: 12),
+                    leadingWidth: 64,
+                    toolbarHeight: 72)));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var appBarBackground = RequireRenderObject<RenderColoredBox>(root.ChildElement);
+        var leadingBox = FindConstrainedBox(appBarBackground, constraints =>
+            Math.Abs(constraints.MinWidth - 64) < 0.001
+            && Math.Abs(constraints.MaxWidth - 64) < 0.001
+            && Math.Abs(constraints.MinHeight - 72) < 0.001
+            && Math.Abs(constraints.MaxHeight - 72) < 0.001);
+
+        Assert.NotNull(leadingBox);
+    }
+
+    [Fact]
     public void AppBar_ActionsPadding_DefaultsFromThemeAppBarTheme()
     {
         var owner = new BuildOwner();
