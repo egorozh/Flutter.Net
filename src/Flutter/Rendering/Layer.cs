@@ -131,6 +131,29 @@ public sealed class ClipRectOffsetLayer : OffsetLayer
     }
 }
 
+public sealed class ClipRRectOffsetLayer : OffsetLayer
+{
+    public Rect ClipRect { get; set; }
+
+    public BorderRadius BorderRadius { get; set; } = BorderRadius.Zero;
+
+    internal override void AddToScene(DrawingContext context, Point offset)
+    {
+        var sceneOffset = offset + Offset;
+        var translatedRect = new Rect(ClipRect.Position + sceneOffset, ClipRect.Size);
+        using (context.PushClip(new RoundedRect(translatedRect, ClampRadius(translatedRect, BorderRadius))))
+        {
+            AddChildrenToScene(context, sceneOffset);
+        }
+    }
+
+    private static double ClampRadius(Rect clipRect, BorderRadius borderRadius)
+    {
+        var maxRadius = Math.Max(0, Math.Min(clipRect.Width, clipRect.Height) / 2);
+        return Math.Min(borderRadius.Radius, maxRadius);
+    }
+}
+
 public sealed class ClipRectLayer : ContainerLayer
 {
     public Rect ClipRect { get; set; }
@@ -142,6 +165,28 @@ public sealed class ClipRectLayer : ContainerLayer
         {
             base.AddToScene(context, offset);
         }
+    }
+}
+
+public sealed class ClipRRectLayer : ContainerLayer
+{
+    public Rect ClipRect { get; set; }
+
+    public BorderRadius BorderRadius { get; set; } = BorderRadius.Zero;
+
+    internal override void AddToScene(DrawingContext context, Point offset)
+    {
+        var translatedRect = new Rect(ClipRect.Position + offset, ClipRect.Size);
+        using (context.PushClip(new RoundedRect(translatedRect, ClampRadius(translatedRect, BorderRadius))))
+        {
+            base.AddToScene(context, offset);
+        }
+    }
+
+    private static double ClampRadius(Rect clipRect, BorderRadius borderRadius)
+    {
+        var maxRadius = Math.Max(0, Math.Min(clipRect.Width, clipRect.Height) / 2);
+        return Math.Min(borderRadius.Radius, maxRadius);
     }
 }
 

@@ -118,6 +118,32 @@ public sealed class PointerHoverEvent : PointerEvent
     }
 }
 
+public sealed class PointerEnterEvent : PointerEvent
+{
+    public PointerEnterEvent(
+        int pointer,
+        PointerDeviceKind kind,
+        Point position,
+        PointerButtons buttons,
+        DateTime timestampUtc)
+        : base(pointer, kind, position, buttons, down: false, timestampUtc)
+    {
+    }
+}
+
+public sealed class PointerExitEvent : PointerEvent
+{
+    public PointerExitEvent(
+        int pointer,
+        PointerDeviceKind kind,
+        Point position,
+        PointerButtons buttons,
+        DateTime timestampUtc)
+        : base(pointer, kind, position, buttons, down: false, timestampUtc)
+    {
+    }
+}
+
 public sealed class PointerUpEvent : PointerEvent
 {
     public PointerUpEvent(

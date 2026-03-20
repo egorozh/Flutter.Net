@@ -8,7 +8,7 @@ Use this block as the fastest machine-readable status summary.
 
 ```yaml
 framework_plan_version: 1
-last_updated: 2026-03-12
+last_updated: 2026-03-19
 north_star: "Flutter-like widget/rendering framework in C# with Avalonia as host infrastructure."
 current_phase: "M4 material library rewrite (theme/scaffold/material controls) in progress."
 status:
@@ -154,12 +154,81 @@ Kickoff note (2026-03-12):
 
 - Prioritized immediately after M3 to unblock practical control rewrites and reduce sample-level styling drift by introducing a Flutter-like Material layer in framework widgets.
 
+Progress update (2026-03-19):
+
+- Added dedicated framework Material assembly: `src/Flutter.Material/Flutter.Material.csproj`.
+- Introduced initial theming primitives: `ThemeData`, `MaterialTextTheme`, and inherited `Theme`.
+- `Theme` now propagates baseline `TextTheme.BodyMedium` through `DefaultTextStyle`, enabling framework `Text` defaults without sample-only wrappers.
+- C# sample app root now uses `Theme(data: ThemeData.Light, child: ...)`; Dart sample root now sets explicit `MaterialApp` text-theme baseline (`bodyMedium` 14/1.43/0.25) for parity.
+- Added regression coverage for theme-to-text propagation in `src/Flutter.Tests/TextWidgetTests.cs`.
+- Added Material shell primitives: `Scaffold` and `AppBar` in `src/Flutter.Material` with baseline slot wiring (`body`, `appBar`, `floatingActionButton`, `bottomNavigationBar`, title/leading/actions).
+- C# sample gallery pages now use framework `Scaffold`/`AppBar` composition for menu/demo shells; Dart sample gallery mirrors the same structural shell usage.
+- Added regression coverage for scaffold/app-bar theme resolution and widget composition behavior in `src/Flutter.Tests/MaterialScaffoldTests.cs`.
+- Extended `AppBar` title-layout parity with Flutter-like controls: `centerTitle` and `titleSpacing` (default `16`) with non-negative finite spacing validation, plus title insets driven by `titleSpacing`.
+- Updated centered-title composition: when `leading` exists and `actions` are absent, a symmetric trailing slot now matches effective leading width to keep title centering stable.
+- Added focused `MaterialScaffoldTests` coverage for centered-title alignment wiring, `titleSpacing` horizontal padding, and negative-spacing argument guard.
+- Added `ThemeData.Platform` and `ThemeData.AppBarTheme` (`AppBarThemeData.CenterTitle`) for app-bar default policy wiring in `Flutter.Material`.
+- Switched `AppBar` center-title default resolution to Flutter-like precedence (`widget centerTitle` -> `theme appBarTheme.centerTitle` -> platform fallback) with macOS/iOS fallback rule (`actions.Count < 2` centers title).
+- Expanded `MaterialScaffoldTests` with deterministic center-title default/precedence coverage for theme override and platform fallback behavior.
+- Expanded app-bar theme parity in `Flutter.Material` with `AppBarThemeData` fields `titleSpacing`, `toolbarTextStyle`, and `titleTextStyle`.
+- `AppBar` now resolves `titleSpacing` by Flutter-like precedence (`widget` -> `theme appBarTheme` -> `16`) and applies title/toolbar text styles by precedence (`widget` -> `theme appBarTheme` -> framework defaults using app-bar foreground color).
+- Added `MaterialTextTheme.TitleLarge` and switched default app-bar title fallback from hardcoded style constants to token-based `titleLarge` resolution with foreground-color override.
+- `AppBar` toolbar and title composition now uses nested `DefaultTextStyle` wrappers so custom title/action widgets inherit app-bar text defaults rather than relying only on hardcoded title text parameters.
+- Expanded `MaterialScaffoldTests` with precedence coverage for `titleSpacing`, `titleTextStyle`, and `toolbarTextStyle` (theme defaults and widget override behavior).
+- Expanded `AppBarThemeData` with `backgroundColor`, `foregroundColor`, `iconTheme`, `actionsIconTheme`, `leadingWidth`, `toolbarHeight`, and `actionsPadding`, and aligned `AppBar` fallback precedence for these fields to Flutter-like order (`widget -> theme appBarTheme -> theme/default`) with argument guards for non-finite/non-positive themed leading width and toolbar height.
+- Expanded `MaterialScaffoldTests` with focused precedence coverage for app-bar background/foreground color resolution, icon-theme resolution for leading/actions slots, leading-width and toolbar-height fallback/override behavior, actions-padding fallback/override behavior, plus regression coverage for non-positive themed leading-width/toolbar-height failure.
+- Expanded app-bar icon/theme test hardening for fallback-chain edges and mixed actions context: actions now have explicit regression coverage for fallback to widget `iconTheme` when `actionsIconTheme` is unset, foreground-color fallback when icon-theme color is unset, and simultaneous inheritance of `toolbarTextStyle` plus `actionsIconTheme` in the same actions subtree.
+- Added app-bar leading-width runtime parity probe route/page in both C# and Dart samples (`AppBar leadingWidth theme`) with controls for theme leading-width and widget override values plus themed/default app-bar preview comparison.
+- Added app-bar actions-padding runtime parity probe route/page in both C# and Dart samples (`AppBar actionsPadding theme`) with controls for theme actions-padding and widget override values plus themed/default app-bar preview comparison.
+- Added app-bar icon-theme runtime parity probe route/page in both C# and Dart samples (`AppBar icon themes`) with controls for foreground, theme/widget icon-theme overrides, and leading/actions context probes for precedence verification.
+- Added app-bar text-style runtime parity probe route/page in both C# and Dart samples (`AppBar text styles`) with controls for foreground and theme/widget `titleTextStyle`/`toolbarTextStyle` overrides plus expected-style summary and themed/default preview comparison.
+- Added first Material control set: `TextButton`, `ElevatedButton`, and `OutlinedButton` in `src/Flutter.Material` with inherited-theme defaults and disabled-state styling behavior.
+- Added Material buttons demo route/page in both C# and Dart sample galleries for parity/runtime validation.
+- Added regression coverage for Material button default color resolution and disabled visuals in `src/Flutter.Tests/MaterialButtonsTests.cs`.
+- Added initial Material button interaction polish: pointer-pressed visuals, focus visuals, and keyboard activation (`Enter`/`Return`/`Space`) through `Focus` integration in `MaterialButtonCore`.
+- Sample gallery shell buttons (menu entries and demo-page back action) now use Material button controls on both C# and Dart samples; Material-buttons demo control-strip actions now also use Material buttons instead of `CounterTapButton`.
+- Added core framework support for stateful widgets implemented in external assemblies (`State.StateWidget` protected accessor) to keep `src/Flutter.Material` decoupled while preserving stateful widget patterns.
+- Applied strict parity follow-up for button defaults/state layers from Flutter Dart source: `TextButton`/`ElevatedButton`/`OutlinedButton` now enforce baseline minimum size `64x40`, use stadium-like default radius, and use normalized state-layer overlay (`pressed/focused`) instead of custom focus-border widening heuristics.
+- Continued strict parity follow-up for button theming tokens/defaults: `ThemeData` now exposes `onSurfaceColor`, `outlineColor`, and `surfaceContainerLowColor`; `ElevatedButton` defaults now use surface-container/primary color pairing with on-surface disabled tones; `OutlinedButton` default border now resolves from outline token while foreground remains primary.
+- Added hover interaction baseline for Material buttons: framework pointer stack now dispatches enter/exit transitions (`PointerEnterEvent`/`PointerExitEvent` via `GestureBinding` hover-hit tracking), and `MaterialButtonCore` applies hover state-layer opacity (`0.08`) in addition to pressed/focused overlays.
+- Fixed pointer-focus visual parity for Material buttons: pointer clicks no longer leave persistent focus tint after release (`PointerUp`), while keyboard activation still enables focus overlay behavior.
+- Improved Material ripple visibility parity on wider buttons by delaying splash alpha fade until the tail phase of expansion, plus added regression coverage that `RenderInkSplash` matches full tight button bounds.
+- Fixed clip-layer resize invalidation for rounded/rect clips used by button ripple paths (`RenderClipRRect`/`RenderClipRect`): implicit size-based clip bounds now refresh on layout size changes, preventing stale ripple zones after viewport resize.
+- Added initial state-aware `ButtonStyle` layer for Material buttons (`MaterialState`, `MaterialStateProperty<T>`, `ButtonStyle`) and moved button visual resolution in `MaterialButtonCore` to style-driven state resolution while retaining legacy constructor-parameter compatibility.
+- Extended button-style ergonomics with `StyleFrom(...)` builders on `TextButton`/`ElevatedButton`/`OutlinedButton` and added regression coverage for disabled color overrides, text-style propagation, and constructor-parameter precedence over style-specified foreground.
+- Aligned Material button overlay conflict priority with Flutter Dart defaults (`pressed > hovered > focused`) and added regression coverage for combined-state conflicts (`pressed+hovered`, `pressed+focused`, `focused+hovered`).
+- Continued `StyleFrom(...)` parity: `foregroundColor` now derives default overlay/splash state colors when explicit values are absent, explicit `overlayColor` now uses Flutter-like state opacities (`0.10/0.08/0.10`) plus splash fallback semantics (including transparent highlight/splash suppression), splash color is now captured at activation to match InkWell's non-shifting ripple tint during release/hover transitions, overlay tint application is now gated to interactive states only (no idle tint for `MaterialStateProperty.All(...)` overlays), `ButtonStyle.Merge(...)` is aligned with Flutter semantics (fills only null fields), and button style layering now uses internal per-state fallback composition to preserve default disabled tokens when higher-priority resolvers return null.
+- Expanded resolver-null parity coverage for `ButtonStyle` on non-text buttons: `ElevatedButton` foreground/background and `OutlinedButton` foreground/side now have explicit regression checks that per-state `null` from high-priority resolvers falls back to default enabled/disabled tokens.
+- Added theme-level button style overrides in `ThemeData` (`textButtonStyle`, `elevatedButtonStyle`, `outlinedButtonStyle`) and wired style composition order to `default -> theme -> widget -> legacy`, with regression coverage for precedence and theme-level state fallback.
+- Added local inherited button-theme wrappers (`TextButtonTheme`/`ElevatedButtonTheme`/`OutlinedButtonTheme`) with `*ThemeData` and switched button theme-style lookup to subtree-aware `*ButtonTheme.Of(context).Style`, matching Flutter per-subtree theme override semantics (including local null-style clearing of global `ThemeData` button styles).
+- Aligned `ThemeData` with Flutter button-theme shape by adding top-level `TextButtonTheme`/`ElevatedButtonTheme`/`OutlinedButtonTheme` (`*ThemeData`) and routing inherited fallback through these properties; explicit theme-data objects now override legacy `*ButtonStyle` fields when both are set, while legacy style-only configuration remains supported for backward compatibility.
+- Expanded Material button size-constraint parity: `ButtonStyle` now includes `fixedSize` and `maximumSize` state properties, `StyleFrom(...)` builders accept these values, and `MaterialButtonCore` now computes effective constraints using Flutter-like ordering (`minimumSize` + `maximumSize`, then finite-axis tightening from `fixedSize`).
+- Aligned Material button `minimumSize` validation with Flutter constraint semantics: zero width/height is now accepted (negative values remain rejected), enabling style-level min-size reset scenarios.
+- Added `ButtonStyle` alignment parity for Material buttons: `ButtonStyle.Alignment` is now supported (including `StyleFrom(...)` and style-layer composition), and button child alignment now resolves from style instead of always being hardcoded to center.
+- Aligned `ButtonStyle.textStyle` with Flutter state-property semantics: text style is now resolved as a state-aware property with per-state layer fallback (`default/theme/widget/legacy`) instead of a single static style value.
+- Refined keyboard-activation parity for Material buttons: keyboard-triggered tap now sets a transient pressed state layer (`~100ms`) before returning to focus-only visual state, matching Flutter `InkWell.activateOnIntent` pressed-highlight behavior instead of focus-only tint during activation.
+- Refined keyboard shortcut filtering for Material buttons: activation now includes `NumPadEnter` and ignores modified activation chords (`Ctrl/Alt/Meta/Shift + Space/Enter`) to align with Flutter `SingleActivator` semantics.
+- Added host keyboard release dispatch baseline: `FlutterHost` now forwards `OnKeyUp` into framework `FocusManager` so focused widgets receive both key-down and key-up events (required for complete keyboard interaction parity on Material controls and editable widgets).
+- Added ink/ripple baseline for Material buttons with rounded clipping parity: framework now includes animated radial splash paint support (`RenderInkSplash` + `InkSplash`), rounded clip primitives (`ClipRRect` widget/render/layer + `PaintingContext.PushClipRRect`), and `MaterialButtonCore` triggers splash animation from pointer origin (keyboard fallback: center origin) while clipping splash by button border radius.
+- Aligned framework `AppBar` toolbar-edge geometry with Flutter defaults: removed implicit outer horizontal toolbar padding (`0` default instead of framework-only `16`) and removed hardcoded actions-row inter-item spacing so actions rely on their own widget-level sizing/padding.
+- Added focused `MaterialScaffoldTests` regression coverage for app-bar geometry parity: default zero outer toolbar padding and zero extra actions-row spacing.
+- Aligned framework `AppBar` default string-title behavior with Flutter: `titleText` now renders as single-line, non-wrapping text with ellipsis overflow (`softWrap: false`, `maxLines: 1`, `overflow: ellipsis`), with focused `MaterialScaffoldTests` coverage.
+- Added widget-level `mainAxisSize` wiring for `Flex`/`Row`/`Column` and aligned `AppBar` actions-row layout to Flutter-style shrink wrapping (`mainAxisSize: min`) with focused `MaterialScaffoldTests` assertion coverage.
+- Aligned app-bar leading-slot geometry with Flutter toolbar layout: leading slot is now constrained by both resolved `leadingWidth` and resolved `toolbarHeight`, with focused `MaterialScaffoldTests` width+height constraint coverage.
+- Aligned empty-string app-bar title parity: `titleText: ""` now renders as `Text("")` (instead of collapsing as missing title), while `titleText: null` still maps to an absent default title; covered by focused `MaterialScaffoldTests`.
+- Added `ThemeData.UseMaterial3` (default `true`) to `Flutter.Material` and wired app-bar actions-row cross-axis behavior to Flutter Material mode semantics (`useMaterial3: true` -> `CrossAxisAlignment.Center`, `useMaterial3: false` -> `CrossAxisAlignment.Stretch`) with focused `MaterialScaffoldTests` coverage for both paths.
+- Aligned app-bar default toolbar-height resolution with Flutter `AppBar` precedence: unresolved toolbar height now remains `56` (`kToolbarHeight`) for both M3 and M2 unless overridden by widget/theme appBarTheme, with focused `MaterialScaffoldTests` coverage.
+- Aligned app-bar default background/foreground fallback to Flutter Material mode semantics: unresolved colors now resolve to `CanvasColor`/`OnSurfaceColor` in M3 and `PrimaryColor`/`OnPrimaryColor` in M2, with focused `MaterialScaffoldTests` coverage for both mode paths.
+- Added `ThemeData.Brightness` (`Light` default) and aligned M2 dark-path app-bar defaults with Flutter behavior: when `UseMaterial3` is false and brightness is dark, unresolved app-bar defaults now resolve to `CanvasColor`/`OnSurfaceColor`.
+- Added `ThemeData.OnSurfaceVariantColor` and aligned app-bar actions icon default fallback to Flutter Material mode semantics: unresolved actions icon color now resolves to `OnSurfaceVariantColor` in M3 (with size fallback `24`) and keeps existing foreground fallback path in M2, while explicit `actionsIconTheme`/`iconTheme` overrides retain precedence.
+- Aligned app-bar leading `iconTheme` default fallback to Flutter Material mode semantics: when no explicit leading icon theme is provided, M3 now defaults to foreground + `size: 24`, while M2 keeps foreground fallback without forcing size.
+
 Initial scope:
 
 - Introduce framework-level theming primitives (`ThemeData`, `Theme`, baseline color/text style propagation).
 - Introduce shell/layout primitives for Material app structure (`Scaffold`, `AppBar`, and supporting slots).
 - Introduce first Material control set (`TextButton`, `ElevatedButton`, `OutlinedButton`) on top of framework render/widget layers.
-- Keep architecture boundaries explicit: behavior in `src/Flutter`, host integration in sample hosts only.
+- Keep architecture boundaries explicit: behavior in framework libraries (`src/Flutter`, `src/Flutter.Material`), host integration in sample hosts only.
 
 Exit criteria:
 
@@ -193,7 +262,8 @@ Exit criteria:
 
 - Always update this file when milestone status changes (`done`, `in_progress`, `planned`, `blocked`).
 - Always record shipped outcomes in `CHANGELOG.md`.
+- For Dart-to-C# control/widget ports, follow mandatory parity-first workflow in `docs/ai/PORTING_MODE.md` (strict `1:1` default; documented divergences only).
 - For every meaningful feature change, update both:
   - semantic status (this document),
   - historical record (`CHANGELOG.md`).
-- Keep architecture boundaries explicit: framework behavior in `src/Flutter`, host adaptation only in sample hosts.
+- Keep architecture boundaries explicit: framework behavior in framework libraries (`src/Flutter`, `src/Flutter.Material`), host adaptation only in sample hosts.

@@ -121,6 +121,29 @@ public class FlutterHost : Control
         }
     }
 
+    protected override void OnKeyUp(KeyEventArgs e)
+    {
+        base.OnKeyUp(e);
+
+        if (e.Handled)
+        {
+            return;
+        }
+
+        var keyEvent = new KeyEvent(
+            key: e.Key.ToString(),
+            isDown: false,
+            isShiftPressed: e.KeyModifiers.HasFlag(KeyModifiers.Shift),
+            isControlPressed: e.KeyModifiers.HasFlag(KeyModifiers.Control),
+            isAltPressed: e.KeyModifiers.HasFlag(KeyModifiers.Alt),
+            isMetaPressed: e.KeyModifiers.HasFlag(KeyModifiers.Meta));
+
+        if (FrameworkFocusManager.Instance.HandleKeyEvent(keyEvent))
+        {
+            e.Handled = true;
+        }
+    }
+
     protected override void OnTextInput(TextInputEventArgs e)
     {
         base.OnTextInput(e);

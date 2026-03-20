@@ -322,6 +322,49 @@ public sealed class DecoratedBox : SingleChildRenderObjectWidget
     }
 }
 
+public sealed class InkSplash : SingleChildRenderObjectWidget
+{
+    public InkSplash(
+        Widget? child = null,
+        Color? splashColor = null,
+        Point splashOrigin = default,
+        double splashProgress = 0,
+        bool clipToBounds = true,
+        Key? key = null) : base(child, key)
+    {
+        SplashColor = splashColor;
+        SplashOrigin = splashOrigin;
+        SplashProgress = splashProgress;
+        ClipToBounds = clipToBounds;
+    }
+
+    public Color? SplashColor { get; }
+
+    public Point SplashOrigin { get; }
+
+    public double SplashProgress { get; }
+
+    public bool ClipToBounds { get; }
+
+    internal override RenderObject CreateRenderObject(BuildContext context)
+    {
+        return new RenderInkSplash(
+            splashColor: SplashColor,
+            splashOrigin: SplashOrigin,
+            splashProgress: SplashProgress,
+            clipToBounds: ClipToBounds);
+    }
+
+    internal override void UpdateRenderObject(BuildContext context, RenderObject renderObject)
+    {
+        var inkSplash = (RenderInkSplash)renderObject;
+        inkSplash.SplashColor = SplashColor;
+        inkSplash.SplashOrigin = SplashOrigin;
+        inkSplash.SplashProgress = SplashProgress;
+        inkSplash.ClipToBounds = ClipToBounds;
+    }
+}
+
 public sealed class Opacity : SingleChildRenderObjectWidget
 {
     public Opacity(double opacity, Widget? child = null, Key? key = null) : base(child, key)
@@ -382,6 +425,29 @@ public sealed class ClipRect : SingleChildRenderObjectWidget
     internal override void UpdateRenderObject(BuildContext context, RenderObject renderObject)
     {
         ((RenderClipRect)renderObject).ClipRect = Clip;
+    }
+}
+
+public sealed class ClipRRect : SingleChildRenderObjectWidget
+{
+    public ClipRRect(BorderRadius borderRadius, Widget? child = null, Key? key = null) : base(child, key)
+    {
+        BorderRadius = borderRadius;
+    }
+
+    public BorderRadius BorderRadius { get; }
+
+    internal override RenderObject CreateRenderObject(BuildContext context)
+    {
+        return new RenderClipRRect
+        {
+            BorderRadius = BorderRadius
+        };
+    }
+
+    internal override void UpdateRenderObject(BuildContext context, RenderObject renderObject)
+    {
+        ((RenderClipRRect)renderObject).BorderRadius = BorderRadius;
     }
 }
 
@@ -655,18 +721,22 @@ public class Flex : MultiChildRenderObjectWidget
     public Flex(
         Axis direction,
         IReadOnlyList<Widget>? children = null,
+        MainAxisSize mainAxisSize = MainAxisSize.Max,
         MainAxisAlignment mainAxisAlignment = MainAxisAlignment.Start,
         CrossAxisAlignment crossAxisAlignment = CrossAxisAlignment.Center,
         double spacing = 0,
         Key? key = null) : base(children, key)
     {
         Direction = direction;
+        MainAxisSize = mainAxisSize;
         MainAxisAlignment = mainAxisAlignment;
         CrossAxisAlignment = crossAxisAlignment;
         Spacing = spacing;
     }
 
     public Axis Direction { get; }
+
+    public MainAxisSize MainAxisSize { get; }
 
     public MainAxisAlignment MainAxisAlignment { get; }
 
@@ -679,6 +749,7 @@ public class Flex : MultiChildRenderObjectWidget
         return new RenderFlex(
             children: null,
             direction: Direction,
+            mainAxisSize: MainAxisSize,
             mainAxisAlignment: MainAxisAlignment,
             crossAxisAlignment: CrossAxisAlignment,
             spacing: Spacing);
@@ -688,6 +759,7 @@ public class Flex : MultiChildRenderObjectWidget
     {
         var flex = (RenderFlex)renderObject;
         flex.Direction = Direction;
+        flex.MainAxisSize = MainAxisSize;
         flex.MainAxisAlignment = MainAxisAlignment;
         flex.CrossAxisAlignment = CrossAxisAlignment;
         flex.Spacing = Spacing;
@@ -773,12 +845,14 @@ public sealed class Row : Flex
 {
     public Row(
         IReadOnlyList<Widget>? children = null,
+        MainAxisSize mainAxisSize = MainAxisSize.Max,
         MainAxisAlignment mainAxisAlignment = MainAxisAlignment.Start,
         CrossAxisAlignment crossAxisAlignment = CrossAxisAlignment.Center,
         double spacing = 0,
         Key? key = null) : base(
         direction: Axis.Horizontal,
         children: children,
+        mainAxisSize: mainAxisSize,
         mainAxisAlignment: mainAxisAlignment,
         crossAxisAlignment: crossAxisAlignment,
         spacing: spacing,
@@ -791,12 +865,14 @@ public sealed class Column : Flex
 {
     public Column(
         IReadOnlyList<Widget>? children = null,
+        MainAxisSize mainAxisSize = MainAxisSize.Max,
         MainAxisAlignment mainAxisAlignment = MainAxisAlignment.Start,
         CrossAxisAlignment crossAxisAlignment = CrossAxisAlignment.Center,
         double spacing = 0,
         Key? key = null) : base(
         direction: Axis.Vertical,
         children: children,
+        mainAxisSize: mainAxisSize,
         mainAxisAlignment: mainAxisAlignment,
         crossAxisAlignment: crossAxisAlignment,
         spacing: spacing,

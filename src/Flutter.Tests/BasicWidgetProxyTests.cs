@@ -88,6 +88,34 @@ public sealed class BasicWidgetProxyTests
         Assert.Equal(updatedClip, updatedRenderClipRect.ClipRect);
     }
 
+    [Fact]
+    public void ClipRRectWidget_CreatesRenderClipRRect_AndUpdatesBorderRadius()
+    {
+        var owner = new BuildOwner();
+        var initialBorderRadius = BorderRadius.Circular(8);
+        var root = new TestRootElement(
+            new ClipRRect(
+                borderRadius: initialBorderRadius,
+                child: new SizedBox(width: 40, height: 50)));
+
+        root.Attach(owner);
+        root.Mount(parent: null, newSlot: null);
+        owner.FlushBuild();
+
+        var renderClipRRect = RequireRenderObject<RenderClipRRect>(root.ChildElement);
+        Assert.Equal(initialBorderRadius, renderClipRRect.BorderRadius);
+
+        var updatedBorderRadius = BorderRadius.Circular(18);
+        root.Update(new ClipRRect(
+            borderRadius: updatedBorderRadius,
+            child: new SizedBox(width: 40, height: 50)));
+        owner.FlushBuild();
+
+        var updatedRenderClipRRect = RequireRenderObject<RenderClipRRect>(root.ChildElement);
+        Assert.Same(renderClipRRect, updatedRenderClipRRect);
+        Assert.Equal(updatedBorderRadius, updatedRenderClipRRect.BorderRadius);
+    }
+
     private static T RequireRenderObject<T>(Element? element) where T : RenderObject
     {
         Assert.NotNull(element);

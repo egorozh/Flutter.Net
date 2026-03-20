@@ -62,6 +62,17 @@ public sealed class PaintingContext
         });
     }
 
+    public void DrawCircle(IBrush brush, IPen? pen, Point center, double radius)
+    {
+        var clampedRadius = Math.Max(0, radius);
+        var pictureLayer = EnsurePictureLayer();
+        pictureLayer.AddDrawCommand((drawingContext, sceneOffset) =>
+        {
+            var translatedCenter = center + sceneOffset;
+            drawingContext.DrawEllipse(brush, pen, translatedCenter, clampedRadius, clampedRadius);
+        });
+    }
+
     public void DrawTextLayout(TextLayout layout, Point point)
     {
         var pictureLayer = EnsurePictureLayer();
@@ -75,6 +86,23 @@ public sealed class PaintingContext
         var layer = new ClipRectLayer
         {
             ClipRect = clipRect
+        };
+
+        _containerLayer.Append(layer);
+
+        var childContext = new PaintingContext(layer);
+        painter(childContext);
+        childContext.StopRecordingIfNeeded();
+    }
+
+    public void PushClipRRect(Rect clipRect, BorderRadius borderRadius, Action<PaintingContext> painter)
+    {
+        StopRecordingIfNeeded();
+
+        var layer = new ClipRRectLayer
+        {
+            ClipRect = clipRect,
+            BorderRadius = borderRadius
         };
 
         _containerLayer.Append(layer);

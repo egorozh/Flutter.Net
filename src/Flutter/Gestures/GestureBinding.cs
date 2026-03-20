@@ -11,6 +11,7 @@ public sealed class GestureBinding
     public static GestureBinding Instance { get; } = new();
 
     private readonly Dictionary<int, HitTestResult> _hitTests = [];
+    private readonly Dictionary<int, HitTestResult> _hoverHitTests = [];
     private readonly Dictionary<int, Point> _lastPositions = [];
 
     public PointerRouter PointerRouter { get; } = new();
@@ -41,6 +42,8 @@ public sealed class GestureBinding
             {
                 var result = new BoxHitTestResult();
                 root.HitTest(result, @event.Position);
+                DispatchHoverTransitions((PointerHoverEvent)eventWithDelta, GetHoverHitTest(@event.Pointer), result);
+                _hoverHitTests[@event.Pointer] = result;
                 hitTestResult = result;
                 break;
             }
@@ -66,6 +69,11 @@ public sealed class GestureBinding
             _hitTests.Remove(@event.Pointer);
             _lastPositions.Remove(@event.Pointer);
         }
+
+        if (@event is PointerCancelEvent)
+        {
+            _hoverHitTests.Remove(@event.Pointer);
+        }
     }
 
     public void DispatchEvent(PointerEvent @event, HitTestResult? hitTestResult)
@@ -85,9 +93,78 @@ public sealed class GestureBinding
     internal void ResetForTests()
     {
         _hitTests.Clear();
+        _hoverHitTests.Clear();
         _lastPositions.Clear();
         PointerRouter.Reset();
         GestureArena.Reset();
+    }
+
+    private HitTestResult? GetHoverHitTest(int pointer)
+    {
+        _hoverHitTests.TryGetValue(pointer, out var result);
+        return result;
+    }
+
+    private void DispatchHoverTransitions(PointerHoverEvent hoverEvent, HitTestResult? previousResult, HitTestResult currentResult)
+    {
+        var previousEntries = BuildEntryMap(previousResult);
+        var currentEntries = BuildEntryMap(currentResult);
+
+        var exitEvent = new PointerExitEvent(
+            pointer: hoverEvent.Pointer,
+            kind: hoverEvent.Kind,
+            position: hoverEvent.Position,
+            buttons: hoverEvent.Buttons,
+            timestampUtc: hoverEvent.TimestampUtc);
+
+        foreach (var entry in previousEntries)
+        {
+            if (currentEntries.ContainsKey(entry.Key))
+            {
+                continue;
+            }
+
+            DispatchTransformedEvent(exitEvent, entry.Value);
+        }
+
+        var enterEvent = new PointerEnterEvent(
+            pointer: hoverEvent.Pointer,
+            kind: hoverEvent.Kind,
+            position: hoverEvent.Position,
+            buttons: hoverEvent.Buttons,
+            timestampUtc: hoverEvent.TimestampUtc);
+
+        foreach (var entry in currentEntries)
+        {
+            if (previousEntries.ContainsKey(entry.Key))
+            {
+                continue;
+            }
+
+            DispatchTransformedEvent(enterEvent, entry.Value);
+        }
+    }
+
+    private static Dictionary<RenderObject, HitTestEntry> BuildEntryMap(HitTestResult? result)
+    {
+        var map = new Dictionary<RenderObject, HitTestEntry>();
+        if (result is null)
+        {
+            return map;
+        }
+
+        foreach (var entry in result.Path)
+        {
+            map[entry.Target] = entry;
+        }
+
+        return map;
+    }
+
+    private static void DispatchTransformedEvent(PointerEvent @event, HitTestEntry entry)
+    {
+        var transformedEvent = entry.TransformEvent(@event);
+        entry.Target.HandleEvent(transformedEvent, entry);
     }
 
     private PointerEvent AttachDelta(PointerEvent @event)

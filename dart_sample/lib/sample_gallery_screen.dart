@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
 import 'align_demo_page.dart';
+import 'app_bar_actions_padding_demo_page.dart';
+import 'app_bar_icon_theme_demo_page.dart';
+import 'app_bar_leading_width_demo_page.dart';
+import 'app_bar_text_styles_demo_page.dart';
 import 'aspect_ratio_demo_page.dart';
 import 'counter_screen.dart';
-import 'counter_widgets.dart';
 import 'container_demo_page.dart';
 import 'custom_slivers_demo_page.dart';
 import 'decorated_box_demo_page.dart';
@@ -14,6 +17,7 @@ import 'grid_view_demo_page.dart';
 import 'list_view_fixed_extent_demo_page.dart';
 import 'list_view_reverse_demo_page.dart';
 import 'list_view_separated_demo_page.dart';
+import 'material_buttons_demo_page.dart';
 import 'navigator_demo_page.dart';
 import 'offstage_demo_page.dart';
 import 'overflow_box_demo_page.dart';
@@ -81,6 +85,36 @@ class SampleGalleryScreen extends StatelessWidget {
       title: 'EditableText',
       subtitle: 'focus + IME + multiline caret',
       builder: () => const EditableTextDemoPage(),
+    ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.materialButtons,
+      title: 'Material buttons',
+      subtitle: 'TextButton + ElevatedButton + OutlinedButton',
+      builder: () => const MaterialButtonsDemoPage(),
+    ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.appBarLeadingWidth,
+      title: 'AppBar leadingWidth theme',
+      subtitle: 'theme fallback + widget override runtime probe',
+      builder: () => const AppBarLeadingWidthDemoPage(),
+    ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.appBarActionsPadding,
+      title: 'AppBar actionsPadding theme',
+      subtitle: 'theme fallback + widget override runtime probe',
+      builder: () => const AppBarActionsPaddingDemoPage(),
+    ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.appBarIconTheme,
+      title: 'AppBar icon themes',
+      subtitle: 'iconTheme/actionsIconTheme precedence runtime probe',
+      builder: () => const AppBarIconThemeDemoPage(),
+    ),
+    SampleRouteDefinition(
+      routeName: SampleRoutes.appBarTextStyles,
+      title: 'AppBar text styles',
+      subtitle: 'title/toolbar text style precedence runtime probe',
+      builder: () => const AppBarTextStylesDemoPage(),
     ),
     SampleRouteDefinition(
       routeName: SampleRoutes.proxyWidgets,
@@ -233,32 +267,30 @@ class SampleMenuPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: 10,
-        children: <Widget>[
-          const Text(
-            'Flutter.Net widget pages',
-            style: TextStyle(fontSize: 24, color: Colors.black),
-          ),
-          const Text(
-            'Route-based sample menu. Open page and return via Back button or Esc.',
-            style: TextStyle(fontSize: 14, color: Colors.black54),
-          ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: pages.length,
-              itemExtent: 56,
-              padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
-              itemBuilder: (BuildContext itemContext, int index) {
-                return _buildPageButton(context, pages[index]);
-              },
+    return Scaffold(
+      appBar: AppBar(title: const Text('Flutter.Net widget pages')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 10,
+          children: <Widget>[
+            const Text(
+              'Route-based sample menu. Open page and return via Back button or Esc.',
+              style: TextStyle(fontSize: 14, color: Colors.black54),
             ),
-          ),
-        ],
+            Expanded(
+              child: ListView.builder(
+                itemCount: pages.length,
+                itemExtent: 56,
+                padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
+                itemBuilder: (BuildContext itemContext, int index) {
+                  return _buildPageButton(context, pages[index]);
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -267,13 +299,19 @@ class SampleMenuPage extends StatelessWidget {
     BuildContext context,
     SampleRouteDefinition page,
   ) {
-    return CounterTapButton(
-      label: '${page.title}  |  ${page.subtitle}',
-      onTap: () => Navigator.of(context).pushNamed(page.routeName),
-      background: const Color(0xFFDCE3ED),
-      foreground: Colors.black,
-      fontSize: 12,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+    return OutlinedButton(
+      onPressed: () => Navigator.of(context).pushNamed(page.routeName),
+      style: OutlinedButton.styleFrom(
+        backgroundColor: const Color(0xFFDCE3ED),
+        foregroundColor: Colors.black,
+        side: const BorderSide(color: Color(0xFFB8C4D4), width: 1),
+        minimumSize: const Size(0, 44),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      ),
+      child: Text(
+        '${page.title}  |  ${page.subtitle}',
+        style: const TextStyle(fontSize: 12),
+      ),
     );
   }
 }
@@ -299,50 +337,44 @@ class SampleDemoPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: 10,
-        children: <Widget>[
-          Row(
-            spacing: 8,
-            children: <Widget>[
-              SizedBox(
-                width: 90,
-                child: CounterTapButton(
-                  label: 'Back',
-                  onTap: () => Navigator.of(context).maybePop(),
-                  background: Colors.blue,
-                  foreground: Colors.white,
-                  fontSize: 12,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 8,
-                  ),
-                ),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(title),
+        leadingWidth: 96,
+        leading: SizedBox(
+          width: 84,
+          child: ElevatedButton(
+            onPressed: () => Navigator.of(context).maybePop(),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(0, 34),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
               ),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(fontSize: 22, color: Colors.black),
-                ),
-              ),
-            ],
-          ),
-          Text(
-            subtitle,
-            style: const TextStyle(fontSize: 14, color: Colors.black54),
-          ),
-          Expanded(
-            child: Container(
-              color: const Color(0xFFF7F9FC),
-              padding: const EdgeInsets.all(12),
-              child: child,
             ),
+            child: const Text('Back', style: TextStyle(fontSize: 12)),
           ),
-        ],
+        ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 10,
+          children: <Widget>[
+            Text(
+              subtitle,
+              style: const TextStyle(fontSize: 14, color: Colors.black54),
+            ),
+            Expanded(
+              child: Container(
+                color: const Color(0xFFF7F9FC),
+                padding: const EdgeInsets.all(12),
+                child: child,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

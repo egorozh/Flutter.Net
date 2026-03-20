@@ -1389,6 +1389,24 @@ public sealed class RenderClipRect : RenderProxyBox
     public override bool IsRepaintBoundary => Child != null;
     protected override bool AlwaysNeedsCompositing => Child != null;
 
+    protected override void PerformLayout()
+    {
+        var hadSize = HasSize;
+        var previousSize = hadSize ? Size : default;
+        base.PerformLayout();
+
+        if (_hasExplicitClipRect || Child == null)
+        {
+            return;
+        }
+
+        if (!hadSize || previousSize != Size)
+        {
+            MarkNeedsCompositedLayerUpdate();
+            MarkNeedsSemanticsUpdate();
+        }
+    }
+
     protected override OffsetLayer CreateCompositedLayer(OffsetLayer? oldLayer)
     {
         return oldLayer as ClipRectOffsetLayer ?? new ClipRectOffsetLayer();
@@ -1424,6 +1442,113 @@ public sealed class RenderClipRect : RenderProxyBox
     }
 }
 
+public sealed class RenderClipRRect : RenderProxyBox
+{
+    private Rect _clipRect;
+    private bool _hasExplicitClipRect;
+    private BorderRadius _borderRadius;
+
+    public RenderClipRRect(RenderBox? child = null)
+    {
+        Child = child;
+    }
+
+    public Rect ClipRect
+    {
+        get => _clipRect;
+        set
+        {
+            if (_hasExplicitClipRect && _clipRect == value)
+            {
+                return;
+            }
+
+            _clipRect = value;
+            _hasExplicitClipRect = true;
+            if (Child != null)
+            {
+                MarkNeedsCompositedLayerUpdate();
+                MarkNeedsSemanticsUpdate();
+            }
+        }
+    }
+
+    public BorderRadius BorderRadius
+    {
+        get => _borderRadius;
+        set
+        {
+            if (_borderRadius == value)
+            {
+                return;
+            }
+
+            _borderRadius = value;
+            if (Child != null)
+            {
+                MarkNeedsCompositedLayerUpdate();
+                MarkNeedsSemanticsUpdate();
+            }
+        }
+    }
+
+    public override bool IsRepaintBoundary => Child != null;
+    protected override bool AlwaysNeedsCompositing => Child != null;
+
+    protected override void PerformLayout()
+    {
+        var hadSize = HasSize;
+        var previousSize = hadSize ? Size : default;
+        base.PerformLayout();
+
+        if (_hasExplicitClipRect || Child == null)
+        {
+            return;
+        }
+
+        if (!hadSize || previousSize != Size)
+        {
+            MarkNeedsCompositedLayerUpdate();
+            MarkNeedsSemanticsUpdate();
+        }
+    }
+
+    protected override OffsetLayer CreateCompositedLayer(OffsetLayer? oldLayer)
+    {
+        return oldLayer as ClipRRectOffsetLayer ?? new ClipRRectOffsetLayer();
+    }
+
+    protected override void UpdateCompositedLayer(OffsetLayer layer)
+    {
+        if (layer is ClipRRectOffsetLayer clipLayer)
+        {
+            clipLayer.ClipRect = _hasExplicitClipRect ? _clipRect : new Rect(new Point(0, 0), Size);
+            clipLayer.BorderRadius = _borderRadius;
+        }
+    }
+
+    protected override Rect? DescribeSemanticsClip(RenderObject? child)
+    {
+        return null;
+    }
+
+    protected override Rect? DescribeApproximatePaintClip(RenderObject? child)
+    {
+        return _hasExplicitClipRect ? _clipRect : new Rect(new Point(0, 0), Size);
+    }
+
+    public override bool HitTest(BoxHitTestResult result, Point position)
+    {
+        var clip = _hasExplicitClipRect ? _clipRect : new Rect(new Point(0, 0), Size);
+        if (!clip.Contains(position))
+        {
+            return false;
+        }
+
+        return base.HitTest(result, position);
+    }
+}
+
 public sealed class RenderPointerListener : RenderProxyBox
 {
     private HitTestBehavior _behavior;
@@ -1431,6 +1556,8 @@ public sealed class RenderPointerListener : RenderProxyBox
     public RenderPointerListener(
         Action<PointerDownEvent>? onPointerDown = null,
         Action<PointerMoveEvent>? onPointerMove = null,
+        Action<PointerEnterEvent>? onPointerEnter = null,
+        Action<PointerExitEvent>? onPointerExit = null,
         Action<PointerHoverEvent>? onPointerHover = null,
         Action<PointerUpEvent>? onPointerUp = null,
         Action<PointerCancelEvent>? onPointerCancel = null,
@@ -1440,6 +1567,8 @@ public sealed class RenderPointerListener : RenderProxyBox
     {
         OnPointerDown = onPointerDown;
         OnPointerMove = onPointerMove;
+        OnPointerEnter = onPointerEnter;
+        OnPointerExit = onPointerExit;
         OnPointerHover = onPointerHover;
         OnPointerUp = onPointerUp;
         OnPointerCancel = onPointerCancel;
@@ -1451,6 +1580,10 @@ public sealed class RenderPointerListener : RenderProxyBox
     public Action<PointerDownEvent>? OnPointerDown { get; set; }
 
     public Action<PointerMoveEvent>? OnPointerMove { get; set; }
+
+    public Action<PointerEnterEvent>? OnPointerEnter { get; set; }
+
+    public Action<PointerExitEvent>? OnPointerExit { get; set; }
 
     public Action<PointerHoverEvent>? OnPointerHover { get; set; }
 
@@ -1497,6 +1630,12 @@ public sealed class RenderPointerListener : RenderProxyBox
             case PointerMoveEvent moveEvent:
                 OnPointerMove?.Invoke(moveEvent);
                 break;
+            case PointerEnterEvent enterEvent:
+                OnPointerEnter?.Invoke(enterEvent);
+                break;
+            case PointerExitEvent exitEvent:
+                OnPointerExit?.Invoke(exitEvent);
+                break;
             case PointerHoverEvent hoverEvent:
                 OnPointerHover?.Invoke(hoverEvent);
                 break;
@@ -1510,5 +1649,144 @@ public sealed class RenderPointerListener : RenderProxyBox
                 OnPointerSignal?.Invoke(signalEvent);
                 break;
         }
+    }
+}
+
+public sealed class RenderInkSplash : RenderProxyBox
+{
+    private Color? _splashColor;
+    private Point _splashOrigin;
+    private double _splashProgress;
+    private bool _clipToBounds = true;
+
+    public RenderInkSplash(
+        Color? splashColor = null,
+        Point splashOrigin = default,
+        double splashProgress = 0,
+        bool clipToBounds = true,
+        RenderBox? child = null)
+    {
+        _splashColor = splashColor;
+        _splashOrigin = splashOrigin;
+        _splashProgress = NormalizeProgress(splashProgress);
+        _clipToBounds = clipToBounds;
+        Child = child;
+    }
+
+    public Color? SplashColor
+    {
+        get => _splashColor;
+        set
+        {
+            if (_splashColor == value)
+            {
+                return;
+            }
+
+            _splashColor = value;
+            MarkNeedsPaint();
+        }
+    }
+
+    public Point SplashOrigin
+    {
+        get => _splashOrigin;
+        set
+        {
+            if (_splashOrigin == value)
+            {
+                return;
+            }
+
+            _splashOrigin = value;
+            MarkNeedsPaint();
+        }
+    }
+
+    public double SplashProgress
+    {
+        get => _splashProgress;
+        set
+        {
+            var normalized = NormalizeProgress(value);
+            if (Math.Abs(_splashProgress - normalized) < 0.0001)
+            {
+                return;
+            }
+
+            _splashProgress = normalized;
+            MarkNeedsPaint();
+        }
+    }
+
+    public bool ClipToBounds
+    {
+        get => _clipToBounds;
+        set
+        {
+            if (_clipToBounds == value)
+            {
+                return;
+            }
+
+            _clipToBounds = value;
+            MarkNeedsPaint();
+        }
+    }
+
+    public override void Paint(PaintingContext ctx, Point offset)
+    {
+        if (_clipToBounds)
+        {
+            var clipRect = new Rect(offset, Size);
+            ctx.PushClipRect(clipRect, clippedContext =>
+            {
+                PaintSplash(clippedContext, offset);
+                base.Paint(clippedContext, offset);
+            });
+            return;
+        }
+
+        PaintSplash(ctx, offset);
+        base.Paint(ctx, offset);
+    }
+
+    private void PaintSplash(PaintingContext ctx, Point offset)
+    {
+        if (!_splashColor.HasValue || _splashProgress <= 0)
+        {
+            return;
+        }
+
+        var resolvedOrigin = ResolveOrigin(Size, _splashOrigin);
+        var localMaxRadius = Math.Sqrt((Size.Width * Size.Width) + (Size.Height * Size.Height));
+        var radius = localMaxRadius * _splashProgress;
+
+        var brush = new SolidColorBrush(_splashColor.Value);
+        ctx.DrawCircle(brush, pen: null, center: offset + resolvedOrigin, radius: radius);
+    }
+
+    private static double NormalizeProgress(double value)
+    {
+        if (double.IsNaN(value) || double.IsInfinity(value))
+        {
+            return 0;
+        }
+
+        return Math.Clamp(value, 0, 1);
+    }
+
+    private static Point ResolveOrigin(Size size, Point origin)
+    {
+        var center = new Point(size.Width / 2, size.Height / 2);
+
+        var x = double.IsNaN(origin.X) || double.IsInfinity(origin.X)
+            ? center.X
+            : origin.X;
+        var y = double.IsNaN(origin.Y) || double.IsInfinity(origin.Y)
+            ? center.Y
+            : origin.Y;
+
+        return new Point(x, y);
     }
 }

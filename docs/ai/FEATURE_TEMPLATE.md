@@ -26,9 +26,23 @@ Use this template for every non-trivial feature iteration.
 ## Invariants Impacted
 
 - [ ] `docs/ai/INVARIANTS.md` reviewed
+- [ ] `docs/ai/PORTING_MODE.md` reviewed (for Dart-to-C# control/widget ports)
 - List invariants that this feature touches:
   - <invariant A>
   - <invariant B>
+
+## Dart Reference Mapping (Required for Ports)
+
+- Flutter/Dart source files used as source of truth:
+  - <flutter dart file path>
+  - <dart_sample file path>
+- Parity mapping checklist:
+  - [ ] API/default values mapped
+  - [ ] Widget composition order mapped
+  - [ ] State transitions/interaction states mapped
+  - [ ] Constraint/layout behavior mapped
+- Divergence log (only if needed):
+  - <none> or <file + reason + expected delta + follow-up condition>
 
 ## Planned Changes
 
@@ -44,6 +58,8 @@ Use this template for every non-trivial feature iteration.
   - <test file path>
 - New tests to add:
   - <test file path>
+- Parity-risk scenarios covered:
+  - <scenario tied to Dart behavior>
 
 ## Sample Parity Plan
 
