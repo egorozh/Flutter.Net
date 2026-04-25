@@ -1,5 +1,10 @@
 # Flutter.NET
 
+> [!IMPORTANT]
+> This repository is archived. The project has been renamed to Plumix and moved to
+> [github.com/Plumix-Net/Plumix](https://github.com/Plumix-Net/Plumix).
+> Please use the new repository for current development, issues, and releases.
+
 Flutter-like UI framework in C#.
 
 ## Vision
